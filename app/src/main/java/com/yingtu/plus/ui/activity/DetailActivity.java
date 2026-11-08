@@ -1,17 +1,30 @@
 package com.yingtu.plus.ui.activity;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.os.Build;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
+import com.yingtu.plus.App;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
@@ -31,11 +45,13 @@ import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
+import com.yingtu.plus.player.exo.ExoUtil;
 import com.yingtu.plus.ui.adapter.SeriesAdapter;
 import com.yingtu.plus.ui.adapter.SeriesFlagAdapter;
 import com.yingtu.plus.util.FavHelper;
 import com.yingtu.plus.util.HistoryHelper;
 import com.yingtu.plus.util.OkGo;
+import com.yingtu.plus.utils.ImgUtil;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 
@@ -45,8 +61,10 @@ import android.widget.ProgressBar;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
 * 详情页（FongMiTV 模式）：毛玻璃海报背景 + 头项（标题/海报/主演）
@@ -77,6 +95,18 @@ private String sourceKey;
 private String vodId;
 private boolean relatedLoaded = false;
 
+// 顶部内联播放器：点选集后在详情页里直接播，不跳走；播不了再跳 VideoActivity 兜底。
+private FrameLayout playerBox;
+private PlayerView pvDetail;
+private ExoPlayer detailPlayer;
+private boolean detailFullscreen;
+private boolean detailFallbackDone;
+private int detailPlayerHeight;
+private VodInfo.VodSeriesFlag playingFlag;
+private VodInfo.VodSeries playingSeries;
+private int playingIndex;
+private long playingResume;
+
 @Override
 protected int getLayoutId() {
 return R.layout.activity_detail;
@@ -92,6 +122,20 @@ find(R.id.ivBack).setOnClickListener(v -> finish());
 find(R.id.ivFav).setOnClickListener(v -> toggleFav());
 find(R.id.ivShare).setOnClickListener(v -> shareVod());
 refreshFavIcon();
+
+// 顶部播放器接线：16:9 高度按实测宽度算；全屏按钮切横竖屏 + 沉浸栏（短剧页同款接法）。
+playerBox = find(R.id.playerBox);
+pvDetail = find(R.id.pvDetail);
+pvDetail.setFullscreenButtonClickListener(isFullscreen -> toggleDetailFullscreen(isFullscreen));
+playerBox.post(() -> {
+int w = playerBox.getWidth();
+if (w > 0) {
+detailPlayerHeight = w * 9 / 16;
+ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
+lp.height = detailPlayerHeight;
+playerBox.setLayoutParams(lp);
+}
+});
 
 RecyclerView rvFlag = find(R.id.rvFlag);
 rvFlag.setLayoutManager(new LinearLayoutManager(
@@ -135,14 +179,14 @@ setText(R.id.tvDirector, TextUtils.isEmpty(info.director)? "": "导演：" + inf
 setText(R.id.tvDesc, TextUtils.isEmpty(info.des)? "暂无简介": info.des);
 
 ImageView iv = find(R.id.ivPoster);
-Glide.with(this).load(info.pic)
+Glide.with(this).load(ImgUtil.getUrl(info.pic))
 .placeholder(R.drawable.bg_poster_placeholder)
 .centerCrop().into(iv);
 
 // 毛玻璃背景：本片海报缩小模糊后做底，上层半透明遮罩提可读性。
 ImageView ivBg = find(R.id.ivBg);
 if (!TextUtils.isEmpty(info.pic)) {
-Glide.with(this).load(info.pic)
+Glide.with(this).load(ImgUtil.getUrl(info.pic))
 .override(240, 360)
 .centerCrop()
 .transform(new BlurTransformation(BLUR_RADIUS))
@@ -278,6 +322,133 @@ if (h!= null && h.playFlag == vodInfo.playFlag && h.playIndex == seriesIndex) {
 resume = h.position;
 }
 
+// 先在详情页顶部直接播；播不了再跳播放页兜底（VideoActivity 那条路留着，不删）。
+playInline(flag, series, seriesIndex, resume);
+}
+
+/** 详情页顶部内联播放：走现成的 playerContent 取流 + 建面，不跳走。 */
+private void playInline(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+playingFlag = flag;
+playingSeries = series;
+playingIndex = seriesIndex;
+playingResume = resume;
+detailFallbackDone = false;
+playerBox.setVisibility(View.VISIBLE);
+OkGo.io(() -> {
+try {
+Result result = SiteApi.playerContent(sourceKey, flag.name, series.url);
+String url = result.getRealUrl();
+if (TextUtils.isEmpty(url)) throw new IllegalStateException("取流地址为空");
+Map<String, String> headers = result.getHeader();
+OkGo.main(() -> startDetailPlayer(url, headers));
+} catch (Exception e) {
+App.logCaught(e);
+OkGo.main(() -> {
+Toast.makeText(DetailActivity.this, "详情页播放失败，正在用播放页打开…", Toast.LENGTH_SHORT).show();
+openVideoActivity(flag, series, seriesIndex, resume);
+});
+}
+});
+}
+
+private void startDetailPlayer(String url, Map<String, String> headers) {
+releaseDetailPlayer();
+ExoPlayer.Builder builder = new ExoPlayer.Builder(this);
+if (headers != null && !headers.isEmpty()) {
+DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory();
+dataSourceFactory.setDefaultRequestProperties(headers);
+builder.setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory));
+}
+detailPlayer = builder.build();
+// 建面：先建输出面再接播放器（短剧页黑屏同款根因），渲染方式认用户设置。
+ExoUtil.setPlayerView(pvDetail);
+pvDetail.setPlayer(detailPlayer);
+detailPlayer.setMediaItem(MediaItem.fromUri(url));
+detailPlayer.addListener(new Player.Listener() {
+@Override
+public void onPlayerError(PlaybackException error) {
+if (detailFallbackDone) return;
+detailFallbackDone = true;
+Toast.makeText(DetailActivity.this, "详情页播放失败，正在用播放页打开…", Toast.LENGTH_SHORT).show();
+openVideoActivity(playingFlag, playingSeries, playingIndex, playingResume);
+}
+});
+detailPlayer.prepare();
+detailPlayer.setPlayWhenReady(true);
+}
+
+private void releaseDetailPlayer() {
+if (detailPlayer != null) {
+if (pvDetail != null) pvDetail.setPlayer(null);
+detailPlayer.release();
+detailPlayer = null;
+}
+}
+
+/** 全屏：切横竖屏 + 沉浸栏，播放器框全屏高 / 恢复 16:9。 */
+private void toggleDetailFullscreen(boolean toFullscreen) {
+detailFullscreen = toFullscreen;
+if (toFullscreen) {
+setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+hideDetailSystemBars();
+if (playerBox != null) {
+ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
+lp.height = getResources().getDisplayMetrics().heightPixels;
+playerBox.setLayoutParams(lp);
+}
+} else {
+setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+showDetailSystemBars();
+if (playerBox != null && detailPlayerHeight > 0) {
+ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
+lp.height = detailPlayerHeight;
+playerBox.setLayoutParams(lp);
+}
+}
+if (pvDetail != null) pvDetail.setFullscreenButtonState(toFullscreen);
+}
+
+private void hideDetailSystemBars() {
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+WindowInsetsController c = getWindow().getInsetsController();
+if (c != null) {
+c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+}
+} else {
+getWindow().getDecorView().setSystemUiVisibility(
+View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+| View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+}
+}
+
+private void showDetailSystemBars() {
+if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+WindowInsetsController c = getWindow().getInsetsController();
+if (c != null) c.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+} else {
+getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+}
+}
+
+@Override
+public void onBackPressed() {
+if (detailFullscreen) {
+toggleDetailFullscreen(false);
+return;
+}
+super.onBackPressed();
+}
+
+@Override
+protected void onDestroy() {
+releaseDetailPlayer();
+super.onDestroy();
+}
+
+/** 原 playSeries 的 VideoActivity 跳转：内联播不了时的兜底，不删。 */
+private void openVideoActivity(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+if (flag == null || series == null) return;
 Intent i = new Intent(this, VideoActivity.class);
 i.putExtra(VideoActivity.KEY_TITLE, vodInfo.name + " " + series.name);
 i.putExtra(VideoActivity.KEY_URL, series.url);
@@ -378,7 +549,7 @@ h.tvNote.setText(m.note);
 h.tvRating.setVisibility(View.GONE);
 h.tvBadge.setVisibility(View.GONE);
 Glide.with(h.itemView.getContext())
-.load(m.pic)
+.load(ImgUtil.getUrl(m.pic))
 .placeholder(R.drawable.bg_poster_placeholder)
 .error(R.drawable.bg_poster_placeholder)
 .centerCrop()

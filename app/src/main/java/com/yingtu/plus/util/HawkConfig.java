@@ -19,6 +19,9 @@ public class HawkConfig {
     /** 播放内核：0=ExoPlayer 1=IJK 2=MPV */
     public static final String PLAYER_CORE = "player_core";
 
+    /** 短剧预加载：播当前集时提前解析后面几集的流地址（只解析地址，不下载视频字节），默认开 */
+    public static final String DRAMA_PRELOAD = "drama_preload";
+
     /** WebHome 网页主页条目列表（List&lt;WebHomeEntry&gt;） */
     public static final String WEBHOME_ENTRIES = "webhome_entries";
     /** WebHome 内置示例主页是否已初始化 */

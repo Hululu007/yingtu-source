@@ -246,6 +246,16 @@
 
             <View style="@style/SettingSep" />
 
+            <LinearLayout android:id="@+id/rowDramaPreload" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="短剧预加载" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swDramaPreload"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
             <LinearLayout android:id="@+id/rowWallpaper" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="壁纸" />
                 <TextView android:id="@+id/tvWallpaper" style="@style/SettingValue" android:text="默认" />

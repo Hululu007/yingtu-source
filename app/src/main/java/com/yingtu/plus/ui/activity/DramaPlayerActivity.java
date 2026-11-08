@@ -34,6 +34,9 @@ import com.yingtu.plus.drama.DramaModels.DramaVideo;
 import com.yingtu.plus.drama.DramaModels.FeedPage;
 import com.yingtu.plus.drama.DramaSession;
 import com.yingtu.plus.drama.FanqieDramaClient;
+import com.yingtu.plus.player.exo.ExoUtil;
+import com.yingtu.plus.util.HawkConfig;
+import com.orhanobut.hawk.Hawk;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,8 +56,9 @@ import java.util.concurrent.Executors;
  *   page holds a player (created on bind, released on recycle).
  * - Each series loads its episode list via video_detail, then resolves the
  *   current episode via video_model at play time (URLs expire, never
- *   cached). The next episode's URL is resolved while the current one plays
- *   (resolve only, no byte pre-download).
+ *   cached). The next 5 episodes' URLs are resolved while the current one
+ *   plays (resolve only, no byte pre-download; toggle in Settings cache
+ *   area, default on).
  * - Episode ends -> next episode of the same series; last episode ends ->
  *   next series. The episode button opens the episode panel; the next button jumps ahead.
  * - Playback is plain ExoPlayer (media3, the same stack VideoActivity
@@ -195,7 +199,12 @@ public class DramaPlayerActivity extends AppCompatActivity {
         DramaStream currentStream;
         boolean detailLoading;
         boolean streamLoading;
+        /** Preloaded streams by episode index: resolved addresses only, no bytes. */
+        final Map<Integer, DramaStream> preloaded = new HashMap<>();
     }
+
+    /** How many episodes ahead to resolve while the current one plays. */
+    private static final int PRELOAD_AHEAD = 5;
 
     private final class PageAdapter extends RecyclerView.Adapter<PageAdapter.PageVH> {
 
@@ -320,10 +329,18 @@ public class DramaPlayerActivity extends AppCompatActivity {
             if (episodeIndex < 0 || episodeIndex >= st.detail.episodes.size()) return;
             if (st.streamLoading) return;
             st.episodeIndex = episodeIndex;
-            st.streamLoading = true;
             DramaEpisode ep = st.detail.episodes.get(episodeIndex);
             final DramaVideo video = data.get(position);
             h.tvEpisode.setText("第 " + ep.index + " 集 / 共 " + st.detail.episodes.size() + " 集");
+            // Preloaded while an earlier episode played: play at once, no re-resolve.
+            DramaStream cached = st.preloaded.remove(episodeIndex);
+            if (cached != null && cached.url != null && !cached.url.isEmpty()) {
+                st.currentStream = cached;
+                h.playStream(cached);
+                preloadNextEpisodes(position);
+                return;
+            }
+            st.streamLoading = true;
             io.execute(() -> {
                 try {
                     FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
@@ -335,8 +352,8 @@ public class DramaPlayerActivity extends AppCompatActivity {
                         PageVH holder = holders.get(position);
                         if (holder == null || holder.pagePosition != position) return;
                         holder.playStream(stream);
-                        // Resolve the next episode's URL while this one plays.
-                        preloadNextEpisode(position);
+                        // Resolve the next episodes' URLs while this one plays.
+                        preloadNextEpisodes(position);
                     });
                 } catch (Exception e) {
                     if (destroyed) return;
@@ -351,21 +368,29 @@ public class DramaPlayerActivity extends AppCompatActivity {
             });
         }
 
-        /** Next-episode URL resolve only (no byte download). */
-        private void preloadNextEpisode(int position) {
+        /** Next-episodes URL resolve only (no byte download): up to 5 ahead. */
+        private void preloadNextEpisodes(int position) {
+            if (!Hawk.get(HawkConfig.DRAMA_PRELOAD, true)) return;
             PageState st = stateFor(position);
             if (st.detail == null) return;
-            int next = st.episodeIndex + 1;
-            if (next >= st.detail.episodes.size()) return;
-            DramaEpisode ep = st.detail.episodes.get(next);
-            io.execute(() -> {
-                try {
-                    FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
-                    client.videoModel(ep.vid, ep.seriesId);
-                } catch (Exception ignored) {
-                    // Preload failure is silent: the episode resolves on demand.
-                }
-            });
+            int end = Math.min(st.detail.episodes.size() - 1, st.episodeIndex + PRELOAD_AHEAD);
+            for (int next = st.episodeIndex + 1; next <= end; next++) {
+                if (st.preloaded.containsKey(next)) continue;
+                final int index = next;
+                DramaEpisode ep = st.detail.episodes.get(index);
+                io.execute(() -> {
+                    try {
+                        FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
+                        DramaStream stream = client.videoModel(ep.vid, ep.seriesId);
+                        if (destroyed) return;
+                        if (stream != null && stream.url != null && !stream.url.isEmpty()) {
+                            stateFor(position).preloaded.put(index, stream);
+                        }
+                    } catch (Exception ignored) {
+                        // Preload failure is silent: the episode resolves on demand.
+                    }
+                });
+            }
         }
 
         /** Episode ended: next episode, else next series. */
@@ -416,6 +441,10 @@ public class DramaPlayerActivity extends AppCompatActivity {
                 tvEpisode = itemView.findViewById(R.id.tvDramaPageEpisode);
                 btnEpisodes = itemView.findViewById(R.id.btnDramaEpisodes);
                 btnNextEpisode = itemView.findViewById(R.id.btnDramaNextEpisode);
+                // 建面：不调 setRender 就没有输出面，流解析出时长、控制条在播也照样黑屏
+                // （第五版录屏同款故障）。先建面再接播放器，和 PlaybackActivity 同款顺序，
+                // 渲染方式认用户设置（TextureView / SurfaceView）。
+                ExoUtil.setPlayerView(playerView);
                 playerView.setFullscreenButtonClickListener(
                         isFullscreen -> toggleDramaFullscreen(isFullscreen));
             }

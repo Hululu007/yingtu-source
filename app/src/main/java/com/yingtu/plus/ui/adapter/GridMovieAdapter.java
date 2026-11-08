@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.yingtu.plus.R;
 import com.yingtu.plus.bean.Movie;
+import com.yingtu.plus.utils.ImgUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,7 +82,7 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
 
         Context ctx = h.itemView.getContext();
         Glide.with(ctx)
-                .load(m.pic)
+                .load(ImgUtil.getUrl(m.pic))
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()

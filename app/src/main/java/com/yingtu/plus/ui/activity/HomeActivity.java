@@ -329,7 +329,9 @@ public class HomeActivity extends BaseActivity {
             if (!ApiConfig.get().isBuiltinSite(s.getKey())) sources.add(s);
         }
         if (sources.isEmpty()) {
-            startActivity(new Intent(this, SourceActivity.class));
+            // 影视区只列用户自己导入的站，内置站不进这里；新装没有自有站是常态，
+            // 不能一 tap 就跳到视频源订阅页。只提示去向，留在原地。
+            Toast.makeText(this, "影视区暂无自有站点：内置站都在午夜/短剧区，影视区只列你自己导入的站（设置 → 导入本地 JSON 文件）", Toast.LENGTH_LONG).show();
             return;
         }
         sourceAdapter.submit(sources);

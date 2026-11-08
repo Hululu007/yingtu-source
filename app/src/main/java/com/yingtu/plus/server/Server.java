@@ -66,7 +66,9 @@ public class Server {
                 serverSocket = new ServerSocket(i, 50, InetAddress.getByName("0.0.0.0"));
                 port = i;
                 running = true;
-                try { com.github.catvod.Proxy.set(i); } catch (Throwable ignored) {}
+                // 注意：这里不调 Proxy.set()。真正的 /proxy 路由在 WebServer（调蜘蛛
+                // localProxy），本类是只回 404 的桩；以前这里抢注端口，蜘蛛拼出来的
+                // proxy:// 图址全打到本桩上 404，封面全黑。端口注册只留给 WebServer。
                 Thread accept = new Thread(this::loop, "yingtu-server");
                 accept.setDaemon(true);
                 accept.start();

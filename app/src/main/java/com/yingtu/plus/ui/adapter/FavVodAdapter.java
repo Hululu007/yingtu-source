@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.yingtu.plus.R;
 import com.yingtu.plus.bean.FavVod;
+import com.yingtu.plus.utils.ImgUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +52,7 @@ public class FavVodAdapter extends RecyclerView.Adapter<FavVodAdapter.VH> {
         h.tvName.setText(f.name);
         h.tvSub.setText("");
         Glide.with(h.itemView.getContext())
-                .load(f.pic)
+                .load(ImgUtil.getUrl(f.pic))
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()

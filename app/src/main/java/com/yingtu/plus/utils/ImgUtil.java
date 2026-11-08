@@ -107,6 +107,7 @@ public class ImgUtil {
     }
 
     public static Object getUrl(String url) {
+        if (TextUtils.isEmpty(url)) return null;
         String param = null;
         url = UrlUtil.convert(url);
         if (url.startsWith("data:")) return url;

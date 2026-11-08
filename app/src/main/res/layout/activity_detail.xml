@@ -102,6 +102,20 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- 顶部播放器：点选集/播放线路后在详情页里直接播（16:9），播不了再跳播放页兜底 -->
+            <FrameLayout
+                android:id="@+id/playerBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#000000"
+                android:visibility="gone">
+
+                <androidx.media3.ui.PlayerView
+                    android:id="@+id/pvDetail"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </FrameLayout>
+
             <!-- 头项：海报 + 标题 + 主演/导演（半透明卡片，透出毛玻璃底） -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"

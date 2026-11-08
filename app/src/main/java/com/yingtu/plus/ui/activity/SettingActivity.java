@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.SwitchCompat;
 
+import com.yingtu.plus.BuildConfig;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
@@ -59,7 +60,7 @@ public class SettingActivity extends BaseActivity {
         bindSystemSection();
         bindBottom();
 
-        ((TextView) find(R.id.tvVersion)).setText("影图+ v1.9.0");
+        ((TextView) find(R.id.tvVersion)).setText("影图+ v" + BuildConfig.VERSION_NAME);
     }
 
     // ===== 数据接口 =====
@@ -223,6 +224,14 @@ public class SettingActivity extends BaseActivity {
             toast("已清理播放缓存");
         });
 
+        // 短剧预加载开关：播当前集时提前解析后面 5 集的流地址（只解析地址，不下载视频字节），默认开。
+        SwitchCompat swDramaPreload = find(R.id.swDramaPreload);
+        swDramaPreload.setChecked(Hawk.get(HawkConfig.DRAMA_PRELOAD, true));
+        swDramaPreload.setOnCheckedChangeListener((CompoundButton b, boolean checked) -> {
+            Hawk.put(HawkConfig.DRAMA_PRELOAD, checked);
+            toast(checked ? "短剧预加载已开启" : "短剧预加载已关闭");
+        });
+
         bindWallpaperSection();
     }
 
@@ -253,7 +262,7 @@ public class SettingActivity extends BaseActivity {
             Hawk.delete(HawkConfig.SEARCH_HISTORY);
             toast("缓存已清除");
         });
-        find(R.id.btnUpdate).setOnClickListener(v -> toast("当前已是最新版本 v1.8.0"));
+        find(R.id.btnUpdate).setOnClickListener(v -> toast("当前已是最新版本 v" + BuildConfig.VERSION_NAME));
         find(R.id.btnAbout).setOnClickListener(v -> showAbout());
     }
 
@@ -261,7 +270,7 @@ public class SettingActivity extends BaseActivity {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("关于 影图+")
                 .setMessage("影图+ 是一个开源 TVBox 风格的影视聚合播放器。\n\n" +
-                        "版本：1.8.0\n" +
+                        "版本：" + BuildConfig.VERSION_NAME + "\n" +
                         "分类筛选 + 站源抽屉切换（对齐原版交互）；CatVod Spider 运行时 + WebHome\n" +
                         "可切换播放内核：ExoPlayer / IJK / MPV\n\n" +
                         "本项目仅供学习与交流，所有视频内容来自用户自行配置的第三方源，" +

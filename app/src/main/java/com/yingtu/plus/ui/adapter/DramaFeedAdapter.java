@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.yingtu.plus.R;
 import com.yingtu.plus.drama.DramaModels.DramaVideo;
+import com.yingtu.plus.utils.ImgUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +79,7 @@ public class DramaFeedAdapter extends RecyclerView.Adapter<DramaFeedAdapter.VH> 
         }
         h.tvBadge.setVisibility(View.GONE);
         Glide.with(h.itemView.getContext())
-                .load(m.cover)
+                .load(ImgUtil.getUrl(m.cover))
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()

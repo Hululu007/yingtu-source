@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.yingtu.plus.R;
 import com.yingtu.plus.bean.History;
+import com.yingtu.plus.utils.ImgUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -73,7 +74,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {
         h.tvSub.setText(sub.toString());
 
         Glide.with(h.itemView.getContext())
-                .load(item.vodPic)
+                .load(ImgUtil.getUrl(item.vodPic))
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()
