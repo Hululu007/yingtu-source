@@ -828,7 +828,13 @@ public class ExoUtil {
                         queueMode == ExoPerformanceSetting.CODEC_QUEUE_SYNC,
                         PlaybackPerformanceSetting
                                 .isVideoDurationProgressEnabled(),
-                        ExoFrameSchedulingExperimentSetting.getResolution()));
+                        // No A/B enrollment data exists in the tree (nothing calls
+                        // resolveAssignment / stores a RawAssignment), so the only
+                        // honest value is unassigned: decide() then returns the
+                        // stable decision (device not enrolled). Do not pass
+                        // ExoFrameSchedulingExperimentSetting.getResolution() here:
+                        // it is a boolean pref, not an AssignmentResolution.
+                        ExoFrameSchedulingExperimentPolicy.AssignmentResolution.unassigned()));
     }
 
     private static AudioSink buildAudioSink(

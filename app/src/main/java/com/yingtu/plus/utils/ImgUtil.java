@@ -127,11 +127,12 @@ public class ImgUtil {
     private static Drawable getTextDrawable(String text, boolean vod) {
         TextDrawable.Builder builder = new TextDrawable.Builder();
         text = TextUtils.isEmpty(text) ? "！" : text.substring(0, 1);
-        // 本地 TextDrawable.Builder 只有 buildRect(String) / buildRoundRect(String, int)，
-        // 颜色不走 build 参数，走 builder.color(int)；vod 走直角，之前丢了 buildRect 返回值。
+        // Local TextDrawable stub does not extend Drawable; its toShapeDrawable()
+        // returns a GradientDrawable (a real Drawable). The stub cannot draw the
+        // letter itself, so the placeholder is a solid color shape.
         builder.color(ColorGenerator.get400(text));
-        if (vod) return builder.buildRect(text);
-        return builder.buildRoundRect(text, ResUtil.dp2px(4));
+        if (vod) return builder.buildRect(text).toShapeDrawable();
+        return builder.buildRoundRect(text, ResUtil.dp2px(4)).toShapeDrawable();
     }
 
     private static RequestListener<Drawable> getListener(String text, String url, ImageView view, boolean vod) {
