@@ -3,6 +3,7 @@ package com.yingtu.plus.viewmodel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.yingtu.plus.App;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
@@ -36,12 +37,15 @@ public class SourceViewModel extends ViewModel {
     public final MutableLiveData<List<Movie>> listResult = new MutableLiveData<>();
     public final MutableLiveData<List<Movie>> searchResult = new MutableLiveData<>();
     public final MutableLiveData<VodInfo> detailResult = new MutableLiveData<>();
+    // 首页取数失败时的可读原因（null = 无错误）：界面不再只显示“该源暂无推荐内容”。
+    public final MutableLiveData<String> sortError = new MutableLiveData<>();
 
     private String homeKey;
 
     /** 首页：当前站的分类与首屏列表。 */
     public void getSort() {
         OkGo.io(() -> {
+            sortError.postValue(null);
             try {
                 SourceBean source = ApiConfig.get().getHomeSource();
                 if (source == null) {
@@ -66,6 +70,10 @@ public class SourceViewModel extends ViewModel {
                 sortResult.postValue(sorts);
                 listResult.postValue(toMovies(homeKey, result.getList()));
             } catch (Exception e) {
+                // 之前这里静默吞错：界面只显示“该源暂无推荐内容”，堆栈哪都找不到。
+                // 现在记进 crash.log，界面也给一句可读的原因。
+                App.logCaught(e);
+                sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
                 sortResult.postValue(null);
                 listResult.postValue(null);
             }

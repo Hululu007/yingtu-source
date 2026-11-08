@@ -30,13 +30,19 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
+        <!-- 占位，把源切换推到标题栏右上角 -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
         <Spinner
             android:id="@+id/spSource"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
             android:layout_marginEnd="8dp"
-            android:layout_weight="1" />
+            android:dropDownWidth="wrap_content"
+            android:popupBackground="@color/gradient_bottom" />
     </LinearLayout>
 
     <LinearLayout

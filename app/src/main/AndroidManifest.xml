@@ -121,26 +121,6 @@
             android:theme="@style/AppTheme.Fullscreen" />
 
         <activity
-            android:name=".reader.ReadingHomeActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".reader.NovelReaderActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".reader.PicsViewerActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".reader.AudioBookPlayer"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
             android:name=".ui.activity.WallpaperActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />

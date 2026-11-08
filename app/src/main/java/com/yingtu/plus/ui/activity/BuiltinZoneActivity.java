@@ -23,8 +23,6 @@ import com.yingtu.plus.api.VodConfigSync;
 import com.yingtu.plus.base.BaseActivity;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.drama.BuiltinDramaConfigs;
-import com.yingtu.plus.reader.ReadingHomeActivity;
-import com.yingtu.plus.reader.ReadingSources;
 import com.yingtu.plus.ui.adapter.BuiltinZoneAdapter;
 
 import java.util.ArrayList;
@@ -33,7 +31,7 @@ import java.util.List;
 /**
  * 内置区列表页（设置页“内置站点”入口进来）。
  *
- * 专门列全部内置站（午夜 + 短剧 + 直播 + 阅读，数量从现有数据里读，不硬编码），
+ * 专门列全部内置站（午夜 + 短剧 + 直播，数量从现有数据里读，不硬编码），
  * 与影视区分开。分区展示，组头带数量；点站名进该站（复用各分区现成的进站链路）。
  *
  * 管理能力（覆盖清单 Hawk 持久化，重启仍有效；不动 assets 原文件）：
@@ -132,7 +130,6 @@ public class BuiltinZoneActivity extends BaseActivity {
         groups.add(new BuiltinZoneAdapter.Group("午夜区", midnightItems()));
         groups.add(new BuiltinZoneAdapter.Group("短剧区", dramaItems()));
         groups.add(new BuiltinZoneAdapter.Group("直播", liveItems()));
-        groups.add(new BuiltinZoneAdapter.Group("阅读", readingItems()));
         adapter.submitGroups(groups);
         int total = 0;
         for (BuiltinZoneAdapter.Group g : groups) total += g.items.size();
@@ -177,22 +174,6 @@ public class BuiltinZoneActivity extends BaseActivity {
         return items;
     }
 
-    private List<BuiltinZoneAdapter.Item> readingItems() {
-        List<BuiltinZoneAdapter.Item> items = new ArrayList<>();
-        for (ReadingSources.Source s : ReadingSources.all()) {
-            if (BuiltinOverrides.isDeleted(BuiltinOverrides.ZONE_READING, s.key)) continue;
-            String kind = ReadingSources.KIND_COMICS.equals(s.kind) ? "漫画"
-                    : ReadingSources.KIND_AUDIO.equals(s.kind) ? "听书" : "小说";
-            String name = BuiltinOverrides.displayName(BuiltinOverrides.ZONE_READING,
-                    s.key, s.name);
-            items.add(new BuiltinZoneAdapter.Item(BuiltinOverrides.ZONE_READING, s.key,
-                    name, s.key + " · " + kind,
-                    BuiltinOverrides.isVisible(BuiltinOverrides.ZONE_READING, s.key),
-                    SiteHealthResults.get(BuiltinOverrides.ZONE_READING, s.key)));
-        }
-        return items;
-    }
-
     // ===== 点站进站（复用各分区现成的链路） =====
 
     private void onItemClick(BuiltinZoneAdapter.Item item) {
@@ -216,16 +197,6 @@ public class BuiltinZoneActivity extends BaseActivity {
         } else if (BuiltinOverrides.ZONE_LIVE.equals(item.zone)) {
             Intent intent = new Intent(this, LiveActivity.class);
             intent.putExtra(LiveActivity.EXTRA_SOURCE_ID, item.key);
-            startActivity(intent);
-        } else if (BuiltinOverrides.ZONE_READING.equals(item.zone)) {
-            ReadingSources.Source source = ReadingSources.byKey(item.key);
-            if (source == null) {
-                toast("该站暂未加载，稍后再试");
-                return;
-            }
-            Intent intent = new Intent(this, ReadingHomeActivity.class);
-            intent.putExtra(ReadingHomeActivity.EXTRA_KIND, source.kind);
-            intent.putExtra(ReadingHomeActivity.EXTRA_SOURCE_KEY, item.key);
             startActivity(intent);
         }
     }
@@ -332,10 +303,6 @@ public class BuiltinZoneActivity extends BaseActivity {
                     break;
                 }
             }
-        } else if (BuiltinOverrides.ZONE_READING.equals(item.zone)) {
-            kind = SiteHealthChecker.KIND_READING;
-            ReadingSources.Source s = ReadingSources.byKey(item.key);
-            if (s != null) api = s.api;
         } else {
             kind = SiteHealthChecker.KIND_VIDEO;
             SourceBean bean = ApiConfig.get().getSource(item.key);

@@ -102,8 +102,14 @@ public class HomeActivity extends BaseActivity {
             find(R.id.ivFav).setOnClickListener(v -> showFav());
             find(R.id.ivCast).setOnClickListener(v ->
                     CastDialog.create().show(this));
-            find(R.id.ivWeb).setOnClickListener(v ->
-                    startActivity(new Intent(this, WebHomeActivity.class)));
+            find(R.id.ivWeb).setOnClickListener(v -> {
+                // 网页首页默认进内置示例主页：WebHomeActivity 没带 KEY_URL 会弹
+                // “首页地址为空”并直接 finish，之前这里一个参数都没带。
+                Intent web = new Intent(this, WebHomeActivity.class);
+                web.putExtra(WebHomeActivity.KEY_URL, "file:///android_asset/webhome/showcase.html");
+                web.putExtra(WebHomeActivity.KEY_TITLE, "网页首页");
+                startActivity(web);
+            });
             // 设置入口在顶栏（底部导航最多 5 项，第 6 项加不上，见 setupBottomNav）。
             find(R.id.ivSetting).setOnClickListener(v ->
                     startActivity(new Intent(this, SettingActivity.class)));
@@ -246,7 +252,7 @@ public class HomeActivity extends BaseActivity {
                 .inflate(R.layout.dialog_source_picker, null);
 
         sourcePopup = new PopupWindow(popupView,
-                (int) (getResources().getDisplayMetrics().widthPixels * 0.8),
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.68),
                 ViewGroup.LayoutParams.WRAP_CONTENT, true);
         sourcePopup.setOutsideTouchable(true);
         sourcePopup.setBackgroundDrawable(null);
@@ -338,6 +344,13 @@ public class HomeActivity extends BaseActivity {
         if (sourcePopup.isShowing()) {
             sourcePopup.dismiss();
         } else {
+            // 弹窗改窄（2.0.0.1108 第五轮）：宽度按弹出时的实际屏宽算，不用 setup
+            // 时的 DisplayMetrics（那份在个别机型上会取到横屏长边，0.8 也会被压成满宽）。
+            View content = find(android.R.id.content);
+            int screenW = content != null && content.getWidth() > 0
+                    ? content.getWidth()
+                    : getResources().getDisplayMetrics().widthPixels;
+            sourcePopup.setWidth((int) (screenW * 0.68));
             sourcePopup.showAtLocation(find(android.R.id.content),
                     Gravity.TOP | Gravity.CENTER_HORIZONTAL,
                     0, 100);

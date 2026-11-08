@@ -141,7 +141,8 @@ public class LiveActivity extends BaseActivity {
         Spinner spSource = find(R.id.spSource);
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item, names);
-        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        // 下拉项跟主题一个颜色（渐变末尾色），不再用系统黑底项
+        spinnerAdapter.setDropDownViewResource(R.layout.item_live_source_dropdown);
         spSource.setAdapter(spinnerAdapter);
         spSource.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             @Override

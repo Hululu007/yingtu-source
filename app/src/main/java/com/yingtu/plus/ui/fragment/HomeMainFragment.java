@@ -131,11 +131,26 @@ public class HomeMainFragment extends BaseLazyFragment {
             } else {
                 boolean empty = movies == null || movies.isEmpty();
                 tvHint.setVisibility(empty ? View.VISIBLE : View.GONE);
-                if (empty) tvHint.setText(curTypeId == null ? "该源暂无推荐内容" : "该分类暂无内容");
+                if (empty) tvHint.setText(homeEmptyHint());
                 adapter.submit(movies);
                 rvContent.scrollToPosition(0);
             }
         });
+        // 首页取数报错时（在 listResult 之后注册，后到先显示）：用可读原因盖掉
+        // “该源暂无推荐内容”，用户和 crash.log 里都能看到错在哪。
+        viewModel.sortError.observe(this, msg -> {
+            if (msg == null || msg.isEmpty()) return;
+            tvHint.setVisibility(View.VISIBLE);
+            tvHint.setText("加载失败：" + msg);
+        });
+    }
+
+    /** 首页推荐为空时的提示：取数报错显示原因，否则显示“暂无推荐内容”。 */
+    private String homeEmptyHint() {
+        if (curTypeId != null) return "该分类暂无内容";
+        String err = viewModel == null ? null : viewModel.sortError.getValue();
+        if (err != null && !err.isEmpty()) return "加载失败：" + err;
+        return "该源暂无推荐内容";
     }
 
     @Override

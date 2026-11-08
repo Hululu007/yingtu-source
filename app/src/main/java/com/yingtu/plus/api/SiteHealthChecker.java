@@ -17,8 +17,6 @@ import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.drama.BuiltinDramaConfigs;
-import com.yingtu.plus.reader.NovelLoader;
-import com.yingtu.plus.reader.ReadingSources;
 import com.yingtu.plus.util.OkGo;
 
 import java.io.IOException;
@@ -52,7 +50,6 @@ import okhttp3.Response;
  *   变体按最高 BANDWIDTH 取、剔广告短循环，iptv-api 口径）。
  * - 直播源：频道拉取（平台表/频道表能不能拉）/ 测速（末尾 2 个分片实下，延迟取首字节、
  *   速率按分辨率分档，iptv-api 口径）/ 真实播放（首个频道拉 m3u8 + 分片验真能播）。
- * - 阅读站：首页书单 / 搜索实测（记标题匹配率）/ 空结果核对 / 详情章节。
  *
  * 健康分（LunaTV 口径：成功占比×100，≥75 优秀、≥50 良好、<50 待关注）在跑完的汇总里报。
  * 总判定（只看核心项，参考项只展示）：异常 > 超时 > 空 > 正常；没测过显示待定。
@@ -66,7 +63,6 @@ public final class SiteHealthChecker {
     /** 目标种类。 */
     public static final int KIND_VIDEO = 0;
     public static final int KIND_LIVE = 1;
-    public static final int KIND_READING = 2;
 
     /** 单站整体封顶（秒）：任一分项 hang 住也不拖垮整轮。 */
     private static final long TARGET_TIMEOUT_SECONDS = 90;
@@ -189,7 +185,7 @@ public final class SiteHealthChecker {
         return true;
     }
 
-    /** 全部内置站目标（午夜 + 短剧 + 直播 + 阅读；删掉的排除，隐藏的照常测）。 */
+    /** 全部内置站目标（午夜 + 短剧 + 直播；删掉的排除，隐藏的照常测）。 */
     public static List<Target> builtinTargets(Context context) {
         List<Target> targets = new ArrayList<>();
         if (context != null) {
@@ -207,11 +203,6 @@ public final class SiteHealthChecker {
         for (BuiltinLiveSources.Source s : BuiltinLiveSources.getAllBuiltinSources()) {
             targets.add(new Target(BuiltinOverrides.ZONE_LIVE, s.id, s.name, "",
                     KIND_LIVE, s));
-        }
-        for (ReadingSources.Source s : ReadingSources.all()) {
-            if (BuiltinOverrides.isDeleted(BuiltinOverrides.ZONE_READING, s.key)) continue;
-            targets.add(new Target(BuiltinOverrides.ZONE_READING, s.key, s.name, s.api,
-                    KIND_READING, null));
         }
         return targets;
     }
@@ -250,8 +241,6 @@ public final class SiteHealthChecker {
         try {
             if (target.kind == KIND_LIVE) {
                 checkLive(appContext, target, items);
-            } else if (target.kind == KIND_READING) {
-                checkReading(target, items);
             } else {
                 checkVideo(target, items);
             }
@@ -677,85 +666,6 @@ public final class SiteHealthChecker {
         }
     }
 
-    // ===== 阅读站 =====
-
-    private void checkReading(Target target, List<SiteHealthResults.Item> items) {
-        long t0;
-        List<NovelLoader.Book> books = null;
-        Spider spider = null;
-        // 1. 首页书单。
-        t0 = System.currentTimeMillis();
-        try {
-            spider = NovelLoader.getSpider(target.key, target.api, "");
-            books = NovelLoader.homeBooks(spider);
-            int count = books == null ? 0 : books.size();
-            items.add(new SiteHealthResults.Item("首页",
-                    count > 0 ? SiteHealthResults.OK : SiteHealthResults.EMPTY,
-                    count > 0 ? count + " 本" : "首页无书",
-                    System.currentTimeMillis() - t0));
-        } catch (java.net.SocketTimeoutException e) {
-            items.add(new SiteHealthResults.Item("首页", SiteHealthResults.TIMEOUT,
-                    "超时", System.currentTimeMillis() - t0));
-        } catch (Throwable e) {
-            items.add(new SiteHealthResults.Item("首页", SiteHealthResults.ERROR,
-                    shortMsg(e), System.currentTimeMillis() - t0));
-        }
-        if (books == null || books.isEmpty() || spider == null) {
-            items.add(new SiteHealthResults.Item("搜索实测", SiteHealthResults.SKIP, "首页无书", 0));
-            items.add(new SiteHealthResults.Item("详情章节", SiteHealthResults.SKIP, "首页无书", 0));
-            return;
-        }
-        NovelLoader.Book first = books.get(0);
-        // 2. 搜索实测：取首本书名头两个字真搜（LunaTV 借鉴：记标题匹配率）。
-        String keyword = keywordFrom(first.title);
-        t0 = System.currentTimeMillis();
-        try {
-            List<NovelLoader.Book> found = NovelLoader.searchBooks(spider, keyword);
-            int count = found == null ? 0 : found.size();
-            int rate = matchRateBooks(found, keyword);
-            items.add(new SiteHealthResults.Item("搜索实测",
-                    count > 0 ? SiteHealthResults.OK : SiteHealthResults.EMPTY,
-                    "搜“" + keyword + "”" + (count > 0 ? count + " 本 · 匹配率 " + rate + "%"
-                            : "无结果"),
-                    System.currentTimeMillis() - t0));
-        } catch (java.net.SocketTimeoutException e) {
-            items.add(new SiteHealthResults.Item("搜索实测", SiteHealthResults.TIMEOUT,
-                    "超时", System.currentTimeMillis() - t0));
-        } catch (Throwable e) {
-            items.add(new SiteHealthResults.Item("搜索实测", SiteHealthResults.ERROR,
-                    shortMsg(e), System.currentTimeMillis() - t0));
-        }
-        // 3. 空结果核对（参考项）。
-        t0 = System.currentTimeMillis();
-        try {
-            List<NovelLoader.Book> found = NovelLoader.searchBooks(spider, NONSENSE_KEYWORD);
-            int count = found == null ? 0 : found.size();
-            items.add(new SiteHealthResults.Item("空结果核对",
-                    count == 0 ? SiteHealthResults.OK : SiteHealthResults.ERROR,
-                    count == 0 ? "乱搜返回空，正常" : "乱搜还给 " + count + " 本（可疑）",
-                    System.currentTimeMillis() - t0, false));
-        } catch (Throwable e) {
-            items.add(new SiteHealthResults.Item("空结果核对", SiteHealthResults.SKIP,
-                    "搜不动：" + shortMsg(e), System.currentTimeMillis() - t0, false));
-        }
-        // 4. 详情章节：首本详情取章节。
-        t0 = System.currentTimeMillis();
-        try {
-            NovelLoader.BookDetail detail = NovelLoader.bookDetail(spider, first.id);
-            int count = detail == null || detail.chapters == null ? 0 : detail.chapters.size();
-            items.add(new SiteHealthResults.Item("详情章节",
-                    count > 0 ? SiteHealthResults.OK : SiteHealthResults.EMPTY,
-                    count > 0 ? first.title + " · " + count + " 章" : "详情无章节",
-                    System.currentTimeMillis() - t0));
-        } catch (java.net.SocketTimeoutException e) {
-            items.add(new SiteHealthResults.Item("详情章节", SiteHealthResults.TIMEOUT,
-                    "超时", System.currentTimeMillis() - t0));
-        } catch (Throwable e) {
-            items.add(new SiteHealthResults.Item("详情章节", SiteHealthResults.ERROR,
-                    shortMsg(e), System.currentTimeMillis() - t0));
-        }
-    }
-
     // ===== 小工具 =====
 
     /** 取 http(s) 基址：api 不是网址（蜘蛛类名）返回 null。 */
@@ -1140,15 +1050,6 @@ public final class SiteHealthChecker {
         return hit * 100 / list.size();
     }
 
-    private static int matchRateBooks(List<NovelLoader.Book> list, String keyword) {
-        if (list == null || list.isEmpty() || TextUtils.isEmpty(keyword)) return 0;
-        String k = keyword.toLowerCase();
-        int hit = 0;
-        for (NovelLoader.Book b : list) {
-            if (b != null && b.title != null && b.title.toLowerCase().contains(k)) hit++;
-        }
-        return hit * 100 / list.size();
-    }
 
     /** 把 pingtai 的回调式拉平台表转成同步等（latch + 超时）。 */
     private List<BuiltinLiveSources.Platform> loadPlatformsSync(

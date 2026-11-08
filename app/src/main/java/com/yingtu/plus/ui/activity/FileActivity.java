@@ -24,7 +24,6 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import com.yingtu.plus.App;
 import com.yingtu.plus.api.PySiteImporter;
 import com.yingtu.plus.base.BaseActivity;
-import com.yingtu.plus.reader.ReadingHomeActivity;
 import com.yingtu.plus.utils.FileChooser;
 import com.yingtu.plus.utils.Task;
 
@@ -95,7 +94,7 @@ public class FileActivity extends BaseActivity {
         pathView.setPadding(24, 24, 24, 16);
         root.addView(pathView);
 
-        // 正常模式下的可见入口：py 导入与阅读（此前导入按钮只在 importMode 下出现）
+        // 正常模式下的可见入口：py 导入（此前导入按钮只在 importMode 下出现）
         LinearLayout topRow = new LinearLayout(this);
         topRow.setOrientation(LinearLayout.HORIZONTAL);
         Button importPyBtn = new Button(this);
@@ -108,11 +107,6 @@ public class FileActivity extends BaseActivity {
         oneKeyBtn.setOnClickListener(v -> startActivity(
                 new Intent(this, OneKeyPyActivity.class)));
         topRow.addView(oneKeyBtn);
-        Button readingBtn = new Button(this);
-        readingBtn.setText("阅读");
-        readingBtn.setOnClickListener(v -> startActivity(
-                new Intent(this, ReadingHomeActivity.class)));
-        topRow.addView(readingBtn);
         root.addView(topRow);
 
         if (selectDir) {

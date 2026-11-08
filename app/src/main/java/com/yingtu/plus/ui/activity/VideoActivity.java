@@ -114,7 +114,6 @@ import com.yingtu.plus.player.lut.LutPreset;
 import com.yingtu.plus.player.lut.LutSetting;
 import com.yingtu.plus.player.lut.LutStore;
 import com.yingtu.plus.player.mpv.MpvConfigStore;
-import com.yingtu.plus.reader.ReadingRouter;
 import com.yingtu.plus.service.PlaybackService;
 import com.yingtu.plus.setting.DanmakuSetting;
 import com.yingtu.plus.setting.LyricsSetting;
@@ -1393,39 +1392,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         view.setText(Util.substring(sb.toString(), 2));
     }
 
-    /**
-     * 非视频地址分流：novel:// 走小说阅读页、pics:// 走图片/漫画浏览、音频走
-     * 音频页，三类都不送视频解码。入口统一走 G 批的 ReadingRouter；G 批未落
-     * 地前这六个调用报缺类是预期的。TVBox 播放地址常带“标题$地址”前缀，
-     * 先剥掉 $ 前的标题再判断。
-     */
-    private boolean tryRouteReading(String url, String title) {
-        if (TextUtils.isEmpty(url)) return false;
-        String target = url;
-        int sep = target.lastIndexOf('$');
-        if (sep >= 0) target = target.substring(sep + 1);
-        if (TextUtils.isEmpty(target)) return false;
-        if (ReadingRouter.isNovelUrl(target)) {
-            ReadingRouter.openNovel(this, target, title);
-            return true;
-        }
-        if (ReadingRouter.isPicsUrl(target)) {
-            ReadingRouter.openPics(this, target, title);
-            return true;
-        }
-        if (ReadingRouter.isAudioUrl(target)) {
-            ReadingRouter.openAudio(this, target, title);
-            return true;
-        }
-        return false;
-    }
-
-    private String getReadingTitle() {
-        Episode episode = getEpisode();
-        if (episode != null && !TextUtils.isEmpty(episode.getName())) return episode.getName();
-        return mBinding != null && mBinding.name != null ? mBinding.name.getText().toString() : "";
-    }
-
     private void getPlayer(Flag flag, Episode episode) {
         mBinding.control.title.setText(getString(R.string.detail_title, mBinding.name.getText(), episode.getName()));
         playerStartTime = System.currentTimeMillis();
@@ -1440,7 +1406,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         clearLyrics();
         clearKaraokeState();
         if (shouldUseImmersiveAudio()) setAudioStageVisible(true);
-        if (tryRouteReading(episode.getUrl(), episode.getName())) return;
         mViewModel.playerContent(getKey(), playFlag, episode.getUrl());
         mBinding.control.title.setSelected(true);
         updateHistory(episode);
@@ -1469,10 +1434,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         updateAudioStageText();
         mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
         List<Danmaku> siteDanmakus = result.getDanmaku();
-        if (tryRouteReading(result.getUrl() == null ? null : result.getUrl().v(), getReadingTitle())) {
-            hideProgress();
-            return;
-        }
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata());
         if (DanmakuApi.canAutoSearch(siteDanmakus)) DanmakuApi.search(mHistory.getVodName(), getEpisode().getName(), player()::setDanmaku);
     }
@@ -1551,7 +1512,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     public void onItemClick(Result result) {
         beginPlayHealth();
-        if (tryRouteReading(result.getUrl() == null ? null : result.getUrl().v(), getReadingTitle())) return;
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata());
     }
 
@@ -4146,6 +4106,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (isFullscreen()) return;
         if (service() == null) {
             SpiderDebug.log("video-flow", "fullscreen enter deferred reason=player-not-ready");
+            Notify.show("播放器未就绪，请稍候再试");
             return;
         }
         logVideoFrame("enterFullscreen before");

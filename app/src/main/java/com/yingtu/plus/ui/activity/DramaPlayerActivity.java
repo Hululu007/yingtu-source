@@ -2,10 +2,14 @@ package com.yingtu.plus.ui.activity;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,7 +19,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.Player;
+import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -54,9 +60,8 @@ import java.util.concurrent.Executors;
  *   uses) because the resolved URL is a direct signed MP4.
  *
  * Not done here: danmaku, comments, history/resume position (no history
- * store is wired in this batch), and a dedicated fullscreen button (the
- * activity follows system rotation; PlayerView's own controller handles
- * play/pause/seek).
+ * store is wired in this batch). The PlayerView controller's fullscreen
+ * button toggles landscape/portrait plus immersive system bars.
  */
 public class DramaPlayerActivity extends AppCompatActivity {
 
@@ -69,6 +74,7 @@ public class DramaPlayerActivity extends AppCompatActivity {
     private PageAdapter adapter;
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private volatile boolean destroyed;
+    private boolean dramaFullscreen;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -135,6 +141,50 @@ public class DramaPlayerActivity extends AppCompatActivity {
         io.shutdownNow();
         adapter.releaseAll();
         super.onDestroy();
+    }
+
+    /**
+     * Fullscreen toggle from the PlayerView controller button. media3 only
+     * shows that button once a listener is set, so before this change the
+     * drama player had no working fullscreen at all.
+     */
+    private void toggleDramaFullscreen(boolean toFullscreen) {
+        dramaFullscreen = toFullscreen;
+        if (toFullscreen) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            hideSystemBars();
+        } else {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            showSystemBars();
+        }
+        if (adapter != null) {
+            for (PageAdapter.PageVH h : adapter.holders.values()) {
+                if (h.playerView != null) h.playerView.setFullscreenButtonState(toFullscreen);
+            }
+        }
+    }
+
+    private void hideSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+    }
+
+    private void showSystemBars() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) c.show(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+        }
     }
 
     /** Per-series playback state, kept while its page is alive. */
@@ -365,6 +415,8 @@ public class DramaPlayerActivity extends AppCompatActivity {
                 tvEpisode = itemView.findViewById(R.id.tvDramaPageEpisode);
                 btnEpisodes = itemView.findViewById(R.id.btnDramaEpisodes);
                 btnNextEpisode = itemView.findViewById(R.id.btnDramaNextEpisode);
+                playerView.setFullscreenButtonClickListener(
+                        isFullscreen -> toggleDramaFullscreen(isFullscreen));
             }
 
             void bind(DramaVideo video, int position) {
@@ -409,7 +461,15 @@ public class DramaPlayerActivity extends AppCompatActivity {
 
             void playStream(DramaStream stream) {
                 releasePlayer();
-                player = new ExoPlayer.Builder(DramaPlayerActivity.this).build();
+                ExoPlayer.Builder builder = new ExoPlayer.Builder(DramaPlayerActivity.this);
+                if (stream.referer != null && !stream.referer.isEmpty()) {
+                    // Web fallback URLs are served behind a Referer check.
+                    DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory();
+                    dataSourceFactory.setDefaultRequestProperties(
+                            Collections.singletonMap("Referer", stream.referer));
+                    builder.setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory));
+                }
+                player = builder.build();
                 playerView.setPlayer(player);
                 player.setMediaItem(MediaItem.fromUri(stream.url));
                 final int pos = pagePosition;

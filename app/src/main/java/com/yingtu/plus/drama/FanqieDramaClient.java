@@ -56,6 +56,10 @@ import java.util.UUID;
  * install_id 19 digits starting with 9, same shape the Rust probe pool
  * uses) generated once and kept in SharedPreferences. No registration call
  * is needed; the upstream accepts the synthetic pair with a valid signature.
+ * When a model fetch yields no playable variant, videoModel() rotates the
+ * pair once and retries: the limit is usually per device/session. If that
+ * still fails, it falls back to the Hongguo web route (ttwid guest session
+ * + fallback-play-info, then a public mp4 probe).
  *
  * All methods are synchronous and throw IOException: call them off the main
  * thread. Stream URLs carry a ~5.5h signature expiry: resolve at play time,
@@ -83,8 +87,9 @@ public final class FanqieDramaClient {
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_INSTALL_ID = "install_id";
 
-    private final String deviceId;
-    private final String installId;
+    private String deviceId;
+    private String installId;
+    private final SharedPreferences prefs;
 
     public FanqieDramaClient(Context context) {
         SharedPreferences prefs = context.getApplicationContext()
@@ -96,14 +101,39 @@ public final class FanqieDramaClient {
             iid = "9" + randomNumeric(18);
             prefs.edit().putString(KEY_DEVICE_ID, did).putString(KEY_INSTALL_ID, iid).apply();
         }
+        this.prefs = prefs;
         this.deviceId = did;
         this.installId = iid;
     }
 
     /** Test seam: build with a fixed identity instead of SharedPreferences. */
     public FanqieDramaClient(String deviceId, String installId) {
+        this.prefs = null;
         this.deviceId = deviceId;
         this.installId = installId;
+    }
+
+    /**
+     * Rotate the synthetic device identity (new random pair, persisted).
+     * A no-variant answer is usually a per-device/session limit, so the
+     * next model fetch goes out under a fresh identity.
+     */
+    public synchronized void rotateDeviceIdentity() {
+        deviceId = randomNumeric(16);
+        installId = "9" + randomNumeric(18);
+        if (prefs != null) {
+            prefs.edit().putString(KEY_DEVICE_ID, deviceId).putString(KEY_INSTALL_ID, installId).apply();
+        }
+        android.util.Log.w("FanqieDrama", "device identity rotated");
+    }
+
+    private static void sleepBetweenStages(long ms) throws IOException {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted", e);
+        }
     }
 
     public String getDeviceId() {
@@ -488,11 +518,61 @@ public final class FanqieDramaClient {
     // ------------------------------------------------------------ playback
 
     /**
-     * Resolve a playable stream for one episode. Picks the tallest
-     * video_list entry whose URL resolves (plaintext base64 or spade).
+     * Resolve a playable stream for one episode. Stages, in order:
+     *  1. video_model video_list (tallest resolvable entry);
+     *  2. the model's fallback_api URL (range-checked, must look like mp4);
+     *  3. rotate the synthetic device identity once and retry stages 1+2;
+     *  4. the Hongguo web fallback (ttwid guest session +
+     *     fallback-play-info, then a public mp4 probe).
      * The returned URL is signature-time-limited: resolve at play time.
+     * Throws only when every stage is exhausted; the message carries the
+     * video_list state so a phone-side failure is diagnosable from the toast.
      */
     public DramaStream videoModel(String videoId, String seriesId) throws IOException {
+        ModelResult first = resolveModelQuietly(videoId, seriesId);
+        if (first.best != null) return first.best;
+        DramaStream viaFallback = tryFallbackApi(first.fallbackApi);
+        if (viaFallback != null) return viaFallback;
+        rotateDeviceIdentity();
+        sleepBetweenStages(2000);
+        ModelResult second = resolveModelQuietly(videoId, seriesId);
+        if (second.best != null) return second.best;
+        DramaStream viaFallback2 = tryFallbackApi(second.fallbackApi);
+        if (viaFallback2 != null) return viaFallback2;
+        sleepBetweenStages(2000);
+        DramaStream viaWeb = resolveWebFallback(seriesId, videoId);
+        if (viaWeb != null) return viaWeb;
+        throw new IOException("fanqie video_model: no resolvable variant"
+                + " (video_list=" + first.listSize + "/" + second.listSize
+                + ", key_seed=" + (first.keySeed || second.keySeed)
+                + ", fallback_api=" + (!first.fallbackApi.isEmpty() || !second.fallbackApi.isEmpty())
+                + ", request_failed=" + (first.requestFailed || second.requestFailed)
+                + ", rotated=true, web_fallback=tried)");
+    }
+
+    /** Outcome of one video_model fetch: best stream plus diagnostics. */
+    private static final class ModelResult {
+        DramaStream best;
+        String fallbackApi = "";
+        int listSize;
+        boolean keySeed;
+        boolean requestFailed;
+    }
+
+    /** One video_model fetch; a failed request degrades to an empty result so the caller can move on to the next stage instead of throwing immediately. */
+    private ModelResult resolveModelQuietly(String videoId, String seriesId) {
+        try {
+            return resolveModelVariant(videoId, seriesId);
+        } catch (Exception e) {
+            android.util.Log.w("FanqieDrama", "video_model request failed: " + e);
+            ModelResult r = new ModelResult();
+            r.requestFailed = true;
+            return r;
+        }
+    }
+
+    /** Fetch video_model and pick the tallest video_list entry whose URL resolves (plaintext base64 or spade). */
+    private ModelResult resolveModelVariant(String videoId, String seriesId) throws IOException {
         List<Map.Entry<String, String>> p = reading724Params();
         add(p, "video_id", videoId);
         add(p, "series_id", seriesId);
@@ -502,18 +582,21 @@ public final class FanqieDramaClient {
         JsonObject data = root.has("data") && root.get("data").isJsonObject()
                 ? root.getAsJsonObject("data") : new JsonObject();
         JsonObject model = parseVideoModelObject(data);
-        if (model == null) throw new IOException("fanqie video_model: no model");
+        ModelResult result = new ModelResult();
+        if (model == null) return result;
+        result.fallbackApi = extractFallbackApiUrl(model);
         byte[] keySeed = null;
         String keySeedB64 = str(model, "key_seed");
         if (!keySeedB64.isEmpty()) {
+            result.keySeed = true;
             try {
                 keySeed = Base64.getDecoder().decode(padB64(keySeedB64));
             } catch (Exception ignored) {
             }
         }
-        DramaStream best = null;
         if (model.has("video_list") && model.get("video_list").isJsonObject()) {
             JsonObject list = model.getAsJsonObject("video_list");
+            result.listSize = list.size();
             List<String> keys = new ArrayList<>(list.keySet());
             Collections.sort(keys);
             for (String key : keys) {
@@ -530,15 +613,251 @@ public final class FanqieDramaClient {
                 s.size = lng(info, "size");
                 s.duration = dbl(model, "video_duration");
                 s.videoId = str(model, "video_id");
-                s.fallbackApi = str(model, "fallback_api");
-                if (best == null || s.height > best.height) best = s;
+                s.fallbackApi = result.fallbackApi;
+                if (result.best == null || s.height > result.best.height) result.best = s;
             }
         }
-        if (best == null) {
-            throw new IOException("fanqie video_model: no resolvable variant"
-                    + " (fallback_api=" + str(model, "fallback_api") + ")");
+        android.util.Log.w("FanqieDrama", "video_model video_list=" + result.listSize
+                + " key_seed=" + result.keySeed + " fallback_api=" + !result.fallbackApi.isEmpty()
+                + " resolved=" + (result.best != null));
+        return result;
+    }
+
+    /**
+     * The model's fallback_api is a full signed playback URL. Its shape
+     * varies: usually a plain string, sometimes an object wrapping the URL
+     * under the same key. Returns "" when there is none.
+     */
+    private static String extractFallbackApiUrl(JsonObject model) {
+        if (model == null || !model.has("fallback_api")) return "";
+        JsonElement e = model.get("fallback_api");
+        if (e == null || e.isJsonNull()) return "";
+        if (e.isJsonPrimitive() && e.getAsJsonPrimitive().isString()) {
+            String u = e.getAsString();
+            return u.startsWith("http") ? u : "";
         }
-        return best;
+        if (e.isJsonObject()) {
+            JsonObject o = e.getAsJsonObject();
+            String u = str(o, "fallback_api");
+            if (u.startsWith("http")) return u;
+            for (Map.Entry<String, JsonElement> en : o.entrySet()) {
+                JsonElement v = en.getValue();
+                if (v.isJsonPrimitive() && v.getAsJsonPrimitive().isString()) {
+                    String s = v.getAsString();
+                    if (s.startsWith("http")) return s;
+                }
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Try the model's fallback_api URL as a direct stream. A 1KB Range
+     * probe must come back 200/206 with an mp4 header ('ftyp'): the URL
+     * can also carry an encrypted stream, which ExoPlayer cannot play raw,
+     * so reachability alone is not enough to hand it to the player.
+     */
+    private DramaStream tryFallbackApi(String fallbackApi) {
+        if (fallbackApi == null || !fallbackApi.startsWith("http")) return null;
+        if (!rangeLooksLikeMp4(fallbackApi)) return null;
+        DramaStream s = new DramaStream();
+        s.url = fallbackApi;
+        s.definition = "fallback";
+        s.fallbackApi = fallbackApi;
+        return s;
+    }
+
+    /** Range GET the first bytes: 200/206 plus an mp4 'ftyp' box in the head. Reads at most 2KB so a server that ignores Range cannot pull a whole file. */
+    private boolean rangeLooksLikeMp4(String url) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestProperty("Range", "bytes=0-1023");
+            conn.setRequestProperty("User-Agent", UA_DRAGON);
+            int status = conn.getResponseCode();
+            if (status != 200 && status != 206) return false;
+            byte[] head = new byte[2048];
+            int read = 0;
+            InputStream in = conn.getInputStream();
+            int n;
+            while (read < head.length && (n = in.read(head, read, head.length - read)) != -1) read += n;
+            if (read < 16) return false;
+            for (int i = 0; i + 3 < read && i < 16; i++) {
+                if (head[i] == 'f' && head[i + 1] == 't' && head[i + 2] == 'y' && head[i + 3] == 'p') return true;
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    // ---- Hongguo web fallback (ttwid guest session) ----
+
+    private static final String HONGGUO_WEB_BASE = "https://hongguoduanju.com";
+    private static final String[] WEB_FALLBACK_DEFINITIONS = {"720p", "480p", "360p", "720p"};
+    private static final String[] WEB_PUBLIC_DEFINITIONS = {"720p", "480p", "360p"};
+    private static final long WEB_PUBLIC_MIN_BYTES = 65536;
+    private static final String WEB_UA =
+            "Mozilla/5.0 (Linux; Android 16; 25053RT47C) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36";
+
+    /**
+     * Web fallback for a series/episode whose app-side model yields no
+     * playable variant. Same shape as the FireAntTV Go provider (structure
+     * only, reimplemented here against the fanqie ID space): GET the web
+     * home for a ttwid guest cookie, POST fallback-play-info per definition
+     * (fresh session on every retry after the first), then HEAD the public
+     * mp4. Returns null when the episode is not open to guests.
+     */
+    private DramaStream resolveWebFallback(String seriesId, String videoId) {
+        if (seriesId == null || videoId == null
+                || !seriesId.matches("\\d+") || !videoId.matches("\\d+")) {
+            return null;
+        }
+        String cookie = null;
+        for (int attempt = 0; attempt < WEB_FALLBACK_DEFINITIONS.length; attempt++) {
+            try {
+                if (cookie == null) cookie = fetchTtwidCookie();
+            } catch (IOException e) {
+                return null;
+            }
+            try {
+                String url = webFallbackPost(seriesId, videoId,
+                        WEB_FALLBACK_DEFINITIONS[attempt], cookie);
+                if (url != null && url.startsWith("http")) {
+                    DramaStream s = new DramaStream();
+                    s.url = url;
+                    s.definition = WEB_FALLBACK_DEFINITIONS[attempt];
+                    s.videoId = videoId;
+                    s.referer = HONGGUO_WEB_BASE + "/";
+                    return s;
+                }
+            } catch (IOException ignored) {
+            }
+            cookie = null; // discard the session after every attempt
+        }
+        for (String def : WEB_PUBLIC_DEFINITIONS) {
+            String url = HONGGUO_WEB_BASE + "/video/public/" + videoId + "/" + def + ".mp4";
+            try {
+                if (webPublicAvailable(url)) {
+                    DramaStream s = new DramaStream();
+                    s.url = url;
+                    s.definition = def;
+                    s.videoId = videoId;
+                    s.referer = HONGGUO_WEB_BASE + "/";
+                    return s;
+                }
+            } catch (IOException ignored) {
+            }
+        }
+        return null;
+    }
+
+    /** GET the web home and pull the ttwid cookie out of Set-Cookie. */
+    private String fetchTtwidCookie() throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(HONGGUO_WEB_BASE + "/").openConnection();
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(30000);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestProperty("User-Agent", WEB_UA);
+            conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/json,*/*");
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9");
+            conn.setRequestProperty("Referer", HONGGUO_WEB_BASE + "/");
+            int status = conn.getResponseCode();
+            if (status != 200) throw new IOException("hongguo web home HTTP " + status);
+            List<String> setCookie = conn.getHeaderFields().get("Set-Cookie");
+            if (setCookie != null) {
+                for (String c : setCookie) {
+                    String ttwid = parseCookie(c, "ttwid");
+                    if (!ttwid.isEmpty()) return "ttwid=" + ttwid;
+                }
+            }
+            String all = conn.getHeaderField("Set-Cookie");
+            if (all != null) {
+                String ttwid = parseCookie(all, "ttwid");
+                if (!ttwid.isEmpty()) return "ttwid=" + ttwid;
+            }
+            throw new IOException("hongguo web session unavailable (no ttwid)");
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static String parseCookie(String header, String name) {
+        if (header == null) return "";
+        for (String part : header.split(";")) {
+            String p = part.trim();
+            if (p.startsWith(name + "=")) return p.substring(name.length() + 1);
+        }
+        return "";
+    }
+
+    /** POST fallback-play-info for one definition; 403 or public_fallback_unavailable means this episode is not open to guests. */
+    private String webFallbackPost(String seriesId, String videoId, String definition, String cookie)
+            throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(
+                    HONGGUO_WEB_BASE + "/api/video/protected/fallback-play-info").openConnection();
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(30000);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("User-Agent", WEB_UA);
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9");
+            conn.setRequestProperty("Referer", HONGGUO_WEB_BASE + "/");
+            conn.setRequestProperty("Origin", HONGGUO_WEB_BASE);
+            conn.setRequestProperty("Content-Type", "application/json");
+            if (cookie != null && !cookie.isEmpty()) conn.setRequestProperty("Cookie", cookie);
+            String payload = "{\"series_id\":\"" + seriesId + "\",\"item_id\":\"" + videoId
+                    + "\",\"definition\":\"" + definition + "\"}";
+            byte[] body = payload.getBytes(StandardCharsets.UTF_8);
+            conn.getOutputStream().write(body);
+            int status = conn.getResponseCode();
+            if (status == 403) return null;
+            if (status != 200) throw new IOException("hongguo web fallback HTTP " + status);
+            String text = new String(readFully(conn.getInputStream()), StandardCharsets.UTF_8);
+            JsonObject root = JsonParser.parseString(text).getAsJsonObject();
+            if ("public_fallback_unavailable".equals(str(root, "error"))) return null;
+            String url = str(root, "main_url");
+            if (!url.isEmpty() && url.startsWith("http")) return url;
+            if (root.has("data") && root.get("data").isJsonObject()) {
+                String nested = str(root.getAsJsonObject("data"), "main_url");
+                if (nested.startsWith("http")) return nested;
+            }
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /** HEAD the public mp4: 200 plus a body bigger than a placeholder page. */
+    private boolean webPublicAvailable(String url) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(20000);
+            conn.setReadTimeout(30000);
+            conn.setInstanceFollowRedirects(true);
+            conn.setRequestMethod("HEAD");
+            conn.setRequestProperty("User-Agent", WEB_UA);
+            conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.9");
+            conn.setRequestProperty("Referer", HONGGUO_WEB_BASE + "/");
+            if (conn.getResponseCode() != 200) return false;
+            return conn.getContentLengthLong() > WEB_PUBLIC_MIN_BYTES;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     private static JsonObject parseVideoModelObject(JsonObject data) {

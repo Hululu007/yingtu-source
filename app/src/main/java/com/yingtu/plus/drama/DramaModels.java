@@ -61,6 +61,9 @@ public final class DramaModels {
         public double duration;
         public String videoId = "";
         public String fallbackApi = "";
+        // Referer the player must send with the URL (web fallback URLs are
+        // served behind a Referer check); empty means no extra header.
+        public String referer = "";
     }
 
     /** One feed page: items plus the cursor for the next page. */

@@ -32,7 +32,6 @@ public final class BuiltinOverrides {
     public static final String ZONE_MIDNIGHT = "midnight";
     public static final String ZONE_DRAMA = "drama";
     public static final String ZONE_LIVE = "live";
-    public static final String ZONE_READING = "reading";
     /** 用户远程配置站（检测结果存盘与内置区分区用同一个 zone 键）。 */
     public static final String ZONE_USER = "user";
 

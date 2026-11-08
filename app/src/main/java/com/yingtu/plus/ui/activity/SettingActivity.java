@@ -90,7 +90,7 @@ public class SettingActivity extends BaseActivity {
         tvApiUrl.setText(url.isEmpty() ? getString(R.string.val_not_set) : shorten(url));
     }
 
-    /** 内置站点行：总数从现有数据里读（午夜 + 短剧 + 直播 + 阅读，删掉的不算）。 */
+    /** 内置站点行：总数从现有数据里读（午夜 + 短剧 + 直播，删掉的不算）。 */
     private void refreshBuiltinZoneLabel() {
         if (tvBuiltinZone == null) return;
         com.yingtu.plus.api.BuiltinConfigs.ensureLoaded(this);
@@ -98,11 +98,6 @@ public class SettingActivity extends BaseActivity {
         int total = com.yingtu.plus.api.BuiltinConfigs.getMidnightSitesAll().size()
                 + com.yingtu.plus.drama.BuiltinDramaConfigs.getDramaSitesAll().size()
                 + com.yingtu.plus.api.BuiltinLiveSources.getAllBuiltinSources().size();
-        for (com.yingtu.plus.reader.ReadingSources.Source s
-                : com.yingtu.plus.reader.ReadingSources.all()) {
-            if (!com.yingtu.plus.api.BuiltinOverrides.isDeleted(
-                    com.yingtu.plus.api.BuiltinOverrides.ZONE_READING, s.key)) total++;
-        }
         tvBuiltinZone.setText(total + " 个站");
     }
 
