@@ -31,6 +31,40 @@ jobs:
           gradle-version: '8.13'
           cache-disabled: true
 
+      # 固定签名（2026-11-09）：跑一次换一把临时 debug 证书，手机不让新版覆盖旧版装，
+      # 第六版就是这么没装上去的。机密缺任何一个就直接报错停下，绝不悄悄用临时证书出包。
+      - name: Restore fixed signing identity
+        env:
+          KEYSTORE_BASE64: ${{ secrets.YINGTU_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.YINGTU_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.YINGTU_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.YINGTU_KEY_PASSWORD }}
+        run: |
+          missing=()
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [[ -n "${!name}" ]] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing signing secrets (${missing[*]}); refusing to build with a throwaway debug key."
+            exit 1
+          fi
+          umask 077
+          signing_path="$RUNNER_TEMP/yingtu-release.p12"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$signing_path"
+          actual_signer="$(keytool -exportcert -keystore "$signing_path" -storetype pkcs12 -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" | sha256sum | cut -d ' ' -f 1)"
+          expected_signer="aa85764e7ca5bc67d36183f7b5105925013b2e9e7231500b492df748b933e98c"
+          if [[ "$actual_signer" != "$expected_signer" ]]; then
+            echo "::error::Signing secret holds the wrong certificate (expected $expected_signer, got $actual_signer)."
+            exit 1
+          fi
+          {
+            printf 'YINGTU_KEYSTORE_FILE=%s\n' "$signing_path"
+            printf 'YINGTU_KEYSTORE_PASSWORD=%s\n' "$STORE_PASSWORD"
+            printf 'YINGTU_KEY_ALIAS=%s\n' "$KEY_ALIAS"
+            printf 'YINGTU_KEY_PASSWORD=%s\n' "$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          printf 'Verified fixed signing certificate: %s\n' "$actual_signer"
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 

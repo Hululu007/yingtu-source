@@ -41,7 +41,26 @@ android {
         }
     }
     
+    // 固定签名（2026-11-09）：云构建每跑一次就换一把临时 debug 证书，手机不让新版覆盖
+    // 旧版装，第六版就是这么没装上去的。改成固定证书：工作流把机密里的证书解出来，
+    // 存在就用它签 debug 包；本地没配机密时走默认 debug 签名，不影响本地开发。
+    def yingtuKsFile = System.getenv("YINGTU_KEYSTORE_FILE")
+    if (yingtuKsFile != null) {
+        signingConfigs {
+            fixed {
+                storeFile file(yingtuKsFile)
+                storePassword System.getenv("YINGTU_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("YINGTU_KEY_ALIAS")
+                keyPassword System.getenv("YINGTU_KEY_PASSWORD")
+                storeType "pkcs12"
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (yingtuKsFile != null) signingConfig signingConfigs.fixed
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

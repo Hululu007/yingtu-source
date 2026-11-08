@@ -52,6 +52,7 @@ import com.yingtu.plus.util.FavHelper;
 import com.yingtu.plus.util.HistoryHelper;
 import com.yingtu.plus.util.OkGo;
 import com.yingtu.plus.utils.ImgUtil;
+import com.yingtu.plus.utils.ResUtil;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 
@@ -123,19 +124,16 @@ find(R.id.ivFav).setOnClickListener(v -> toggleFav());
 find(R.id.ivShare).setOnClickListener(v -> shareVod());
 refreshFavIcon();
 
-// 顶部播放器接线：16:9 高度按实测宽度算；全屏按钮切横竖屏 + 沉浸栏（短剧页同款接法）。
+// 顶部播放器接线：16:9 高度按屏幕宽算；全屏按钮切横竖屏 + 沉浸栏（短剧页同款接法）。
+// 注意：playerBox 初始是 GONE，量它自己的宽度永远是 0，高度就永远设不上，
+// 播起来也是 0 高看不见（第六版的 bug）。直接用屏幕宽减去两边各 16dp 的内边距。
 playerBox = find(R.id.playerBox);
 pvDetail = find(R.id.pvDetail);
 pvDetail.setFullscreenButtonClickListener(isFullscreen -> toggleDetailFullscreen(isFullscreen));
-playerBox.post(() -> {
-int w = playerBox.getWidth();
-if (w > 0) {
-detailPlayerHeight = w * 9 / 16;
-ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
-lp.height = detailPlayerHeight;
-playerBox.setLayoutParams(lp);
-}
-});
+detailPlayerHeight = (ResUtil.getScreenWidth() - ResUtil.dp2px(32)) * 9 / 16;
+ViewGroup.LayoutParams playerLp = playerBox.getLayoutParams();
+playerLp.height = detailPlayerHeight;
+playerBox.setLayoutParams(playerLp);
 
 RecyclerView rvFlag = find(R.id.rvFlag);
 rvFlag.setLayoutManager(new LinearLayoutManager(
