@@ -18,6 +18,14 @@ public final class PlaybackProfileAbCoordinator {
         return PROCESS;
     }
 
+    // 2026-11-08 补：PlayerManager 里 profile AB 与轻量评估各持一个 coordinator
+    // （两个字段），不能共用 process() 单例——共用会在第二个 beginSession 时把第一个
+    // 的会话顶掉（REPLACED）。轻量评估那路走这个工厂拿独立实例；process() 单例照
+    // webhtv 原样保留，给 profile AB 那路用。
+    public static PlaybackProfileAbCoordinator newInstance() {
+        return new PlaybackProfileAbCoordinator();
+    }
+
     public synchronized boolean beginSession(
             PlaybackAutoContext.SessionToken session,
             StartConfig config,

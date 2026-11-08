@@ -27,4 +27,19 @@
         </attr>
         <attr name="keep_content_on_player_reset" format="boolean" />
     </declare-styleable>
+
+    <!-- 2026-11-08 云构建第二轮失败修法：14 个对话框布局在用 FongMi 的自定义 View
+         （CustomNestedScrollView / CustomRecyclerView），布局里写了 app:maxHeight 等属性，
+         但树里没有这两个 styleable，aapt 链接不过；声明与 webhtv 的 attrs.xml 相同。 -->
+    <declare-styleable name="CustomRecyclerView">
+        <attr name="android:minWidth" />
+        <attr name="android:minHeight" />
+        <attr name="maxWidth" format="dimension" />
+        <attr name="maxHeight" format="dimension" />
+    </declare-styleable>
+
+    <declare-styleable name="CustomNestedScrollView">
+        <attr name="android:minHeight" />
+        <attr name="maxHeight" format="dimension" />
+    </declare-styleable>
 </resources>
