@@ -7,6 +7,13 @@ android {
     // targetSdk 保持 34 不动；AGP 同步升到 8.10.1（见根 build.gradle），Gradle 升到 8.13。
     compileSdk 36
 
+    // 2026-11-08 云构建第一轮失败修法：AGP 8.x 下 buildConfig 默认关闭、viewBinding 默认关闭，
+    // 上游代码却在用 BuildConfig.* 与 databinding（上游 build.gradle 从没声明过，编不过）。
+    buildFeatures {
+        buildConfig = true
+        viewBinding = true
+    }
+
     defaultConfig {
         // 包名改成 com.tuyin（用户 2026-11-08 07:40 令，须赶在第一版包发出前改，否则改包名要卸载重装）；
         // namespace 与源码包 com.yingtu.plus 不动。
@@ -16,6 +23,14 @@ android {
         // 版本号按今天日期（用户 2026-11-08 08:39 令，跟学堂 3.26.1104 一个路子：原版 + 今天月日）
         versionCode 20261108
         versionName "2.0.0.1108"
+        // BuildConfig 自定义字段（2026-11-08 云构建第一轮失败修法）：
+        // 上游代码在用这 4 个字段，但上游 build.gradle 从没声明过；APPLICATION_ID / DEBUG /
+        // VERSION_CODE / VERSION_NAME 是 buildConfig=true 后自动生成的标准字段，不用声明。
+        // FLAVOR_mode：Util.isLeanback()/isMobile() 判 "leanback"/"mobile"，本包是手机版故填 mobile。
+        buildConfigField "String", "FLAVOR_mode", "\"mobile\""
+        buildConfigField "String", "BUILD_TAG", "\"2.0.0.1108\""
+        buildConfigField "String", "BUILD_TIME", "\"2026-11-08\""
+        buildConfigField "String", "MEDIA3_VERSION", "\"1.11.0-alpha01-fongmi\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // 只出 arm64-v8a 单架构（用户长期令）
         ndk {
@@ -37,6 +52,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // 2026-11-08 云构建第八轮失败修法：bcprov-jdk18on 与 jspecify 都带
+    // META-INF/versions/9/OSGI-INF/MANIFEST.MF，mergeDebugJavaResource 报重复文件。
+    packaging {
+        resources {
+            excludes += 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        }
+    }
 }
 
 // 禁用 AAR 元数据检查（nextlib AAR 的 minCompileSdk=37，CI 的 SDK 仓库无 android-37 包）
@@ -48,6 +71,11 @@ tasks.matching { it.name == 'checkDebugAarMetadata' || it.name == 'checkReleaseA
 // 全部 androidx.media3 依赖强制解析到 FongMi 分叉版（webhtv 同款做法）：
 // nextlib-media3ext AAR 是按官方 1.10.0 编的，传递依赖会把 media3 拉回 1.10.0，不强制就混版。
 configurations.all {
+    // 2026-11-08 云构建第八轮失败修法：某传递依赖带了 com.android.support:support-compat:24.2.1，
+    // 它与 androidx.core:1.18.0 都含有 android.support.v4.app.INotificationSideChannel 等
+    // AIDL 类（core 为 Binder 兼容保留了旧包名），checkDebugDuplicateClasses 报重复类。
+    // 全树 Java 代码零 android.support 引用（已 grep 核实），整个 com.android.support 组都可排除。
+    exclude group: 'com.android.support'
     resolutionStrategy.eachDependency { details ->
         if (details.requested.group == 'androidx.media3') {
             details.useVersion '1.11.0-alpha01-fongmi'
@@ -104,6 +132,9 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    // OkGlideModule 用 com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
+    // （2026-11-08 云构建第一轮失败修法：原来只声明了 glide 本体，没声明 okhttp3 集成包）
+    implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'org.simpleframework:simple-xml:2.7.1'
     implementation 'com.orhanobut:hawk:2.0.1'

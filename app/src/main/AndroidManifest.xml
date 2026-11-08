@@ -67,6 +67,11 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".ui.activity.FolderActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".ui.activity.VideoActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:screenOrientation="sensorLandscape"
