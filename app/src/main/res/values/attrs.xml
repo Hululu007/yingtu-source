@@ -40,6 +40,8 @@
 
     <declare-styleable name="CustomNestedScrollView">
         <attr name="android:minHeight" />
-        <attr name="maxHeight" format="dimension" />
+        <!-- maxHeight 的 format 只在上面的 CustomRecyclerView 里定义一次，这里只引用，
+             不然 aapt 报 Found item Attr/maxHeight more than one time（第三轮就是这么挂的） -->
+        <attr name="maxHeight" />
     </declare-styleable>
 </resources>
