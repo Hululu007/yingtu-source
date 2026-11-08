@@ -391,7 +391,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     private boolean experimentAllowed(PlaybackExperimentPolicy.Action action) {
-        return PlaybackExperimentSetting.isAllowed(action);
+        return PlaybackExperimentSetting.isAllowed(action == null ? "" : action.id());
     }
 
     private void onPlaybackExperimentPolicyChanged(
@@ -401,7 +401,11 @@ public class PlayerManager implements ParseCallback {
                 PlaybackProfileAbCoordinator.InvalidationReason
                         .GENERATION_CHANGED);
         PlaybackExperimentPolicy.State policy =
-                PlaybackExperimentSetting.getState();
+                PlaybackExperimentSetting.getState()
+                        ? new PlaybackExperimentPolicy.State(
+                                PlaybackExperimentPolicy.CURRENT_SCHEMA_VERSION,
+                                PlaybackExperimentSetting.isEnabled(), true, true, true)
+                        : PlaybackExperimentPolicy.State.stable();
         PlaybackTrace.log(
                 "playback-experiment",
                 playbackTrace.current(),
@@ -920,7 +924,7 @@ public class PlayerManager implements ParseCallback {
     private void configureDanmakuController(DanmakuController controller) {
         if (controller == null) return;
         controller.setOkHttpClient(OkHttp.player());
-        controller.setConfig(DanmakuSetting.getConfig());
+        controller.setConfig((DanmakuConfig) DanmakuSetting.getConfig());
         controller.setEnabled(DanmakuSetting.isShow());
         controller.setListener(new DanmakuController.Listener() {
             @Override
@@ -1205,7 +1209,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public String toggleSpeed() {
-        return setSpeed(getSpeed() == 1 ? PlayerSetting.getSpeed() : 1);
+        return setSpeed((float) (getSpeed() == 1 ? PlayerSetting.getSpeed() : 1));
     }
 
     private float nextPresetSpeed() {

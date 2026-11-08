@@ -236,12 +236,25 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
         return selectedAudioFormat;
     }
 
+    // 2026-11-08 云构建第四轮修法：官方 player-ijk:3.3.7 的 IjkMediaPlayer 没有
+    // getVideoCodecInfo()/getAudioCodecInfo()（AAR 方法表已核实：只有 private native
+    // _getVideoCodecInfo/_getAudioCodecInfo；这两个 public 方法只在 FongMi 自带 ijk
+    // 源码里有）。等效信息改取已选轨道的 Format：codecs 即轨道编解码器名（如 h264/aac，
+    // 与原生方法返回的编解码器名同义），无 codecs 时退回 sampleMimeType（如 video/avc），
+    // 未选出轨道时返回 null；调用处（IjkPlayerEngine 诊断/音频诊断）均已按 null/空串处理。
+    @Nullable
+    private static String codecInfo(@Nullable Format format) {
+        if (format == null) return null;
+        if (!TextUtils.isEmpty(format.codecs)) return format.codecs;
+        return format.sampleMimeType;
+    }
+
     String getVideoCodecInfoSnapshot() {
-        return ijk.getVideoCodecInfo();
+        return codecInfo(selectedVideoFormat);
     }
 
     String getAudioCodecInfoSnapshot() {
-        return ijk.getAudioCodecInfo();
+        return codecInfo(selectedAudioFormat);
     }
 
     int getVideoDecoderSnapshot() {
@@ -620,7 +633,7 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
     }
 
     @Override
-    public void onInfo(IMediaPlayer mp, int what, int extra) {
+    public boolean onInfo(IMediaPlayer mp, int what, int extra) {
         diagnosticEvent(what == IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START ? "video-rendering-start"
                 : what == IMediaPlayer.MEDIA_INFO_AUDIO_RENDERING_START ? "audio-rendering-start" : "info", what, extra, false);
         if (what == IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) diagnostics.evidence(diagnostics.context(), true, 3);
@@ -658,6 +671,10 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
                     longUrlProxied);
         }
         invalidateState();
+        // 官方 OnInfoListener.onInfo 要求返回 boolean：本方法只记录打开阶段/缓冲/
+        // 首帧状态，不消费该事件，返回 false 交由框架默认处理（同文件 onNativeInvoke
+        // 也是返回 false；onError 返回 true 是因为它已全权处理了错误）。
+        return false;
     }
 
     private boolean onNativeInvoke(int event, Bundle bundle) {
@@ -879,13 +896,13 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
                     .observed("audioSelected", prepared ? selectedAudioFormat != null : null)
                     .unknown("audioOutput", com.github.catvod.crawler.diagnostics.DiagnosticEvent.Status.NOT_OBSERVABLE)
                     .observed("nativeHook", "native-hook-required: IJK AudioTrack/OpenSL write/head/actual route");
-            if (prepared) e.observed("decoderName", ijk.getVideoCodecInfo()).observed("decode", ijk.getVideoDecoder());
+            if (prepared) e.observed("decoderName", getVideoCodecInfoSnapshot()).observed("decode", ijk.getVideoDecoder());
         });
         if (prepared) {
             diagnostics.emit("video.output.summary", "ijk-public-properties", e -> e
                     .observed("frameRate", ijk.getVideoOutputFramesPerSecond()).observed("metricScope", "IJK video-output-fps; not display refresh")
                     .observed("bytes", ijk.getVideoCachedBytes()));
-            diagnostics.emit("audio.decoder.output", "ijk-public-properties", e -> e.observed("decoderName", ijk.getAudioCodecInfo())
+            diagnostics.emit("audio.decoder.output", "ijk-public-properties", e -> e.observed("decoderName", getAudioCodecInfoSnapshot())
                     .observed("bytes", ijk.getAudioCachedBytes()).observed("metricScope", "cached input bytes; not accepted output")
                     .unknown("audibility", com.github.catvod.crawler.diagnostics.DiagnosticEvent.Status.NOT_OBSERVABLE));
         }

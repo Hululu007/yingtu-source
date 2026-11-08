@@ -8,6 +8,10 @@ public class PlayerSetting {
     public static final int MPV = 2;
     public static final int RENDER_SURFACE = 0;
     public static final int RENDER_TEXTURE = 1;
+    // mpv 渲染后端：字符串域，与 getMpvRender() 的 "gpu" 默认值一致。
+    // 参考仓同名方法是 int 域（0=opengl / 1=vulkan），树里本方法是 String，不可直接照搬 int 常量。
+    public static final String MPV_RENDER_OPENGL = "gpu";
+    public static final String MPV_RENDER_VULKAN = "vulkan";
     
     // Audio background constants
     public static final int AUDIO_BACKGROUND_ARTWORK = 0;
@@ -35,15 +39,32 @@ public class PlayerSetting {
         return (current + 1) % 3;
     }
 
+    // 按给定内核取下一个内核：EXO -> IJK -> MPV -> EXO（与无参版对当前内核取下一个等价）。
+    public static int nextPlayer(int player) {
+        switch (sanitizePlayer(player)) {
+            case EXO: return IJK;
+            case IJK: return MPV;
+            default: return EXO;
+        }
+    }
+
     public static int getRender() { return Prefers.getInt("render", RENDER_SURFACE); }
     public static int getScale() { return Prefers.getInt("scale", 1); }
     public static void putScale(int s) { Prefers.putInt("scale", s); }
     
     public static int getBuffer() { return Prefers.getInt("buffer", 1024 * 1024); }
+    // 树里没有按内核分的缓冲存储（KernelPerformanceSetting 只有 mode），带参版直接返回全局值。
+    public static int getBuffer(int kernel) { return getBuffer(); }
     public static long getBufferBytes() { return getBuffer(); }
+    // 带参版返回 int 而不是 long：全部带参调用处都赋给 int（MpvPlayerEngine 的 int bytes、
+    // ExoUtil 的 int configuredTargetBytes / int configured），返回 long 会在赋值处再报类型错。
+    // 值本身就是 getBuffer() 的 int，不会溢出。
+    public static int getBufferBytes(int kernel) { return (int) getBufferBytes(); }
     
     public static int getBackBufferOption() { return Prefers.getInt("back_buffer_option", 0); }
+    public static int getBackBufferOption(int kernel) { return getBackBufferOption(); }
     public static int getBackBufferMs() { return Prefers.getInt("back_buffer_ms", 0); }
+    public static int getBackBufferMs(int kernel) { return getBackBufferMs(); }
     
     public static double getDefaultSpeed() { return Prefers.getDouble("default_speed", 1.0); }
     public static void putDefaultSpeed(double d) { Prefers.put("default_speed", d); }
@@ -58,6 +79,8 @@ public class PlayerSetting {
     public static boolean isPreferAAC() { return Prefers.getBoolean("prefer_aac", false); }
     public static boolean isPreferAAC(int kernel) { return isPreferAAC(); }
     public static boolean isAudioPassThrough() { return Prefers.getBoolean("audio_passthrough", false); }
+    // 树里只有一份全局 audio_passthrough，没有按内核分的存储，带参版直接返回全局值。
+    public static boolean isAudioPassThrough(int kernel) { return isAudioPassThrough(); }
     public static boolean isAudioBackgroundDecorated() { return Prefers.getBoolean("audio_background_decorated", true); }
     public static boolean isImmersiveAudioMode() { return Prefers.getBoolean("immersive_audio_mode", false); }
     

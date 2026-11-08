@@ -13,6 +13,7 @@ public class PlaybackExperimentSetting {
 
     public static boolean getState() { return hasState(); }
     public static boolean isAllowed(String action) { return true; }
+    public static boolean isAllowed(com.yingtu.plus.player.PlaybackExperimentPolicy.Action action) { return action == null || isAllowed(action.id()); }
 
     private static boolean hasState() {
         return Prefers.getString(KEY_SCHEMA, null) != null;

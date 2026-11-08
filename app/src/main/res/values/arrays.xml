@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="select_decode">
+        <item>软解</item>
+        <item>硬解</item>
+    </string-array>
+
+    <string-array name="select_player_kernel">
+        <item>EXO</item>
+        <item>IJK</item>
+        <item>MPV</item>
+    </string-array>
+
+    <string-array name="select_scale">
+        <item>原始</item>
+        <item>16:9</item>
+        <item>4:3</item>
+        <item>填充</item>
+        <item>裁剪</item>
+    </string-array>
+
+    <string-array name="select_reset">
+        <item>刷新</item>
+        <item>重播</item>
+    </string-array>
+
+    <string-array name="select_lyrics_size">
+        <item>小</item>
+        <item>默认</item>
+        <item>大</item>
+        <item>特大</item>
+    </string-array>
+
+    <string-array name="select_lyrics_source">
+        <item>自动</item>
+        <item>本地</item>
+        <item>AMLL TTML</item>
+        <item>QQMusic QRC</item>
+        <item>网易 YRC</item>
+        <item>酷我</item>
+        <item>LRCLIB</item>
+        <item>酷狗</item>
+        <item>咪咕</item>
+    </string-array>
+
+    <string-array name="select_karaoke_difficulty">
+        <item>轻松</item>
+        <item>标准</item>
+        <item>严格</item>
+    </string-array>
+</resources>

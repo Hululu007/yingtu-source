@@ -30,6 +30,8 @@ public class Setting {
     public static boolean hasFileManager() { return true; }
     
     public static Object create() { return null; }
+    public static int getReset() { return Prefers.getInt("reset", 0); }
+    public static void putReset(int reset) { Prefers.put("reset", reset); }
     public static void putReset(String key) { Prefers.remove(key); }
     public static void putLoginStateFindings(Object findings) {}
     public static void putLoginStatePaths(Object paths) {}

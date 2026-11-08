@@ -987,7 +987,7 @@ public class MpvPlayerEngine implements PlayerEngine {
         SpiderDebug.log("player-engine", "mpv output mode=%s direct=%s render requested=%s nativeVulkan=%s deviceVulkan=%s decode=%s actual=%s/%s fel=%s", MpvPerformanceSetting.getOutputModeText(), surfaceDirect, requestVulkan ? "vulkan" : "opengl", nativeVulkan, deviceVulkan, decode == HARD ? "hard" : "soft", surfaceDirect ? "surface" : useVulkan ? "vulkan" : "opengl", surfaceDirect ? "mediacodec_embed" : useGpuNext ? "gpu-next" : "gpu", dv7FelOutput);
         MpvPlayerConfig.Builder builder = MpvPlayerConfig.builder(App.get())
                 .configDir(MpvConfigStore.configDir())
-                .hwdec(surfaceDirect ? "mediacodec" : decode == HARD ? MpvPerformanceSetting.getHwdecOption() : "no")
+                .hwdec(surfaceDirect ? "mediacodec" : decode == HARD ? (MpvPerformanceSetting.getHwdecOption() == MpvPerformanceSetting.HWDEC_DIRECT ? "mediacodec" : "mediacodec,mediacodec-copy") : "no")
                 .option(HWDEC_SOFTWARE_FALLBACK_OPTION,
                         hardwareDecodeSoftwareFallbackOption(decode))
                 .audioSpdif(resolveAudioSpdifCodecs())

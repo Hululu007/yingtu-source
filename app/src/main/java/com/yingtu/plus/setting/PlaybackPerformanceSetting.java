@@ -13,10 +13,15 @@ public class PlaybackPerformanceSetting {
     public static final int PROFILE_CUSTOM = 2;
     public static final int PROFILE_LIGHTWEIGHT = 3;
     public static final int PROFILE_AUTO = 4;
+    // DV7 handling modes: P81 = 0 matches the default of getMpvDv7HandlingMode()
+    // (Prefers "perf_mpv_dv7", 0), i.e. upgrade to P8.1 by default; FEL = 2.
+    public static final int DV7_HANDLING_P81 = 0;
+    public static final int DV7_HANDLING_FEL = 2;
     
     public static boolean isAuto() { return Prefers.getBoolean("perf_auto", true); }
     public static boolean isAuto(int kernel) { return isAuto(); }
     public static boolean isAuto(int kernel, String optionId) { return isAuto() && !isOverridden(); }
+    public static boolean isOverridden(int kernel, String optionId) { return isOverridden(); }
     public static boolean isAdaptiveDowngradeEnabled() { return Prefers.getBoolean("perf_adaptive_downgrade", true); }
     public static boolean isBandwidthMeterEnabled() { return Prefers.getBoolean("perf_bandwidth_meter", true); }
     public static boolean isDecoderFallbackEnabled() { return Prefers.getBoolean("perf_decoder_fallback", false); }
@@ -35,4 +40,5 @@ public class PlaybackPerformanceSetting {
     // 树里没有按内核分的存储，只有一份全局档位，这里直接返回全局档位。
     public static int getProfile(int kernel) { return getProfile(); }
     public static boolean hasAutomaticOptions() { return isAuto(); }
+    public static boolean hasAutomaticOptions(int kernel, String... optionIds) { return isAuto() && !isOverridden(); }
 }
