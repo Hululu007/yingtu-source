@@ -38,14 +38,14 @@ import java.util.Set;
  */
 public class BuiltinConfigs {
 
-    /** 内置午夜区配置（161 站：141 个 jar 站 + 20 个 py 站，以 builtin_midnight.json 为准）。 */
+    /** 内置午夜区配置（162 站：142 个 jar 站 + 20 个 py 站，以 builtin_midnight.json 为准）。 */
     public static final String MIDNIGHT_CONFIG_ASSET = "builtin_midnight.json";
     /** assets 里的 jar 文件。 */
     public static final String JAR_ASSET = "jars/zakatv.jar";
     /** 配置里登记的 jar 名（JarLoader 缓存键用这个字符串算 MD5）。 */
     public static final String JAR_NAME = "assets/jars/zakatv.jar";
     /** 火蚁TV树 zakatv.jar 的文件 MD5（与 lib/zakatv_builtin.dart 的 zakatvJarMd5 一致）。 */
-    public static final String JAR_MD5 = "67bdfc39ae6330daee73f0a0b2e58433";
+    public static final String JAR_MD5 = "44c139f76ca17a4ffcfe89df5bb19910";
     /** 配置里 spider / 各 jar 站 jar 字段用的完整写法。 */
     public static final String JAR_SPEC = JAR_NAME + ";md5;" + JAR_MD5;
 

@@ -116,7 +116,7 @@ public final class SiteHealthChecker {
     private final ExecutorService probes = Executors.newFixedThreadPool(2);
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile boolean stopRequested;
-    private volatile Future<?> currentProbe;
+    private volatile Future<SiteHealthResults.Result> currentProbe;
 
     private SiteHealthChecker() {
     }
@@ -128,7 +128,7 @@ public final class SiteHealthChecker {
     /** 停下：当前站跑完手头分项即停（正在等网络的分项由单站封顶兜底）。 */
     public void stop() {
         stopRequested = true;
-        Future<?> f = currentProbe;
+        Future<SiteHealthResults.Result> f = currentProbe;
         if (f != null) f.cancel(true);
     }
 
@@ -551,7 +551,7 @@ public final class SiteHealthChecker {
             } else {
                 Episode ep = flag.getEpisodes().get(0);
                 Result play = SiteApi.playerContent(target.key, flag.getFlag(), ep.getUrl());
-                String url = play == null ? "" : play.getUrl();
+                String url = play == null ? "" : play.getRealUrl();
                 if (TextUtils.isEmpty(url)) {
                     items.add(new SiteHealthResults.Item("真实播放", SiteHealthResults.EMPTY,
                             "没取到播放地址", System.currentTimeMillis() - t0));

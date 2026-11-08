@@ -22,13 +22,13 @@ public final class MpvVulkanBackendPolicy {
     }
 
     public static String configuredBackend() {
-        return resolveConfigured(MpvPerformanceSetting.getVulkanBackendOption(),
+        return resolveConfigured(MpvPerformanceSetting.getVulkanBackendOptionText(),
                 MpvConfigStore.getOptionValue(OPTION),
                 MpvPerformanceSetting.isPerformancePriority());
     }
 
     public static String appOverride() {
-        return normalize(MpvPerformanceSetting.getVulkanBackendOption());
+        return normalize(MpvPerformanceSetting.getVulkanBackendOptionText());
     }
 
     public static boolean isAutomaticConfig() {

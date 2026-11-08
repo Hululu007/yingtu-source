@@ -202,7 +202,9 @@ public class LiveConfig extends BaseConfig {
     }
 
     private void finishLive(Config config, String spider) {
-        CustomCspSetting.inject(getLives(), spider);
+        // 桩签名是 inject(List<Object>, String)，List<Live> 不能直接传；经通配符强转，
+        // 仍是同一个列表对象，inject 的增删才能落到 getLives() 上（不能传 new ArrayList 副本）。
+        CustomCspSetting.inject((List<Object>) (List<?>) getLives(), spider);
         getLives().removeIf(Live::isEmpty);
         Map<String, Live> items = Live.findAll().stream().collect(Collectors.toMap(Live::getName, Function.identity()));
         getLives().forEach(live -> live.sync(items.get(live.getName())));
