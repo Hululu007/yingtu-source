@@ -104,6 +104,7 @@ public class HomeMainFragment extends BaseLazyFragment {
             viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
         } catch (Throwable e) {
             e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
             try {
                 if (tvHint != null) {
                     tvHint.setText("加载失败，请稍后重试");

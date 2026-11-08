@@ -6,7 +6,7 @@
     android:fitsSystemWindows="true"
     android:orientation="vertical">
 
-    <!-- 顶栏：Logo（缩小）+ 站点名 + 居中搜索框 + 右上角四个图标入口 -->
+    <!-- 顶栏：Logo（缩小）+ 站点名 + 居中搜索框 + 右上角五个图标入口 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -95,6 +95,16 @@
             android:contentDescription="网页"
             android:padding="5dp"
             android:src="@drawable/ic_web"
+            app:tint="@color/text_primary" />
+
+        <ImageView
+            android:id="@+id/ivSetting"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="设置"
+            android:padding="5dp"
+            android:src="@drawable/ic_setting"
             app:tint="@color/text_primary" />
     </LinearLayout>
 

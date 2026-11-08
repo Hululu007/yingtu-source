@@ -38,7 +38,10 @@ public class FirstActivity extends BaseActivity {
                     }
                 } catch (Exception ignored) {}
             }
-        } catch (Throwable ignored) {}
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+        }
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);

@@ -202,6 +202,23 @@ public class App extends Application {
         writeCrashLog("BOOT " + step);
     }
 
+    /**
+     * 接住的异常也记进 crash.log（2.0.0.1108 第四轮）：
+     * init 等处的 catch 只 printStackTrace 时，堆栈只进 logcat、用户拿不出来；
+     * 这里复用已有的 crash.log 写入逻辑，记一行 CAUGHT + 完整堆栈。
+     * 下次再有“接住的异常”，用户发 crash.log 就能看见堆栈，不用再猜。
+     */
+    public static void logCaught(Throwable e) {
+        if (e == null) return;
+        try {
+            writeCrashLog("CAUGHT " + e);
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            writeCrashLog(sw.toString());
+        } catch (Throwable ignored) {
+        }
+    }
+
     // ---- 原有方法 ----
 
     public static App getInstance() {

@@ -23,6 +23,7 @@ import com.yingtu.plus.bean.History;
 import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.player.PlayerManager;
 import com.yingtu.plus.player.engine.PlaySpec;
+import com.yingtu.plus.player.exo.ExoUtil;
 import com.yingtu.plus.service.PlaybackService;
 import com.yingtu.plus.ui.custom.CustomSeekView;
 
@@ -265,6 +266,9 @@ public abstract class PlaybackActivity extends BaseActivity implements ServiceCo
         PlayerView exo = getExoView();
         Player player = controller();
         if (exo == null) return;
+        // 建面：布局里 PlayerView 是 surface_type="none"，不调 setRender 就没有输出面，
+        // 三路内核都没地方渲染画面。先建面再接播放器（和 webhtv attachSurface 同款顺序）。
+        ExoUtil.setPlayerView(exo);
         exo.setPlayer(player);
         if (player != null) {
             attachPlayerListener(player);
