@@ -39,6 +39,15 @@ public class SyncFiles {
         return new ArrayList<>(result);
     }
 
+    public static List<String> getPaths(List<String> paths) {
+        Set<String> result = new LinkedHashSet<>();
+        if (paths != null) for (String line : paths) {
+            String path = normalize(line);
+            if (!path.isEmpty()) result.add(path);
+        }
+        return new ArrayList<>(result);
+    }
+
     public static String getPathsText(List<String> paths) {
         return TextUtils.join("\n", paths);
     }
