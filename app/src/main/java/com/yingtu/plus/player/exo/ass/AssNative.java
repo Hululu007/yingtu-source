@@ -11,8 +11,15 @@ final class AssNative {
 
     static synchronized void ensureLoaded() {
         if (loaded) return;
-        System.loadLibrary("exo_ass");
-        loaded = true;
+        try {
+            System.loadLibrary("exo_ass");
+            loaded = true;
+        } catch (Throwable ignored) {
+            // exo_ass.so 不在 APK 里（只在分叉 media3 源码里有同名 C++，没编进包）：
+            // 这里吞掉，让调用方 ExoAssSession.drain() 的 catch (Exception | LinkageError)
+            // 像往常一样把本次字幕会话记为失败，而不是让 UnsatisfiedLinkError 杀掉进程。
+            // loaded 保持 false，下次有 ASS 字幕时可再试一次。
+        }
     }
 
     static native long create(String fontConfig, String[] fontNames, byte[][] fonts);

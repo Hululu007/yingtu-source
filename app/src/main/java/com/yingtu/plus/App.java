@@ -41,47 +41,78 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        // CatVod 运行时需要 Context（Path/Prefers/Asset 等都读 Init.context()）
-        com.github.catvod.Init.set(this);
-        // 轻量级 KV 持久化
-        Hawk.init(this).build();
-        // 应用深色模式偏好（默认跟随深色，契合海洋深蓝主题）
-        boolean dark = Hawk.get(HawkConfig.DARK_MODE, true);
-        AppCompatDelegate.setDefaultNightMode(dark
-                ? AppCompatDelegate.MODE_NIGHT_YES
-                : AppCompatDelegate.MODE_NIGHT_NO);
-        // 加载视频源配置
-        ApiConfig.get().init(this);
-        // 内置午夜区配置：合并加载（不清表），不加载订阅也能进午夜区
-        BuiltinConfigs.load(this);
-        // 内置短剧区配置：同午夜区写法，合并加载（不清表）
-        BuiltinDramaConfigs.load(this);
-        // J 批：把 ApiConfig 的站表同步进 VodConfig 的内存站表（启动只做一次；
-        // VodConfig.load 要从 Config 表的订阅 URL 联网拉，本树从没往那写过 URL，
-        // 且本地 Server 全回 404，所以直接调 load 走不通，改走内存同步。
-        // 必须在 BuiltinConfigs.load 之后，内置站才在同步的表里）
-        VodConfigSync.sync();
-        // 启动本地资源网关（WebHome 的 fm.res 依赖；仅绑定 127.0.0.1）
-        WebServer.get().start();
-        registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
-            @Override
-            public void onActivityResumed(Activity activity) {
-                currentActivity = activity;
-            }
-
-            @Override
-            public void onActivityPaused(@Nullable Activity activity) {
-                if (activity != null && activity == currentActivity) {
-                    currentActivity = null;
+        // 启动初始化分段包 try/catch：2.0.0.1108 首版装上就闪退，启动链上只有
+        // Hawk.init 没有保护，任一步抛异常都会让 Application 创建失败、连启动页
+        // 都出不来；分段包住后某步失败只丢该步功能，不杀进程。正常路径行为与顺序不变。
+        try {
+            // CatVod 运行时需要 Context（Path/Prefers/Asset 等都读 Init.context()）
+            com.github.catvod.Init.set(this);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 轻量级 KV 持久化
+            Hawk.init(this).build();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        try {
+            // 应用深色模式偏好（默认跟随深色，契合海洋深蓝主题）
+            boolean dark = Hawk.get(HawkConfig.DARK_MODE, true);
+            AppCompatDelegate.setDefaultNightMode(dark
+                    ? AppCompatDelegate.MODE_NIGHT_YES
+                    : AppCompatDelegate.MODE_NIGHT_NO);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 加载视频源配置
+            ApiConfig.get().init(this);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 内置午夜区配置：合并加载（不清表），不加载订阅也能进午夜区
+            BuiltinConfigs.load(this);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 内置短剧区配置：同午夜区写法，合并加载（不清表）
+            BuiltinDramaConfigs.load(this);
+        } catch (Throwable ignored) {
+        }
+        try {
+            // J 批：把 ApiConfig 的站表同步进 VodConfig 的内存站表（启动只做一次；
+            // VodConfig.load 要从 Config 表的订阅 URL 联网拉，本树从没往那写过 URL，
+            // 且本地 Server 全回 404，所以直接调 load 走不通，改走内存同步。
+            // 必须在 BuiltinConfigs.load 之后，内置站才在同步的表里）
+            VodConfigSync.sync();
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 启动本地资源网关（WebHome 的 fm.res 依赖；仅绑定 127.0.0.1）
+            WebServer.get().start();
+        } catch (Throwable ignored) {
+        }
+        try {
+            registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+                @Override
+                public void onActivityResumed(Activity activity) {
+                    currentActivity = activity;
                 }
-            }
 
-            @Override public void onActivityCreated(@androidx.annotation.NonNull Activity activity, @Nullable Bundle savedInstanceState) {}
-            @Override public void onActivityStarted(@androidx.annotation.NonNull Activity activity) {}
-            @Override public void onActivityStopped(@androidx.annotation.NonNull Activity activity) {}
-            @Override public void onActivitySaveInstanceState(@androidx.annotation.NonNull Activity activity, Bundle outState) {}
-            @Override public void onActivityDestroyed(@androidx.annotation.NonNull Activity activity) {}
-        });
+                @Override
+                public void onActivityPaused(@Nullable Activity activity) {
+                    if (activity != null && activity == currentActivity) {
+                        currentActivity = null;
+                    }
+                }
+
+                @Override public void onActivityCreated(@androidx.annotation.NonNull Activity activity, @Nullable Bundle savedInstanceState) {}
+                @Override public void onActivityStarted(@androidx.annotation.NonNull Activity activity) {}
+                @Override public void onActivityStopped(@androidx.annotation.NonNull Activity activity) {}
+                @Override public void onActivitySaveInstanceState(@androidx.annotation.NonNull Activity activity, @Nullable Bundle savedInstanceState) {}
+                @Override public void onActivityDestroyed(@androidx.annotation.NonNull Activity activity) {}
+            });
+        } catch (Throwable ignored) {
+        }
     }
 
     // ---- 原有方法 ----
