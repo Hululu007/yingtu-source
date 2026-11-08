@@ -1,0 +1,26 @@
+// Top-level build file
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://chaquo.com/maven' }
+    }
+    dependencies {
+        // AGP 8.10.1：分叉 media3 AAR 的 minCompileSdk=36，AGP 8.2.2 最高只认 34，须同步升级
+        //（Gradle 8.13，见 gradle-wrapper.properties；JDK 17 不变，workflow 已是 JDK 17）。
+        classpath 'com.android.tools.build:gradle:8.10.1'
+        classpath 'com.chaquo.python:gradle:15.0.1'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
