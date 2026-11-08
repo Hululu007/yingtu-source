@@ -52,6 +52,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    // 2026-11-08 云构建第八轮失败修法：bcprov-jdk18on 与 jspecify 都带
+    // META-INF/versions/9/OSGI-INF/MANIFEST.MF，mergeDebugJavaResource 报重复文件。
+    packaging {
+        resources {
+            excludes += 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
+        }
+    }
 }
 
 // 禁用 AAR 元数据检查（nextlib AAR 的 minCompileSdk=37，CI 的 SDK 仓库无 android-37 包）
@@ -63,6 +71,11 @@ tasks.matching { it.name == 'checkDebugAarMetadata' || it.name == 'checkReleaseA
 // 全部 androidx.media3 依赖强制解析到 FongMi 分叉版（webhtv 同款做法）：
 // nextlib-media3ext AAR 是按官方 1.10.0 编的，传递依赖会把 media3 拉回 1.10.0，不强制就混版。
 configurations.all {
+    // 2026-11-08 云构建第八轮失败修法：某传递依赖带了 com.android.support:support-compat:24.2.1，
+    // 它与 androidx.core:1.18.0 都含有 android.support.v4.app.INotificationSideChannel 等
+    // AIDL 类（core 为 Binder 兼容保留了旧包名），checkDebugDuplicateClasses 报重复类。
+    // 全树 Java 代码零 android.support 引用（已 grep 核实），整个 com.android.support 组都可排除。
+    exclude group: 'com.android.support'
     resolutionStrategy.eachDependency { details ->
         if (details.requested.group == 'androidx.media3') {
             details.useVersion '1.11.0-alpha01-fongmi'
