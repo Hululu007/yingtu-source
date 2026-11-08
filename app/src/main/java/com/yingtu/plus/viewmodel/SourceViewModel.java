@@ -76,7 +76,7 @@ public class SourceViewModel extends ViewModel {
     public void getList(String typeId, int page, HashMap<String, String> extend) {
         OkGo.io(() -> {
             try {
-                Result result = SiteApi.categoryContent(homeKey, typeId, page, true, extend);
+                Result result = SiteApi.categoryContent(homeKey, typeId, String.valueOf(page), true, extend);
                 listResult.postValue(toMovies(homeKey, result.getList()));
             } catch (Exception e) {
                 listResult.postValue(null);

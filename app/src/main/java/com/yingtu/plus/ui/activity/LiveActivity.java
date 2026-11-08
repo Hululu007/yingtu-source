@@ -14,6 +14,7 @@ import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.source.MediaSource;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -347,8 +348,10 @@ public class LiveActivity extends BaseActivity {
         if (TextUtils.isEmpty(url)) return;
         DefaultHttpDataSource.Factory httpFactory = new DefaultHttpDataSource.Factory();
         if (!TextUtils.isEmpty(currentChannel.ua)) httpFactory.setUserAgent(currentChannel.ua);
-        player.setMediaSourceFactory(new DefaultMediaSourceFactory(httpFactory));
-        player.setMediaItem(MediaItem.fromUri(url));
+        // ExoPlayer 实例没有换源工厂的方法（那是 Builder 的方法）：
+        // 用该工厂直接造出 MediaSource 再交给已建好的 player。
+        MediaSource mediaSource = new DefaultMediaSourceFactory(httpFactory).createMediaSource(MediaItem.fromUri(url));
+        player.setMediaSource(mediaSource);
         player.prepare();
         player.play();
     }

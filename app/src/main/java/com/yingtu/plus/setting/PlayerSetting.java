@@ -99,6 +99,8 @@ public class PlayerSetting {
     
     public static int getEpisodesColumn() { return Prefers.getInt("episode_column", 2); }
     public static void putEpisodesColumn(int n) { Prefers.put("episode_column", n); }
+
+    public static int getEpisodeColumn() { return Math.min(Math.max(getEpisodesColumn(), 1), 2); }
     
     public static boolean isDesktopLyrics() { return Prefers.getBoolean("desktop_lyrics", false); }
     public static void putDesktopLyrics(boolean v) { Prefers.put("desktop_lyrics", v); }
@@ -124,6 +126,8 @@ public class PlayerSetting {
     public static void putKaraokeBasicPitchTflite(boolean v) { Prefers.put("karaoke_basic_pitch_tflite", v); }
     public static int getKaraokeMicDelayMs() { return Prefers.getInt("karaoke_mic_delay", 0); }
     public static void putKaraokeMicDelayMs(int ms) { Prefers.put("karaoke_mic_delay", ms); }
+    public static String getKaraokeGithubSources() { return Prefers.getString("karaoke_github_sources", ""); }
+    public static void putKaraokeGithubSources(String value) { Prefers.put("karaoke_github_sources", value == null ? "" : value.trim()); }
     public static float getKaraokeToleranceSemitones() { return Prefers.getFloat("karaoke_tolerance_semitones", 3.0f); }
     public static void putKaraokeToleranceSemitones(float f) { Prefers.put("karaoke_tolerance_semitones", f); }
     

@@ -14,6 +14,8 @@ public class IjkPerformanceSetting {
     public static final int SOFT_TUNE_OFF = 0;
     public static final int SOFT_TUNE_MILD = 1;
     public static final int SOFT_TUNE_AGGRESSIVE = 2;
+    public static final int RTSP_TCP = 1;
+    public static final int RTSP_UDP = 2;
 
     public static int getScene() { return Prefers.getInt("perf_ijk_scene", SCENE_AUTO); }
     public static void putScene(int v) { Prefers.put("perf_ijk_scene", v); }

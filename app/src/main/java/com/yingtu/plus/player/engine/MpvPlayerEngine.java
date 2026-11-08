@@ -948,6 +948,25 @@ public class MpvPlayerEngine implements PlayerEngine {
         return player;
     }
 
+    // mpv framedrop only takes no/vo/decoder/decoder+vo; only the OFF level is
+    // defined in MpvPerformanceSetting, so any value disables frame dropping.
+    private static String frameDropOptionText() {
+        switch (MpvPerformanceSetting.getFrameDropOption()) {
+            case MpvPerformanceSetting.FRAME_DROP_OFF:
+            default:
+                return "no";
+        }
+    }
+
+    // mpv video-sync takes audio/display-resample/...; only SYNC_AUDIO is defined.
+    private static String videoSyncOptionText() {
+        switch (MpvPerformanceSetting.getSyncOption()) {
+            case MpvPerformanceSetting.SYNC_AUDIO:
+            default:
+                return "audio";
+        }
+    }
+
     private MpvPlayerConfig buildConfig() {
         MpvConfigStore.ensureReady();
         MpvConfigStore.ensureCustomButtonScript();
@@ -1009,10 +1028,10 @@ public class MpvPlayerEngine implements PlayerEngine {
                 .deferStartupTrackRefresh(DV7_P81.equals(getDv7HandlingOption()))
                 .restoreFelAutomaticSubtitles(isDv7FelRequested()
                         && TextUtils.isEmpty(MpvConfigStore.getOptionValue("sid")))
-                .option("framedrop", MpvPerformanceSetting.getFrameDropOption())
-                .option("video-sync", MpvPerformanceSetting.getSyncOption())
+                .option("framedrop", frameDropOptionText())
+                .option("video-sync", videoSyncOptionText())
                 .option("interpolation", MpvPerformanceSetting.isInterpolation() ? "yes" : "no")
-                .option("hls-bitrate", MpvPerformanceSetting.getHlsBitrateOption())
+                .option("hls-bitrate", String.valueOf(MpvPerformanceSetting.getHlsBitrateOption()))
                 .option("demuxer-dovi-profile7",
                         dv7DemuxerOption(getDv7HandlingOption()))
                 .option("android-dovi-fel", isDv7FelRequested() ? "yes" : "no")
