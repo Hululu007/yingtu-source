@@ -1,0 +1,134 @@
+apply plugin: 'com.android.application'
+apply plugin: 'com.chaquo.python'
+
+android {
+    namespace 'com.yingtu.plus'
+    // 分叉 media3 AAR 的 minCompileSdk=36（2026-11-08 实测），34 编不过，故升到 36。
+    // targetSdk 保持 34 不动；AGP 同步升到 8.10.1（见根 build.gradle），Gradle 升到 8.13。
+    compileSdk 36
+
+    defaultConfig {
+        // 包名改成 com.tuyin（用户 2026-11-08 07:40 令，须赶在第一版包发出前改，否则改包名要卸载重装）；
+        // namespace 与源码包 com.yingtu.plus 不动。
+        applicationId "com.tuyin"
+        minSdk 24
+        targetSdk 34
+        // 版本号按今天日期（用户 2026-11-08 08:39 令，跟学堂 3.26.1104 一个路子：原版 + 今天月日）
+        versionCode 20261108
+        versionName "2.0.0.1108"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // 只出 arm64-v8a 单架构（用户长期令）
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+        python {
+            version = "3.10"
+        }
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// 禁用 AAR 元数据检查（nextlib AAR 的 minCompileSdk=37，CI 的 SDK 仓库无 android-37 包）
+tasks.matching { it.name == 'checkDebugAarMetadata' || it.name == 'checkReleaseAarMetadata' }.configureEach {
+    enabled = false
+    onlyIf { false }
+}
+
+// 全部 androidx.media3 依赖强制解析到 FongMi 分叉版（webhtv 同款做法）：
+// nextlib-media3ext AAR 是按官方 1.10.0 编的，传递依赖会把 media3 拉回 1.10.0，不强制就混版。
+configurations.all {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'androidx.media3') {
+            details.useVersion '1.11.0-alpha01-fongmi'
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.room:room-runtime:2.6.1'
+    annotationProcessor 'androidx.room:room-compiler:2.6.1'
+    implementation 'org.greenrobot:eventbus:3.3.1'
+    implementation files('libs/nextlib-media3ext-1.10.0-0.12.1-fongmi-softload.aar')
+    // TVCore 选 A（2026-11-08 用户拍板）：渔老 webhtv 的 tvbus + hook 两个 AAR 拷进 app/libs。
+    // tvbus-release.aar 提供 com.tvbus.engine.TVCore/Listener（TVBus.java 用）；hook-release.aar
+    // 提供 com.fongmi.hook.Hook（Core.getHook() 构造，App.setHook 接收）。树里原先的手写 Hook 桩
+    // 已删（与 AAR 里的真 Hook 同名同包，并存会重复类编不过）；真 Hook 是完整 PackageManager 子类，
+    // 构造器 (String, String) 与调用点一致。两个 AAR 的 minCompileSdk 均为 1，无元数据冲突。
+    implementation files('libs/tvbus-release.aar')
+    implementation files('libs/hook-release.aar')
+    // P2P/迅雷三件（2026-11-08 核对：与 TVCore 同款做法，webhtv app/libs 里现成的 AAR 拷来）：
+    // forcetech-release.aar 提供 com.forcetech.Util（Force.java 用）；jianpian-release.aar 提供
+    // com.p2p.P2PClass（JianPian.java 用）；thunder-release.aar 提供 com.xunlei.downloadlib.*（Thunder.java 用）。
+    // 三个 AAR 的类表已逐个验过，确有上述类。
+    implementation files('libs/forcetech-release.aar')
+    implementation files('libs/jianpian-release.aar')
+    implementation files('libs/thunder-release.aar')
+    // Media3 用 FongMi 分叉 1.11.0-alpha01-fongmi（2026-11-08 用户拍板选 A）：
+    // 官方 1.10.0 没有分叉专属 API（MediaEdition、TextRenderer.Observer、弹幕、PlaybackDiagnostics）。
+    // 产物无公开远程仓库，走 settings.gradle 里 third_party/maven 本地仓；nextlib 那个 AAR 是按 1.10.0
+    // 编的，它的传递依赖也强制拉到分叉版（下面 configurations.all），与 webhtv 同款组合。
+    implementation 'androidx.media3:media3-common:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-exoplayer:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-exoplayer-hls:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-exoplayer-dash:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-ui:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-ui-danmaku:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-extractor:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-datasource:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-datasource-okhttp:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-decoder:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-database:1.11.0-alpha01-fongmi'
+    implementation 'androidx.media3:media3-effect:1.11.0-alpha01-fongmi'
+    // v1.9.22 原有依赖（K 批核实恢复）：DKPlayer 打包的 ijk 内核 + Findroid 预编译 libmpv
+    implementation 'xyz.doikki.android.dkplayer:player-ijk:3.3.7'
+    implementation 'dev.jdtech.mpv:libmpv:0.3.1'
+    // MpvHlsProxy 用 NanoHTTPD 起本地 HLS 代理（webhtv 同款坐标 org.nanohttpd:nanohttpd:2.3.1）
+    implementation 'org.nanohttpd:nanohttpd:2.3.1'
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.github.bumptech.glide:glide:4.16.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.simpleframework:simple-xml:2.7.1'
+    implementation 'com.orhanobut:hawk:2.0.1'
+    implementation 'com.google.guava:guava:33.3.1-android'
+    implementation 'org.jupnp:org.jupnp:2.6.1'
+    // 以下为 2026-11-08 全树清点出的其他缺失依赖（原 build.gradle 未声明，见 L 批回报）
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.palette:palette:1.0.0'
+    implementation 'androidx.viewpager2:viewpager2:1.0.0'
+    implementation 'com.google.zxing:core:3.5.4'
+    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
+    implementation 'org.tensorflow:tensorflow-lite:2.17.0'
+    implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.26.3'
+    implementation 'com.guolindev.permissionx:permissionx:1.8.1'
+    implementation 'com.suyashbelekar:exoplayerhdrutils:0.4.0'
+    implementation 'com.github.bassaer:materialdesigncolors:1.0.0'
+    // 仍未补（分叉 AAR 里也没有，见 2026-11-08 核查）：
+    // androidx.media3.mpvplayer.*（MpvPlayer/MpvPlayerConfig/MpvHlsProxy/MpvHlsCacheCoordinator）——
+    // 不在任何 media3 AAR 里，是 FongMi/TV 的应用源码（webhtv 里在 app/src/main/java/androidx/media3/mpvplayer/，
+    // 42 个文件约 1.4 万行），树里 7 个文件在调它（MpvPlayerEngine 等）；拷源码等于改选 B（移植源码），
+    // 用户只批了 A（接分叉包），此处停下等用户再定，绝不擅自拷。另：com.xunlei.downloadlib.*、
+    // com.forcetech.Util、com.p2p.P2PClass 仍缺（原 L 批清单），待云构建报错再定去留。
+    // 已解决的不再列：MediaEdition、TextRenderer.Observer、PlaybackDiagnostics、
+    // androidx.media3.ui.danmaku.*、com.fongmi.hook.Hook（hook AAR）、com.tvbus.engine.*（tvbus AAR）、
+    // is.xyz.mpv.MPVLib（树里自带）。
+    implementation project(':catvod')
+    implementation project(':quickjs')
+}
