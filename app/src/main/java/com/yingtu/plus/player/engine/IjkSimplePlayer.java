@@ -57,7 +57,7 @@ import tv.danmaku.ijk.media.player.IjkTimedText;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 
 @UnstableApi
-class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener {
+class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPreparedListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener, IMediaPlayer.OnVideoSizeChangedListener, IMediaPlayer.OnTimedTextListener {
 
     private static final long STATE_REFRESH_INTERVAL_MS = 1000;
 
@@ -140,7 +140,17 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         super(Looper.getMainLooper());
         this.decode = decode;
         ijk = new IjkMediaPlayer();
-        ijk.setListener(this);
+        // 2026-11-08 云构建第一轮失败修法：官方 player-ijk:3.3.7 的 IMediaPlayer 没有 FongMi
+        // 改造版的 Listener 接口（setListener/resetListeners 是 FongMi 自带 ijk 源码才有的），
+        // 改走官方 AAR 自带的 7 个分开的 On*Listener 接口 + 对应 setter；resetListeners() 官方
+        // AbstractMediaPlayer 里有，保留不动。
+        ijk.setOnPreparedListener(this);
+        ijk.setOnCompletionListener(this);
+        ijk.setOnErrorListener(this);
+        ijk.setOnInfoListener(this);
+        ijk.setOnBufferingUpdateListener(this);
+        ijk.setOnVideoSizeChangedListener(this);
+        ijk.setOnTimedTextListener(this);
         ijk.setOnNativeInvokeListener(this::onNativeInvoke);
         hlsProxy = new MpvHlsProxy(PlayerSetting.IJK);
         stateRefreshRunnable = this::refreshPlaybackState;
@@ -696,7 +706,8 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         invalidateState();
     }
 
-    @Override
+    // 官方 OnBufferingUpdateListener 只有 (IMediaPlayer, int) 一个方法，没有 long 重载，
+    // 这里的 long 版不再是接口实现，去掉 @Override（方法本身保留，回调不到它，不影响行为）。
     public void onBufferingUpdate(IMediaPlayer mp, long positionMs) {
         bufferingPositionMs = Math.max(0, positionMs);
         invalidateState();

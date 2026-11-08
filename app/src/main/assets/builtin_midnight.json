@@ -1,12 +1,12 @@
 {
- "spider": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+ "spider": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
  "sites": [
   {
    "key": "ZakaHuangguo",
    "name": "🔞黄果",
    "type": 3,
    "api": "csp_ZakaHuangguoAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -16,7 +16,7 @@
    "name": "🔞黑料不打烊",
    "type": 3,
    "api": "csp_ZakaHl365Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -26,7 +26,7 @@
    "name": "🔞lnkl",
    "type": 3,
    "api": "csp_ZakaLnklAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -36,7 +36,7 @@
    "name": "🔞sex8┃视频",
    "type": 3,
    "api": "csp_ZakaSex8Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -46,7 +46,7 @@
    "name": "🔞黄果短剧┃视频",
    "type": 3,
    "api": "csp_ZakaHgdjVAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -56,7 +56,7 @@
    "name": "🔞新快猫",
    "type": 3,
    "api": "csp_ZakaKm2Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -66,7 +66,7 @@
    "name": "🔞黄瓜视频",
    "type": 3,
    "api": "csp_ZakaCucumberAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -76,7 +76,7 @@
    "name": "🔞海角社区",
    "type": 3,
    "api": "csp_ZakaHaijiaoAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -86,7 +86,7 @@
    "name": "🔞麻豆",
    "type": 3,
    "api": "csp_ZakaMdAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -96,7 +96,7 @@
    "name": "🔞Utube",
    "type": 3,
    "api": "csp_ZakaUtubeAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -106,7 +106,7 @@
    "name": "🔞香蕉视频",
    "type": 3,
    "api": "csp_ZakaXjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -116,7 +116,7 @@
    "name": "🔞av91",
    "type": 3,
    "api": "csp_ZakaAv91Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -126,7 +126,7 @@
    "name": "🔞撸先生",
    "type": 3,
    "api": "csp_ZakaLxsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -136,7 +136,7 @@
    "name": "🔞🛡️鉴黄师┃原生",
    "type": 3,
    "api": "csp_ZakaJavrateAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -146,7 +146,7 @@
    "name": "🔞🆕JAV Verse┃资料库+双线路",
    "type": 3,
    "api": "csp_ZakaJavverseAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -156,7 +156,7 @@
    "name": "🔞🆕XSZAV┃无码·中文字幕",
    "type": 3,
    "api": "csp_ZakaXszavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -166,7 +166,7 @@
    "name": "🔞🆕AV01┃无码破解·多码率",
    "type": 3,
    "api": "csp_ZakaAv01Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -176,7 +176,7 @@
    "name": "🔞🆕爱液视频┃官方App接口",
    "type": 3,
    "api": "csp_ZakaAiyeAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -186,7 +186,7 @@
    "name": "🔞PUA独家爆料┃多域直取",
    "type": 3,
    "api": "csp_ZakaPuapuaAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -196,7 +196,7 @@
    "name": "🔞🆕糖心Fans┃设备登录+AES协议",
    "type": 3,
    "api": "csp_ZakaTxfansAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -206,7 +206,7 @@
    "name": "🔞🆕巨婴云播┃静态站整页包壳",
    "type": 3,
    "api": "csp_ZakaJuyinAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -216,7 +216,7 @@
    "name": "🔞🆕久久热┃KVS直取384P",
    "type": 3,
    "api": "csp_Zaka99jjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -226,7 +226,7 @@
    "name": "🔞🆕天天A片┃CF盾绕行上游",
    "type": 3,
    "api": "csp_ZakaDaydayAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -236,7 +236,7 @@
    "name": "🔞🆕DSAV影视┃加密网关直取",
    "type": 3,
    "api": "csp_ZakaDsavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -246,7 +246,7 @@
    "name": "🔞🆕快活影院┃静态站直取",
    "type": 3,
    "api": "csp_ZakaKuaihuoAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -256,7 +256,7 @@
    "name": "🔞🆕ns视频┃签到破VIP看正片",
    "type": 3,
    "api": "csp_ZakaNsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -266,7 +266,7 @@
    "name": "🔞🆕後宮電影院┃xvideos聚合",
    "type": 3,
    "api": "csp_ZakaJack20Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -276,7 +276,7 @@
    "name": "🔞🆕酷愛成人網┃WP全站直取",
    "type": 3,
    "api": "csp_ZakaCoolAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -286,7 +286,7 @@
    "name": "🔞🆕高清仓库┃免登直取",
    "type": 3,
    "api": "csp_ZakaGqckAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -296,7 +296,7 @@
    "name": "☁️115网盘┃扫码离线",
    "type": 3,
    "api": "csp_Zaka115Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -306,7 +306,7 @@
    "name": "🔞JAVPK┃磁力自动离线",
    "type": 3,
    "api": "csp_ZakaJavpkAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -316,7 +316,7 @@
    "name": "🔞🐦 推特涩涩┃PeKtino",
    "type": 3,
    "api": "csp_ZakaPektinoAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -326,7 +326,7 @@
    "name": "🔞🕛 午夜TV┃百万精选",
    "type": 3,
    "api": "csp_ZakaWyAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -336,7 +336,7 @@
    "name": "🔞📦 笔盒┃海量精选",
    "type": 3,
    "api": "csp_ZakaBhAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -346,7 +346,7 @@
    "name": "🔞七猫短剧┃VIP破解",
    "type": 3,
    "api": "csp_ZakaQmdjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -356,7 +356,7 @@
    "name": "🔞含羞草┃VIP破解",
    "type": 3,
    "api": "csp_ZakaHxcAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -366,7 +366,7 @@
    "name": "🔞Uu视频┃多线路",
    "type": 3,
    "api": "csp_ZakaUuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -376,7 +376,7 @@
    "name": "🔞520AV影城",
    "type": 3,
    "api": "csp_Zaka520avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -386,7 +386,7 @@
    "name": "🔞海角网┃hj2",
    "type": 3,
    "api": "csp_ZakaHjwAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -396,7 +396,7 @@
    "name": "🔞海角社区┃hj1",
    "type": 3,
    "api": "csp_ZakaHj1Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -406,7 +406,7 @@
    "name": "🔞🆕JAV380┃無碼",
    "type": 3,
    "api": "csp_ZakaJav380Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -416,7 +416,7 @@
    "name": "🔞🆕JavHer┃JAV庫",
    "type": 3,
    "api": "csp_ZakaJavherAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -426,7 +426,7 @@
    "name": "🔞AOXX69┃亞洲綜合",
    "type": 3,
    "api": "csp_ZakaAoxx69Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -436,7 +436,7 @@
    "name": "🔞JAVMAP┃日本AV大全",
    "type": 3,
    "api": "csp_ZakaJavmapAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -446,7 +446,7 @@
    "name": "🔞PIGAV┃朱古力",
    "type": 3,
    "api": "csp_ZakaPigavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -456,7 +456,7 @@
    "name": "🔞四虎┃免盾CDN",
    "type": 3,
    "api": "csp_ZakaSihuCdnAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -466,7 +466,7 @@
    "name": "🔞四虎┃4hu",
    "type": 3,
    "api": "csp_ZakaSihuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -476,7 +476,7 @@
    "name": "🔞🆕18AV主站┃本地代理",
    "type": 3,
    "api": "csp_Zaka18avMcgAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -486,7 +486,7 @@
    "name": "🔞🆕XX9┃金币站",
    "type": 3,
    "api": "csp_ZakaXx9Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -496,7 +496,7 @@
    "name": "🔞🆕69VJ┃xvideos片库",
    "type": 3,
    "api": "csp_Zaka69vjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -506,7 +506,7 @@
    "name": "🔞🆕Avbebe┃H動畫里番",
    "type": 3,
    "api": "csp_ZakaAvbebeAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -516,7 +516,7 @@
    "name": "🔞🆕AVCNN┃番号女优",
    "type": 3,
    "api": "csp_ZakaAvcnnAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -526,7 +526,7 @@
    "name": "🔞🆕AVPle┃免盾直取",
    "type": 3,
    "api": "csp_ZakaAvpleAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -536,7 +536,7 @@
    "name": "🔞🆕JAV.WINE┃日系高清",
    "type": 3,
    "api": "csp_ZakaJavwineAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -546,7 +546,7 @@
    "name": "🔞🆕nJAV┃中字无码",
    "type": 3,
    "api": "csp_ZakaNjavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -556,7 +556,7 @@
    "name": "🔞🆕JavHD中文字幕┃日本管",
    "type": 3,
    "api": "csp_ZakaJavhdAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -566,7 +566,7 @@
    "name": "🔞🆕鲍鱼盒子┃App直连",
    "type": 3,
    "api": "csp_ZakaBaoyuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -576,7 +576,7 @@
    "name": "🔞🆕妻友社区┃阅妹阁模块",
    "type": 3,
    "api": "csp_ZakaQysqAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -586,7 +586,7 @@
    "name": "🔞🆕黄果短剧App┃App网关",
    "type": 3,
    "api": "csp_ZakaHgdjAppAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -596,7 +596,7 @@
    "name": "🔞盒子AI视频┃747专线",
    "type": 3,
    "api": "csp_ZakaHzaiAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -606,7 +606,7 @@
    "name": "🔞阅妹阁┃App原版62站",
    "type": 3,
    "api": "csp_ZakaSekuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -616,7 +616,7 @@
    "name": "🔞看片站群┃App挖出14站",
    "type": 3,
    "api": "csp_ZakaYueMGeAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -626,7 +626,7 @@
    "name": "🔞阅妹阁模块2┃JavDB+51吃瓜",
    "type": 3,
    "api": "csp_ZakaYueMGe2Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -636,7 +636,7 @@
    "name": "🔞番茄视频┃免登入直取",
    "type": 3,
    "api": "csp_ZakaFqAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -646,7 +646,7 @@
    "name": "🔞WNZS┃网络杀手",
    "type": 3,
    "api": "csp_ZakaWnzsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -656,7 +656,7 @@
    "name": "🔞盒子AI视频┃原生",
    "type": 3,
    "api": "csp_ZakaHzaiAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -666,7 +666,7 @@
    "name": "🔞樱桃破解┃站群直连",
    "type": 3,
    "api": "csp_ZakaXmeAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "channelCode": "5051"
    },
@@ -679,7 +679,7 @@
    "name": "🔞土豆视频┃原生",
    "type": 3,
    "api": "csp_ZakaTudouAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -689,7 +689,7 @@
    "name": "🔞🍌香蕉视频H5┃免登入",
    "type": 3,
    "api": "csp_ZakaXjH5Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -699,7 +699,7 @@
    "name": "🔞快播至臻版┃下载页直取",
    "type": 3,
    "api": "csp_ZakaYkfAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -709,7 +709,7 @@
    "name": "🔞🍌香蕉视频┃免登入直取",
    "type": 3,
    "api": "csp_ZakaXjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -719,7 +719,7 @@
    "name": "🔞K站┃密钥直取",
    "type": 3,
    "api": "csp_ZakaKfzAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -729,7 +729,7 @@
    "name": "🔞MissAV官方┃过盾",
    "type": 3,
    "api": "csp_ZakaMissavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "base": "https://tv506.ystv.top",
     "miss": "https://missav.ws286.ystv.top"
@@ -743,7 +743,7 @@
    "name": "🔞🏆JAV排行榜┃1769部战力榜",
    "type": 3,
    "api": "csp_ZakaJavRankAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "https://javrank849.ystv.top",
     "miss": "https://missav.ws286.ystv.top"
@@ -757,7 +757,7 @@
    "name": "🔞91成人短剧┃全站",
    "type": 3,
    "api": "csp_ZakaCrdjAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -767,7 +767,7 @@
    "name": "🔞JAV目錄┃免登录直取",
    "type": 3,
    "api": "csp_ZakaJmAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -777,7 +777,7 @@
    "name": "🔞中文秘密资源┃国产+有码",
    "type": 3,
    "api": "csp_ZakaCnAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -787,7 +787,7 @@
    "name": "🔞👑帝皇影视┃4.5万部",
    "type": 3,
    "api": "csp_ZakaGetavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://getav.me",
     "static": "https://static.worldstatic.com",
@@ -803,7 +803,7 @@
    "name": "🔞👑帝皇影视┃黄色仓库",
    "type": 3,
    "api": "csp_Zaka69ckAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "brand": "👑帝皇影视",
     "tg": "https://t.me/+3t5XRPPo9mlkZDRl"
@@ -817,7 +817,7 @@
    "name": "🔞👑帝皇影视┃黄色仓库②",
    "type": 3,
    "api": "csp_ZakaHsckAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "brand": "👑帝皇影视",
     "tg": "https://t.me/+3t5XRPPo9mlkZDRl"
@@ -831,7 +831,7 @@
    "name": "🔞🖼八色套图┃1.4万套",
    "type": 3,
    "api": "csp_ZakaSe8Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://8se.me",
     "cdn": "https://img.xchina.io",
@@ -847,7 +847,7 @@
    "name": "🔞MissAV官方┃原生",
    "type": 3,
    "api": "csp_ZakaMissavOffAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://missav.live",
     "relay": "https://tv506.ystv.top",
@@ -862,7 +862,7 @@
    "name": "🔞MissAV镜像┃免代理",
    "type": 3,
    "api": "csp_ZakaMirrorAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://www.thisav.my"
    },
@@ -875,7 +875,7 @@
    "name": "🔞📁成人资源中心",
    "type": 3,
    "api": "csp_ZakaAdultResAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "base": "https://tv506.ystv.top",
     "miss": "https://missav.ws286.ystv.top"
@@ -889,7 +889,7 @@
    "name": "🔞🎬123AV┃原生",
    "type": 3,
    "api": "csp_Zaka123avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -899,7 +899,7 @@
    "name": "🔞🎬懂色帝┃原生",
    "type": 3,
    "api": "csp_ZakaDsdAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -909,7 +909,7 @@
    "name": "🔞🔍whos识图┃原生",
    "type": 3,
    "api": "csp_ZakaWhosAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -919,7 +919,7 @@
    "name": "🔞麻豆视频┃LissAV",
    "type": 3,
    "api": "csp_ZakaLissavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "section": "asian"
    },
@@ -932,7 +932,7 @@
    "name": "🔞麻豆视频┃国产区",
    "type": 3,
    "api": "csp_ZakaLissavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "section": "domestic"
    },
@@ -945,7 +945,7 @@
    "name": "🔞Jable┃JAD免代理",
    "type": 3,
    "api": "csp_ZakaJableAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -955,7 +955,7 @@
    "name": "🔞xHamster┃XH免代理",
    "type": 3,
    "api": "csp_ZakaXhamsterAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -965,7 +965,7 @@
    "name": "🔞肉视频┃ROU免代理",
    "type": 3,
    "api": "csp_ZakaRouAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -975,7 +975,7 @@
    "name": "🔞321AV┃中文字幕",
    "type": 3,
    "api": "csp_Zaka321avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -985,7 +985,7 @@
    "name": "🔞好色TV┃PB免代理",
    "type": 3,
    "api": "csp_ZakaPbAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -995,7 +995,7 @@
    "name": "🔞rouAV┃PB免代理",
    "type": 3,
    "api": "csp_ZakaRouavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1005,7 +1005,7 @@
    "name": "🔞18AV┃本地代理",
    "type": 3,
    "api": "csp_Zaka18avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1015,7 +1015,7 @@
    "name": "🔞大哥视频┃清单转写",
    "type": 3,
    "api": "csp_ZakaDageAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1025,7 +1025,7 @@
    "name": "🔞SupJav┃中继免盾",
    "type": 3,
    "api": "csp_ZakaSupjavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "relay": "https://py.fzcrym.link:1314"
    },
@@ -1038,7 +1038,7 @@
    "name": "🔞Pornhub┃免代理",
    "type": 3,
    "api": "csp_ZakaPornhubAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1048,7 +1048,7 @@
    "name": "🔞YouTube成人版┃wyll",
    "type": 3,
    "api": "csp_ZakaRohuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1058,7 +1058,7 @@
    "name": "🔞SuperPorn┃欧美免代理",
    "type": 3,
    "api": "csp_ZakaKvsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "sporn"
    },
@@ -1071,7 +1071,7 @@
    "name": "🔞YESPORN┃欧美免代理",
    "type": 3,
    "api": "csp_ZakaKvsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "yporn"
    },
@@ -1084,7 +1084,7 @@
    "name": "🔞OKXXX┃欧美免代理",
    "type": 3,
    "api": "csp_ZakaKvsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "okxxx"
    },
@@ -1097,7 +1097,7 @@
    "name": "🔞591AV┃亚洲素人",
    "type": 3,
    "api": "csp_ZakaKvsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "591av"
    },
@@ -1110,7 +1110,7 @@
    "name": "🔞AVJOY┃欧美免代理",
    "type": 3,
    "api": "csp_ZakaAvjoyAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1120,7 +1120,7 @@
    "name": "🔞Hanime1┃里番H动漫",
    "type": 3,
    "api": "csp_ZakaHmAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1130,7 +1130,7 @@
    "name": "🔞XVIDEOS┃欧美免代理",
    "type": 3,
    "api": "csp_ZakaXvAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1140,7 +1140,7 @@
    "name": "🔞PTT01┃三级稀缺",
    "type": 3,
    "api": "csp_ZakaPttAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1150,7 +1150,7 @@
    "name": "🔞CartoonPorno┃欧美卡通",
    "type": 3,
    "api": "csp_ZakaKvsAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "site": "cporn"
    },
@@ -1163,7 +1163,7 @@
    "name": "🔞Xanimu┃里番动漫",
    "type": 3,
    "api": "csp_ZakaXanimuAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1173,7 +1173,7 @@
    "name": "🔞XX01┃无码流出",
    "type": 3,
    "api": "csp_ZakaXx01Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1183,7 +1183,7 @@
    "name": "🔞Netflav┃帝皇影视",
    "type": 3,
    "api": "csp_ZakaNetflavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1193,7 +1193,7 @@
    "name": "🔞正妹AV┃原生",
    "type": 3,
    "api": "csp_ZakaGoodavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1203,7 +1203,7 @@
    "name": "🔞AV6K┃原生",
    "type": 3,
    "api": "csp_ZakaAv6kAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1213,7 +1213,7 @@
    "name": "🔞J-AV┃原生",
    "type": 3,
    "api": "csp_ZakaJavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1223,7 +1223,7 @@
    "name": "🔞JAV777┃原生",
    "type": 3,
    "api": "csp_ZakaJav777Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1233,7 +1233,7 @@
    "name": "🔞AirAV┃原生",
    "type": 3,
    "api": "csp_ZakaAiravAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "relay": "https://py.fzcrym.link:1314"
    },
@@ -1246,7 +1246,7 @@
    "name": "🔞👑93站合一",
    "type": 3,
    "api": "csp_Zaka93Amns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1256,7 +1256,7 @@
    "name": "🔞GO2AV┃帝皇影视",
    "type": 3,
    "api": "csp_ZakaGo2avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1266,7 +1266,7 @@
    "name": "🔞7MMTV┃帝皇影视",
    "type": 3,
    "api": "csp_Zaka7mmAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1276,7 +1276,7 @@
    "name": "🔞GGJAV┃帝皇影视",
    "type": 3,
    "api": "csp_ZakaGgjavAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1286,7 +1286,7 @@
    "name": "🔞AV大平台┃蝴蝶",
    "type": 3,
    "api": "csp_Zaka9SexAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1296,7 +1296,7 @@
    "name": "🔞小黄鸭┃xhy11",
    "type": 3,
    "api": "csp_ZakaXhyAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://www.xhy11.cc",
     "brand": "👑帝皇影视",
@@ -1311,7 +1311,7 @@
    "name": "🔞蜜桃社┃pj5ti",
    "type": 3,
    "api": "csp_ZakaPj5tiAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1321,7 +1321,7 @@
    "name": "⚙️配置┃中心",
    "type": 3,
    "api": "csp_AAConfigAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1331,7 +1331,7 @@
    "name": "🔞tg频道",
    "type": 3,
    "api": "csp_ZakaTgAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "size": 50,
     "block": 100,
@@ -1363,6 +1363,822 @@
      {
       "name": "收藏 AV",
       "user": "shoucangav"
+     },
+     {
+      "name": "精选网红御姐美女免费视频！",
+      "user": "wwhjieym"
+     },
+     {
+      "name": "日本精品av|中文字幕|Jav",
+      "user": "jav_all"
+     },
+     {
+      "name": "AV交流群",
+      "user": "AV688Group"
+     },
+     {
+      "name": "JAV中字",
+      "user": "onlyjavzh"
+     },
+     {
+      "name": "夫妻社绿帽换妻",
+      "user": "lvmaodjw"
+     },
+     {
+      "name": "🍥多多纯净软件分享🍥",
+      "user": "yydsys"
+     },
+     {
+      "name": "海角少妇御姐少女",
+      "user": "hing475"
+     },
+     {
+      "name": "日本AV|母子乱伦|巨乳调教💯",
+      "user": "JableTVB"
+     },
+     {
+      "name": "龙傲中转站（交流频道）",
+      "user": "longaozzz1"
+     },
+     {
+      "name": "推特X日本素人",
+      "user": "xunhuanzyk"
+     },
+     {
+      "name": "日本 AV💋 无码 高清",
+      "user": "AVGQWM8"
+     },
+     {
+      "name": "时光网🔞女主播的另一面",
+      "user": "hbzh66"
+     },
+     {
+      "name": "无码FC2｜优质精选｜高画质｜磁力链接｜115·迅雷·PikPak",
+      "user": "NEWFC2"
+     },
+     {
+      "name": "ai短剧 黄果短剧",
+      "user": "AiHg1"
+     },
+     {
+      "name": "反差女神博物馆",
+      "user": "nsbwg29999"
+     },
+     {
+      "name": "AV番号精选-种子磁链下载",
+      "user": "javbest"
+     },
+     {
+      "name": "AV日报-无码|步兵|种子|磁链|下载|高清|日本",
+      "user": "avpush2"
+     },
+     {
+      "name": "AI成人短剧/黄果短剧/黄豆魔改短剧",
+      "user": "craimgd"
+     },
+     {
+      "name": "推特精选",
+      "user": "bbbjhbgq"
+     },
+     {
+      "name": "推特X极品姐姐",
+      "user": "tgtgxiuren"
+     },
+     {
+      "name": "磁力链接精选福利集",
+      "user": "cili8888"
+     },
+     {
+      "name": "抖音网红丨色料吃瓜",
+      "user": "seliao212"
+     },
+     {
+      "name": "糖心丨麻豆丨swag丨国产AV",
+      "user": "haijiao133"
+     },
+     {
+      "name": "鉴黄小镇",
+      "user": "jianhuangxxiaoz"
+     },
+     {
+      "name": "萝莉自拍偷拍",
+      "user": "hfdtydhgfdhtr"
+     },
+     {
+      "name": "网红主播直播",
+      "user": "hg678678"
+     },
+     {
+      "name": "淫妻反差俱乐部",
+      "user": "lspjsn"
+     },
+     {
+      "name": "（海角 ）绿茶写真",
+      "user": "xiezhen1"
+     },
+     {
+      "name": "🎥日本AV| JAV |中文字幕|番号资源库",
+      "user": "porncloud004"
+     },
+     {
+      "name": "🎥 色情云|日本AV| JAV |中文字幕|番号资源库",
+      "user": "av8plus"
+     },
+     {
+      "name": "日本 AV 一本道",
+      "user": "AVkanpian01"
+     },
+     {
+      "name": "母子乱伦|伦理|妈妈",
+      "user": "muziLL01"
+     },
+     {
+      "name": "绿帽精选🅥少妇人妻",
+      "user": "s4tv5Wm2ACBw"
+     },
+     {
+      "name": "AV｜有码AV｜无码AV",
+      "user": "youwu1av"
+     },
+     {
+      "name": "【片多多】交流社区",
+      "user": "pianduoduo9"
+     },
+     {
+      "name": "🅰️明星短剧|Ai短剧社🅰️",
+      "user": "duanjvshev1"
+     },
+     {
+      "name": "萝莉💕足控",
+      "user": "qifulaoshirenbis"
+     },
+     {
+      "name": "成人小说/色情有声小说🔴",
+      "user": "YSxiaoshuo01"
+     },
+     {
+      "name": "甄选AI | AI成人短剧 |黄果短剧",
+      "user": "link_ces"
+     },
+     {
+      "name": "酒店 监控 直播 偷窥 大学城",
+      "user": "xianfeng192"
+     },
+     {
+      "name": "网红 肛交 直播 泄密",
+      "user": "knapianzhibo"
+     },
+     {
+      "name": "AI短剧丨成人AI丨成人短剧",
+      "user": "aivovvo"
+     },
+     {
+      "name": "AI成人短剧 免费看 【黄果短剧】",
+      "user": "ASC2256"
+     },
+     {
+      "name": "糖心丨AV小站",
+      "user": "flapxz3"
+     },
+     {
+      "name": "短剧在线看(短剧频道）",
+      "user": "DuanJuPD"
+     },
+     {
+      "name": "绝美反差学生少妇",
+      "user": "JMFCXMG"
+     },
+     {
+      "name": "AV无码原片-日本",
+      "user": "avwmjav"
+     },
+     {
+      "name": "推特| onlyfans | 糖心 | 各大传媒 综合福利群",
+      "user": "tuite_onlyfans_vlog"
+     },
+     {
+      "name": "猪猪侠 GG Bond",
+      "user": "zhuzhuxia999666"
+     },
+     {
+      "name": "AV收藏|优质精选|无码破解|中文字幕|番号磁力大全",
+      "user": "AV688"
+     },
+     {
+      "name": "电影先锋",
+      "user": "dyxfvip"
+     },
+     {
+      "name": "飞鸟社备用",
+      "user": "seqingtvb"
+     },
+     {
+      "name": "🇭🇰男人唔咸濕AV專線",
+      "user": "mic6388av"
+     },
+     {
+      "name": "ai短剧 成人漫改",
+      "user": "ai6944"
+     },
+     {
+      "name": "AV精选|AI短剧|中文字幕|无码|破解|国产|直播|欧美",
+      "user": "avjx_zongbu"
+     },
+     {
+      "name": "日本AV",
+      "user": "tbheji"
+     },
+     {
+      "name": "推特of国产丝袜足交",
+      "user": "laochenzukong"
+     },
+     {
+      "name": "银河舰のai成人短剧制作",
+      "user": "huangmangaix"
+     },
+     {
+      "name": "推特onlyfans网红福利姬",
+      "user": "FLJMRGX"
+     },
+     {
+      "name": "推特|fansone|福利分享",
+      "user": "JMsfJZY"
+     },
+     {
+      "name": "日本AV丨破解无码丨巨乳颜值",
+      "user": "wumingzhidao123"
+     },
+     {
+      "name": "AI成人短剧（黄果短剧最全版）",
+      "user": "snwohu"
+     },
+     {
+      "name": "国产成人短剧🔞Ai精选",
+      "user": "sese0002"
+     },
+     {
+      "name": "中文字幕 | 日本AV即是正义！",
+      "user": "cosfulimax"
+     },
+     {
+      "name": "AV/番号/无码/高清💿",
+      "user": "AV_cao"
+     },
+     {
+      "name": "AI短剧⭕️真人擦边短剧",
+      "user": "mugouyinqiesf1245"
+     },
+     {
+      "name": "海角社区母子强奸乱伦俱乐部",
+      "user": "chengdudiyi8"
+     },
+     {
+      "name": "涩涩之家｜推特｜网红｜福利",
+      "user": "Lovese1"
+     },
+     {
+      "name": "st站每日开票预览",
+      "user": "MXFLJ6"
+     },
+     {
+      "name": "尤物私密档案の收藏研究所",
+      "user": "kzwbx8"
+     },
+     {
+      "name": "日本精选无码优质av资源分享",
+      "user": "rbjx336"
+     },
+     {
+      "name": "甜心俱乐部の私密收藏基地",
+      "user": "kbxzs8"
+     },
+     {
+      "name": "cos洛丽塔 高校",
+      "user": "gaoxiao854"
+     },
+     {
+      "name": "反差白虎母狗少妇合集",
+      "user": "fcii91"
+     },
+     {
+      "name": "人妻|素人|少妇",
+      "user": "SURENrenqi01"
+     },
+     {
+      "name": "PIKPAK成人磁力资源大全",
+      "user": "pikpaklove"
+     },
+     {
+      "name": "日本AV中文学习资料",
+      "user": "rbav00"
+     },
+     {
+      "name": "Cos涩涩大杂烩",
+      "user": "CosSSDZH"
+     },
+     {
+      "name": "小七分享社-破解软件VPN",
+      "user": "XQFXS"
+     },
+     {
+      "name": "推特反差淫妻",
+      "user": "tuite905"
+     },
+     {
+      "name": "日本AV｜中文字幕｜无码高清",
+      "user": "misscctav"
+     },
+     {
+      "name": "国产AV｜优质精选｜@AV114514",
+      "user": "AV114514"
+     },
+     {
+      "name": "每日大赛|中文福利",
+      "user": "ZWmeiriDS"
+     },
+     {
+      "name": "【番号帝】番号查询",
+      "user": "FLLAVWM"
+     },
+     {
+      "name": "电影天堂|电影视界|超清影视",
+      "user": "TG1178"
+     },
+     {
+      "name": "经典电影|影视天地|影视精选",
+      "user": "ahmufa18"
+     },
+     {
+      "name": "涩涩窝窝",
+      "user": "diiejl"
+     },
+     {
+      "name": "TG免费高速代理-免费VPN高速节点",
+      "user": "gydlpd"
+     },
+     {
+      "name": "BiBi色区🔞丨自拍丨熟女丨国产",
+      "user": "bisequcom"
+     },
+     {
+      "name": "极品-互联网珍藏",
+      "user": "yujiezy"
+     },
+     {
+      "name": "全网精选资源🔞",
+      "user": "xianyu44"
+     },
+     {
+      "name": "老司机电视剧-归档",
+      "user": "LSJTV1"
+     },
+     {
+      "name": "海角社区|偷情乱伦精选",
+      "user": "haijiaojingxuan"
+     },
+     {
+      "name": "人妻少妇绿帽",
+      "user": "PornhubSexCN"
+     },
+     {
+      "name": "🔞反差|吃瓜|探花|直播|偷拍|口交🥵",
+      "user": "yesluvip"
+     },
+     {
+      "name": "熟女人妻少妇",
+      "user": "HTPorn13"
+     }
+    ]
+   },
+   "searchable": 1,
+   "quickSearch": 1,
+   "filterable": 1
+  },
+  {
+   "key": "ZakaTgMovie",
+   "name": "🔞TG电影",
+   "type": 3,
+   "api": "csp_ZakaTgMovieAmns",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
+   "ext": {
+    "mirror": "https://tg.i-c-a.su",
+    "size": 20,
+    "autoDiscover": false,
+    "groupByTag": false,
+    "scanPages": 3,
+    "hotName": "🔥全部频道",
+    "channels": [
+     {
+      "name": "超清AV",
+      "user": "cctv_av"
+     },
+     {
+      "name": "那些极品姐姐",
+      "user": "zfjp1024"
+     },
+     {
+      "name": "麻豆 girl",
+      "user": "madougirl"
+     },
+     {
+      "name": "黄果漫剧",
+      "user": "hgmanju"
+     },
+     {
+      "name": "海角 AV",
+      "user": "hjgc0"
+     },
+     {
+      "name": "无码 91",
+      "user": "wmav91"
+     },
+     {
+      "name": "收藏 AV",
+      "user": "shoucangav"
+     },
+     {
+      "name": "精选网红御姐美女免费视频！",
+      "user": "wwhjieym"
+     },
+     {
+      "name": "日本精品av|中文字幕|Jav",
+      "user": "jav_all"
+     },
+     {
+      "name": "AV交流群",
+      "user": "AV688Group"
+     },
+     {
+      "name": "JAV中字",
+      "user": "onlyjavzh"
+     },
+     {
+      "name": "夫妻社绿帽换妻",
+      "user": "lvmaodjw"
+     },
+     {
+      "name": "🍥多多纯净软件分享🍥",
+      "user": "yydsys"
+     },
+     {
+      "name": "海角少妇御姐少女",
+      "user": "hing475"
+     },
+     {
+      "name": "日本AV|母子乱伦|巨乳调教💯",
+      "user": "JableTVB"
+     },
+     {
+      "name": "龙傲中转站（交流频道）",
+      "user": "longaozzz1"
+     },
+     {
+      "name": "推特X日本素人",
+      "user": "xunhuanzyk"
+     },
+     {
+      "name": "日本 AV💋 无码 高清",
+      "user": "AVGQWM8"
+     },
+     {
+      "name": "时光网🔞女主播的另一面",
+      "user": "hbzh66"
+     },
+     {
+      "name": "无码FC2｜优质精选｜高画质｜磁力链接｜115·迅雷·PikPak",
+      "user": "NEWFC2"
+     },
+     {
+      "name": "ai短剧 黄果短剧",
+      "user": "AiHg1"
+     },
+     {
+      "name": "反差女神博物馆",
+      "user": "nsbwg29999"
+     },
+     {
+      "name": "AV番号精选-种子磁链下载",
+      "user": "javbest"
+     },
+     {
+      "name": "AV日报-无码|步兵|种子|磁链|下载|高清|日本",
+      "user": "avpush2"
+     },
+     {
+      "name": "AI成人短剧/黄果短剧/黄豆魔改短剧",
+      "user": "craimgd"
+     },
+     {
+      "name": "推特精选",
+      "user": "bbbjhbgq"
+     },
+     {
+      "name": "推特X极品姐姐",
+      "user": "tgtgxiuren"
+     },
+     {
+      "name": "磁力链接精选福利集",
+      "user": "cili8888"
+     },
+     {
+      "name": "抖音网红丨色料吃瓜",
+      "user": "seliao212"
+     },
+     {
+      "name": "糖心丨麻豆丨swag丨国产AV",
+      "user": "haijiao133"
+     },
+     {
+      "name": "鉴黄小镇",
+      "user": "jianhuangxxiaoz"
+     },
+     {
+      "name": "萝莉自拍偷拍",
+      "user": "hfdtydhgfdhtr"
+     },
+     {
+      "name": "网红主播直播",
+      "user": "hg678678"
+     },
+     {
+      "name": "淫妻反差俱乐部",
+      "user": "lspjsn"
+     },
+     {
+      "name": "（海角 ）绿茶写真",
+      "user": "xiezhen1"
+     },
+     {
+      "name": "🎥日本AV| JAV |中文字幕|番号资源库",
+      "user": "porncloud004"
+     },
+     {
+      "name": "🎥 色情云|日本AV| JAV |中文字幕|番号资源库",
+      "user": "av8plus"
+     },
+     {
+      "name": "日本 AV 一本道",
+      "user": "AVkanpian01"
+     },
+     {
+      "name": "母子乱伦|伦理|妈妈",
+      "user": "muziLL01"
+     },
+     {
+      "name": "绿帽精选🅥少妇人妻",
+      "user": "s4tv5Wm2ACBw"
+     },
+     {
+      "name": "AV｜有码AV｜无码AV",
+      "user": "youwu1av"
+     },
+     {
+      "name": "【片多多】交流社区",
+      "user": "pianduoduo9"
+     },
+     {
+      "name": "🅰️明星短剧|Ai短剧社🅰️",
+      "user": "duanjvshev1"
+     },
+     {
+      "name": "萝莉💕足控",
+      "user": "qifulaoshirenbis"
+     },
+     {
+      "name": "成人小说/色情有声小说🔴",
+      "user": "YSxiaoshuo01"
+     },
+     {
+      "name": "甄选AI | AI成人短剧 |黄果短剧",
+      "user": "link_ces"
+     },
+     {
+      "name": "酒店 监控 直播 偷窥 大学城",
+      "user": "xianfeng192"
+     },
+     {
+      "name": "网红 肛交 直播 泄密",
+      "user": "knapianzhibo"
+     },
+     {
+      "name": "AI短剧丨成人AI丨成人短剧",
+      "user": "aivovvo"
+     },
+     {
+      "name": "AI成人短剧 免费看 【黄果短剧】",
+      "user": "ASC2256"
+     },
+     {
+      "name": "糖心丨AV小站",
+      "user": "flapxz3"
+     },
+     {
+      "name": "短剧在线看(短剧频道）",
+      "user": "DuanJuPD"
+     },
+     {
+      "name": "绝美反差学生少妇",
+      "user": "JMFCXMG"
+     },
+     {
+      "name": "AV无码原片-日本",
+      "user": "avwmjav"
+     },
+     {
+      "name": "推特| onlyfans | 糖心 | 各大传媒 综合福利群",
+      "user": "tuite_onlyfans_vlog"
+     },
+     {
+      "name": "猪猪侠 GG Bond",
+      "user": "zhuzhuxia999666"
+     },
+     {
+      "name": "AV收藏|优质精选|无码破解|中文字幕|番号磁力大全",
+      "user": "AV688"
+     },
+     {
+      "name": "电影先锋",
+      "user": "dyxfvip"
+     },
+     {
+      "name": "飞鸟社备用",
+      "user": "seqingtvb"
+     },
+     {
+      "name": "🇭🇰男人唔咸濕AV專線",
+      "user": "mic6388av"
+     },
+     {
+      "name": "ai短剧 成人漫改",
+      "user": "ai6944"
+     },
+     {
+      "name": "AV精选|AI短剧|中文字幕|无码|破解|国产|直播|欧美",
+      "user": "avjx_zongbu"
+     },
+     {
+      "name": "日本AV",
+      "user": "tbheji"
+     },
+     {
+      "name": "推特of国产丝袜足交",
+      "user": "laochenzukong"
+     },
+     {
+      "name": "银河舰のai成人短剧制作",
+      "user": "huangmangaix"
+     },
+     {
+      "name": "推特onlyfans网红福利姬",
+      "user": "FLJMRGX"
+     },
+     {
+      "name": "推特|fansone|福利分享",
+      "user": "JMsfJZY"
+     },
+     {
+      "name": "日本AV丨破解无码丨巨乳颜值",
+      "user": "wumingzhidao123"
+     },
+     {
+      "name": "AI成人短剧（黄果短剧最全版）",
+      "user": "snwohu"
+     },
+     {
+      "name": "国产成人短剧🔞Ai精选",
+      "user": "sese0002"
+     },
+     {
+      "name": "中文字幕 | 日本AV即是正义！",
+      "user": "cosfulimax"
+     },
+     {
+      "name": "AV/番号/无码/高清💿",
+      "user": "AV_cao"
+     },
+     {
+      "name": "AI短剧⭕️真人擦边短剧",
+      "user": "mugouyinqiesf1245"
+     },
+     {
+      "name": "海角社区母子强奸乱伦俱乐部",
+      "user": "chengdudiyi8"
+     },
+     {
+      "name": "涩涩之家｜推特｜网红｜福利",
+      "user": "Lovese1"
+     },
+     {
+      "name": "st站每日开票预览",
+      "user": "MXFLJ6"
+     },
+     {
+      "name": "尤物私密档案の收藏研究所",
+      "user": "kzwbx8"
+     },
+     {
+      "name": "日本精选无码优质av资源分享",
+      "user": "rbjx336"
+     },
+     {
+      "name": "甜心俱乐部の私密收藏基地",
+      "user": "kbxzs8"
+     },
+     {
+      "name": "cos洛丽塔 高校",
+      "user": "gaoxiao854"
+     },
+     {
+      "name": "反差白虎母狗少妇合集",
+      "user": "fcii91"
+     },
+     {
+      "name": "人妻|素人|少妇",
+      "user": "SURENrenqi01"
+     },
+     {
+      "name": "PIKPAK成人磁力资源大全",
+      "user": "pikpaklove"
+     },
+     {
+      "name": "日本AV中文学习资料",
+      "user": "rbav00"
+     },
+     {
+      "name": "Cos涩涩大杂烩",
+      "user": "CosSSDZH"
+     },
+     {
+      "name": "小七分享社-破解软件VPN",
+      "user": "XQFXS"
+     },
+     {
+      "name": "推特反差淫妻",
+      "user": "tuite905"
+     },
+     {
+      "name": "日本AV｜中文字幕｜无码高清",
+      "user": "misscctav"
+     },
+     {
+      "name": "国产AV｜优质精选｜@AV114514",
+      "user": "AV114514"
+     },
+     {
+      "name": "每日大赛|中文福利",
+      "user": "ZWmeiriDS"
+     },
+     {
+      "name": "【番号帝】番号查询",
+      "user": "FLLAVWM"
+     },
+     {
+      "name": "电影天堂|电影视界|超清影视",
+      "user": "TG1178"
+     },
+     {
+      "name": "经典电影|影视天地|影视精选",
+      "user": "ahmufa18"
+     },
+     {
+      "name": "涩涩窝窝",
+      "user": "diiejl"
+     },
+     {
+      "name": "TG免费高速代理-免费VPN高速节点",
+      "user": "gydlpd"
+     },
+     {
+      "name": "BiBi色区🔞丨自拍丨熟女丨国产",
+      "user": "bisequcom"
+     },
+     {
+      "name": "极品-互联网珍藏",
+      "user": "yujiezy"
+     },
+     {
+      "name": "全网精选资源🔞",
+      "user": "xianyu44"
+     },
+     {
+      "name": "老司机电视剧-归档",
+      "user": "LSJTV1"
+     },
+     {
+      "name": "海角社区|偷情乱伦精选",
+      "user": "haijiaojingxuan"
+     },
+     {
+      "name": "人妻少妇绿帽",
+      "user": "PornhubSexCN"
+     },
+     {
+      "name": "🔞反差|吃瓜|探花|直播|偷拍|口交🥵",
+      "user": "yesluvip"
+     },
+     {
+      "name": "熟女人妻少妇",
+      "user": "HTPorn13"
      }
     ]
    },
@@ -1375,7 +2191,7 @@
    "name": "🛴推送┃播放",
    "type": 3,
    "api": "csp_PushAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1385,7 +2201,7 @@
    "name": "📁资源┃中心",
    "type": 3,
    "api": "csp_MyAllAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1395,7 +2211,7 @@
    "name": "🔞JAVDB┃磁力自动离线",
    "type": 3,
    "api": "csp_ZakaJavdbAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1405,7 +2221,7 @@
    "name": "🍎红果短剧·听书┃官方直采+自建朗读",
    "type": 3,
    "api": "csp_ZakaHongguoAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://hongguoduanju.com"
    },
@@ -1418,7 +2234,7 @@
    "name": "🔞探花短视频┃thdh",
    "type": 3,
    "api": "csp_ZakaThdhApp",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://thdhhaj.xyz",
     "brand": "🔞 探花短视频",
@@ -1433,7 +2249,7 @@
    "name": "🔞妻社┃qishe",
    "type": 3,
    "api": "csp_ZakaQiSheAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "host": "https://qs.qsh52693.org.cn",
     "brand": "🔞 妻社",
@@ -1448,7 +2264,7 @@
    "name": "🔞海角社区┃App版",
    "type": 3,
    "api": "csp_ZakaHjAppAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "brand": "🔞 海角社区App",
     "tg": "https://t.me/+3t5XRPPo9mlkZDRl"
@@ -1462,7 +2278,7 @@
    "name": "🔞17rip┃底部导航分类",
    "type": 3,
    "api": "csp_Zaka17ripAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "ext": {
     "brand": "🔞 17rip",
     "tg": "https://t.me/+3t5XRPPo9mlkZDRl"
@@ -1476,7 +2292,7 @@
    "name": "🔞JavPlay┃免登录720",
    "type": 3,
    "api": "csp_ZakaJa6playAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1486,7 +2302,7 @@
    "name": "🔞JavGuru┃六线自动切",
    "type": 3,
    "api": "csp_ZakaJavguruAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1496,7 +2312,7 @@
    "name": "🔞52AV┃華語論壇",
    "type": 3,
    "api": "csp_Zaka52avAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1506,7 +2322,7 @@
    "name": "🔞MissAVt┃原生",
    "type": 3,
    "api": "csp_ZakaMissavtAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1516,7 +2332,7 @@
    "name": "🔞黄瓜┃黄瓜看片",
    "type": 3,
    "api": "csp_ZakaHgkpzAmns",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1526,7 +2342,7 @@
    "name": "🔞悟空传媒",
    "type": 3,
    "api": "csp_Wukong",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
@@ -1536,7 +2352,7 @@
    "name": "🔞91成人",
    "type": 3,
    "api": "csp_Chengren91",
-   "jar": "assets/jars/zakatv.jar;md5;67bdfc39ae6330daee73f0a0b2e58433",
+   "jar": "assets/jars/zakatv.jar;md5;44c139f76ca17a4ffcfe89df5bb19910",
    "searchable": 1,
    "quickSearch": 1,
    "filterable": 1
