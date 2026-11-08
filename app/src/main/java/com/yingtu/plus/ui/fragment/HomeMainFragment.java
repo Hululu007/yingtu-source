@@ -68,37 +68,50 @@ public class HomeMainFragment extends BaseLazyFragment {
 
     @Override
     protected void init(View root) {
-        filterContainer = root.findViewById(R.id.filterContainer);
-        rvCategory = root.findViewById(R.id.rvCategory);
-        rvContent = root.findViewById(R.id.rvContent);
-        progress = root.findViewById(R.id.progress);
-        tvHint = root.findViewById(R.id.tvHint);
+        // 闪退加固（2.0.0.1108 第三轮）：启动链兜底，整段包 try/catch，
+        // 任何漏网的异常都退化成空首页，不杀进程。顺序与正常路径不变。
+        try {
+            filterContainer = root.findViewById(R.id.filterContainer);
+            rvCategory = root.findViewById(R.id.rvCategory);
+            rvContent = root.findViewById(R.id.rvContent);
+            progress = root.findViewById(R.id.progress);
+            tvHint = root.findViewById(R.id.tvHint);
 
-        rvCategory.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
-        categoryAdapter = new CategoryTabAdapter();
-        categoryAdapter.setOnTabClick(this::onCategorySelected);
-        rvCategory.setAdapter(categoryAdapter);
+            rvCategory.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
+            categoryAdapter = new CategoryTabAdapter();
+            categoryAdapter.setOnTabClick(this::onCategorySelected);
+            rvCategory.setAdapter(categoryAdapter);
 
-        GridLayoutManager glm = new GridLayoutManager(getContext(), 3);
-        rvContent.setLayoutManager(glm);
-        adapter = new GridMovieAdapter();
-        adapter.setOnItemClick(movie -> {
-            Intent i = new Intent(getActivity(), DetailActivity.class);
-            i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
-            i.putExtra(DetailActivity.KEY_VOD_ID, movie.vodId);
-            startActivity(i);
-        });
-        rvContent.setAdapter(adapter);
-        rvContent.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView rv, int dx, int dy) {
-                if (dy <= 0 || loading || noMore || curTypeId == null) return;
-                int last = glm.findLastVisibleItemPosition();
-                if (last >= adapter.getDataCount() - 3) loadMore();
-            }
-        });
+            GridLayoutManager glm = new GridLayoutManager(getContext(), 3);
+            rvContent.setLayoutManager(glm);
+            adapter = new GridMovieAdapter();
+            adapter.setOnItemClick(movie -> {
+                Intent i = new Intent(getActivity(), DetailActivity.class);
+                i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
+                i.putExtra(DetailActivity.KEY_VOD_ID, movie.vodId);
+                startActivity(i);
+            });
+            rvContent.setAdapter(adapter);
+            rvContent.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(RecyclerView rv, int dx, int dy) {
+                    if (dy <= 0 || loading || noMore || curTypeId == null) return;
+                    int last = glm.findLastVisibleItemPosition();
+                    if (last >= adapter.getDataCount() - 3) loadMore();
+                }
+            });
 
-        viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
+            viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+            try {
+                if (tvHint != null) {
+                    tvHint.setText("加载失败，请稍后重试");
+                    tvHint.setVisibility(View.VISIBLE);
+                }
+            } catch (Throwable ignored) {}
+        }
     }
 
     private void bindObservers() {
@@ -127,6 +140,8 @@ public class HomeMainFragment extends BaseLazyFragment {
 
     @Override
     protected void onVisible() {
+        // init 失败过则控件还没建好，这里直接返回，留空首页，不再崩一次
+        if (rvCategory == null || filterContainer == null || tvHint == null || adapter == null) return;
         SourceBean home = ApiConfig.get().getHomeSource();
         String key = home == null ? "" : home.getKey();
         if (home == null) {

@@ -21,4 +21,22 @@ public class PlaybackPerformanceCatalog {
     public static final String KEY_LATENCY = "latency";
     public static final String KEY_JITTER = "jitter";
     public static final String PRELOAD_THREADS = "preload_threads";
+    public static final String BUFFER_BYTES = "buffer_bytes";
+    public static final String BACK_BUFFER = "back_buffer";
+    public static final String BUFFER_TIME = "buffer_time";
+    public static final String MPV_HLS_BITRATE = "mpv_hls_bitrate";
+    public static final String MPV_RENDER = "mpv_render";
+    public static final String PRELOAD = "preload";
+    public static final String IJK_BUFFER = "ijk_buffer";
+    public static final String IJK_WATER = "ijk_water";
+    public static final String IJK_PICTURE_QUEUE = "ijk_picture_queue";
+    public static final String IJK_SOFT_TUNE = "ijk_soft_tune";
+    public static final String IJK_SCENE = "ijk_scene";
+    public static final String EXO_START_BUFFER = "exo_start_buffer";
+    public static final String EXO_REBUFFER = "exo_rebuffer";
+    public static final String ADAPTIVE_DOWNGRADE = "adaptive_downgrade";
+    public static final String BANDWIDTH_METER = "bandwidth_meter";
+    public static final String DURATION_PROGRESS = "duration_progress";
+    public static final String EXO_PRIORITIZE_TIME = "exo_prioritize_time";
+    public static final String PRELOAD_TIME = "preload_time";
 }

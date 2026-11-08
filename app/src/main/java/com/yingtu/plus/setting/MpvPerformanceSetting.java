@@ -11,10 +11,25 @@ public class MpvPerformanceSetting {
     public static final int SYNC_AUDIO = 0;
     public static final int FRAME_DROP_OFF = 1;
     public static final int VULKAN_BACKEND_AUTO = 0;
+    // 软解调优档位：0=关闭，1=温和，2=积极（与 getSoftTuneMode() 的 Prefers 默认值 0=关闭一致）。
+    public static final int SOFT_TUNE_OFF = 0;
+    public static final int SOFT_TUNE_MILD = 1;
+    public static final int SOFT_TUNE_AGGRESSIVE = 2;
 
     public static int getOutputMode() { return Prefers.getInt("perf_mpv_output_mode", OUTPUT_AUTO); }
     public static String getOutputModeText() { return "auto"; }
     public static boolean shouldUseSurfaceDirect() { return getOutputMode() == OUTPUT_SURFACE_DIRECT; }
+    // 三参含义（照两处调用处）：autoEligible=自动直出是否具备条件（MpvAutoOutputPolicy.canStartSurfaceDirect 的结果），
+    // leanback=是否电视界面，hardDecode=是否硬解。非硬解一律不用直出；指定直出则用，指定 GPU 则不用，
+    // 自动档只在电视界面且具备条件时用。
+    public static boolean shouldUseSurfaceDirect(boolean autoEligible, boolean leanback, boolean hardDecode) {
+        if (!hardDecode) return false;
+        switch (getOutputMode()) {
+            case OUTPUT_SURFACE_DIRECT: return true;
+            case OUTPUT_GPU: return false;
+            default: return leanback && autoEligible;
+        }
+    }
     
     public static int getHwdecOption() { return Prefers.getInt("perf_mpv_hwdec", HWDEC_AUTO); }
     public static String getHwdecOptionText() { return "auto"; }

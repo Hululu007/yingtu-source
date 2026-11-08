@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -39,8 +40,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 首页外壳。顶栏：Logo + 站点名 + 居中搜索框 + 历史/收藏/放映/网页四个图标；
- * 下方是内容区 + 底部导航（影视 / 短剧 / 直播 / 午夜 / 文件 / 设置）。
+ * 首页外壳。顶栏：Logo + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
+ * 下方是内容区 + 底部导航（影视 / 短剧 / 直播 / 午夜 / 文件）。
+ * 注意：BottomNavigationView 最多只能放 5 项（material 1.11.0 硬上限），
+ * 第 6 项“设置”加不上，所以设置入口搬到了顶栏右上角（ivSetting）。
+ * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
  * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
  * 影视区只列用户自己导入的站：内置站（午夜区、短剧区的内置配置站）由
  * ApiConfig.isBuiltinSite(key) 判定后过滤，该方法是 H 批（午夜区）在 ApiConfig 里加的。
@@ -62,7 +66,6 @@ public class HomeActivity extends BaseActivity {
     public static final int NAV_LIVE = 1003;
     public static final int NAV_MIDNIGHT = 1004;
     public static final int NAV_FILE = 1005;
-    public static final int NAV_SETTING = 1006;
 
     private TextView tvTitle, tvSourceCount;
     private BottomNavigationView bottomNav;
@@ -81,30 +84,43 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     protected void init() {
-        // 应用自定义壁纸
-        applyCustomWallpaper();
-        tvTitle = find(R.id.tvTitle);
-        bottomNav = find(R.id.bottomNav);
+        // 闪退加固（2.0.0.1108 第三轮）：启动链兜底，整段包 try/catch，
+        // 任何漏网的异常都退化成空首页 + 一句提示，不杀进程。顺序与正常路径不变。
+        try {
+            // 应用自定义壁纸
+            applyCustomWallpaper();
+            tvTitle = find(R.id.tvTitle);
+            bottomNav = find(R.id.bottomNav);
 
-        // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角四个图标入口
-        tvTitle.setOnClickListener(v -> openSourcePopup());
-        find(R.id.ivLogo).setOnClickListener(v -> openSourcePopup());
-        find(R.id.tvSearchBox).setOnClickListener(v ->
-                startActivity(new Intent(this, SearchActivity.class)));
-        find(R.id.ivHistory).setOnClickListener(v ->
-                startActivity(new Intent(this, HistoryActivity.class)));
-        find(R.id.ivFav).setOnClickListener(v -> showFav());
-        find(R.id.ivCast).setOnClickListener(v ->
-                CastDialog.create().show(this));
-        find(R.id.ivWeb).setOnClickListener(v ->
-                startActivity(new Intent(this, WebHomeActivity.class)));
+            // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角五个图标入口
+            tvTitle.setOnClickListener(v -> openSourcePopup());
+            find(R.id.ivLogo).setOnClickListener(v -> openSourcePopup());
+            find(R.id.tvSearchBox).setOnClickListener(v ->
+                    startActivity(new Intent(this, SearchActivity.class)));
+            find(R.id.ivHistory).setOnClickListener(v ->
+                    startActivity(new Intent(this, HistoryActivity.class)));
+            find(R.id.ivFav).setOnClickListener(v -> showFav());
+            find(R.id.ivCast).setOnClickListener(v ->
+                    CastDialog.create().show(this));
+            find(R.id.ivWeb).setOnClickListener(v ->
+                    startActivity(new Intent(this, WebHomeActivity.class)));
+            // 设置入口在顶栏（底部导航最多 5 项，第 6 项加不上，见 setupBottomNav）。
+            find(R.id.ivSetting).setOnClickListener(v ->
+                    startActivity(new Intent(this, SettingActivity.class)));
 
-        setupBottomNav();
-        showFragment(NAV_MOVIE);
-        handleTabExtra(getIntent());
+            setupBottomNav();
+            showFragment(NAV_MOVIE);
+            handleTabExtra(getIntent());
 
-        setupSourcePopup();
-        refreshTitle();
+            setupSourcePopup();
+            refreshTitle();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+            try {
+                Toast.makeText(this, "首页加载失败，请重启应用", Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {}
+        }
     }
 
     /** WebHome 桥接的 KEY_TAB=4 → 打开收藏页；其余旧 tab 值已废弃，忽略。
@@ -128,14 +144,24 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void setupBottomNav() {
-        Menu menu = bottomNav.getMenu();
-        menu.add(Menu.NONE, NAV_MOVIE, Menu.NONE, "影视").setIcon(R.drawable.ic_play_circle);
-        menu.add(Menu.NONE, NAV_DRAMA, Menu.NONE, "短剧").setIcon(R.drawable.ic_play);
-        menu.add(Menu.NONE, NAV_LIVE, Menu.NONE, "直播").setIcon(R.drawable.ic_live);
-        menu.add(Menu.NONE, NAV_MIDNIGHT, Menu.NONE, "午夜").setIcon(R.drawable.ic_fav_on);
-        menu.add(Menu.NONE, NAV_FILE, Menu.NONE, "文件").setIcon(R.drawable.ic_file);
-        menu.add(Menu.NONE, NAV_SETTING, Menu.NONE, "设置").setIcon(R.drawable.ic_setting);
-        bottomNav.setLabelVisibilityMode(LabelVisibilityMode.LABEL_VISIBILITY_LABELED);
+        // 底部导航栏颜色与主题背景一致（2.0.0.1108 第四轮追加）：
+        // 主题背景是纵向渐变 #3AA6CC → #227FA6 → #145E7E（themes.xml 的
+        // windowBackground=@drawable/bg_main_gradient），导航栏在屏幕最底部，
+        // 那里正好是渐变末尾色 #145E7E，用它做纯色背景才与背景融为一体。
+        // 注意不能只在布局里写 android:background：NavigationBarView 构造时
+        // 会把纯色背景包进 MaterialShapeDrawable 再叠一层深色提亮，颜色偏亮；
+        // 渐变 drawable 则会被整段压进导航栏高度，顶部发亮、接缝明显。
+        // 代码里 setBackgroundColor 直接换掉构造时装的背景，颜色分毫不差。
+        try {
+            bottomNav.setBackgroundColor(getColor(R.color.gradient_bottom));
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+        }
+        // 闪退加固（2.0.0.1108 第四轮）：BottomNavigationView 最多只能放 5 项，
+        // 第 6 项 menu.add 会抛 IllegalArgumentException，之前它拖死了整个 init
+        //（监听没挂上、首页没加载）。先挂监听、再逐项加，每项各包 try/catch，
+        // 某项坏了记一笔、继续加下一项，标签模式也包一层。
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == NAV_LIVE) {
@@ -146,36 +172,63 @@ public class HomeActivity extends BaseActivity {
                 startActivity(new Intent(this, FileActivity.class));
                 return false;
             }
-            if (id == NAV_SETTING) {
-                startActivity(new Intent(this, SettingActivity.class));
-                return false;
-            }
             showFragment(id);
             return true;
         });
+        try {
+            bottomNav.setLabelVisibilityMode(LabelVisibilityMode.LABEL_VISIBILITY_LABELED);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+        }
+        addNavItem(NAV_MOVIE, "影视", R.drawable.ic_play_circle);
+        addNavItem(NAV_DRAMA, "短剧", R.drawable.ic_play);
+        addNavItem(NAV_LIVE, "直播", R.drawable.ic_live);
+        addNavItem(NAV_MIDNIGHT, "午夜", R.drawable.ic_fav_on);
+        addNavItem(NAV_FILE, "文件", R.drawable.ic_file);
+        // “设置”不在这里加：BottomNavigationView 最多 5 项，第 6 项一加就抛，
+        // 设置入口已搬到顶栏右上角（ivSetting），见 init()。
+    }
+
+    /** 底部导航加一项：坏了只记一笔（进 crash.log），不拖死整个导航和首页。 */
+    private void addNavItem(int id, String title, int iconRes) {
+        try {
+            bottomNav.getMenu().add(Menu.NONE, id, Menu.NONE, title).setIcon(iconRes);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+        }
     }
 
     private void showFragment(int navId) {
-        currentNav = navId;
-        showingFav = false;
-        String tag;
-        Fragment fragment;
-        if (navId == NAV_DRAMA) {
-            tag = "drama";
-            fragment = getSupportFragmentManager().findFragmentByTag(tag);
-            if (fragment == null) fragment = new DramaFragment();
-        } else if (navId == NAV_MIDNIGHT) {
-            tag = "midnight";
-            fragment = getSupportFragmentManager().findFragmentByTag(tag);
-            if (fragment == null) fragment = new MidnightFragment();
-        } else {
-            tag = "home";
-            fragment = getSupportFragmentManager().findFragmentByTag(tag);
-            if (fragment == null) fragment = new HomeMainFragment();
+        try {
+            currentNav = navId;
+            showingFav = false;
+            String tag;
+            Fragment fragment;
+            if (navId == NAV_DRAMA) {
+                tag = "drama";
+                fragment = getSupportFragmentManager().findFragmentByTag(tag);
+                if (fragment == null) fragment = new DramaFragment();
+            } else if (navId == NAV_MIDNIGHT) {
+                tag = "midnight";
+                fragment = getSupportFragmentManager().findFragmentByTag(tag);
+                if (fragment == null) fragment = new MidnightFragment();
+            } else {
+                tag = "home";
+                fragment = getSupportFragmentManager().findFragmentByTag(tag);
+                if (fragment == null) fragment = new HomeMainFragment();
+            }
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragmentContainer, fragment, tag)
+                    .commit();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+            try {
+                Toast.makeText(this, "页面切换失败，请重启应用", Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {}
         }
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragmentContainer, fragment, tag)
-                .commit();
     }
 
     /** 顶栏收藏图标：收藏页（FavVodFragment）直接宿在首页内容区。 */
@@ -249,6 +302,21 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void openSourcePopup() {
+        // 闪退防御（2.0.0.1108 第四轮补）：setupSourcePopup() 在 init() 里跑，
+        // init 任何一步失败都会留下一堆 null 字段，点站名/图标就空指针。
+        // 先判空，懒执行一次还不行就直接跳站源管理页，绝不在这里崩。
+        if (sourcePopup == null || sourceAdapter == null) {
+            try {
+                setupSourcePopup();
+            } catch (Throwable e) {
+                e.printStackTrace();
+                com.yingtu.plus.App.logCaught(e);
+            }
+        }
+        if (sourcePopup == null || sourceAdapter == null) {
+            startActivity(new Intent(this, SourceActivity.class));
+            return;
+        }
         // 影视区只列用户自己导入的站，内置站（午夜区、短剧区）不过滤进这里
         List<SourceBean> sources = new ArrayList<>();
         for (SourceBean s : ApiConfig.get().getSourceBeanList()) {
@@ -261,8 +329,8 @@ public class HomeActivity extends BaseActivity {
         sourceAdapter.submit(sources);
         SourceBean home = ApiConfig.get().getHomeSource();
         if (home != null) sourceAdapter.setCurrentKey(home.getKey());
-        tvSourceCount.setText(sources.size() + " 个源");
-        etSearch.setText("");
+        if (tvSourceCount != null) tvSourceCount.setText(sources.size() + " 个源");
+        if (etSearch != null) etSearch.setText("");
         sourceAdapter.setSearch("");
         sourceAdapter.setFilterChip("全部");
         buildChips();
@@ -301,6 +369,8 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void refreshTitle() {
+        // init 失败后 tvTitle 可能还没拿到手，onResume 还会调这里，先守住空指针
+        if (tvTitle == null) return;
         SourceBean home = ApiConfig.get().getHomeSource();
         tvTitle.setText(home != null ? home.getName() : getString(R.string.source_default));
     }
@@ -324,7 +394,13 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void applyCustomWallpaper() {
-        android.net.Uri uri = com.yingtu.plus.util.WallpaperHelper.getWallpaperUri(this);
+        // 包一层：Hawk 没起来时 getWallpaperUri 会抛异常，接住只丢壁纸，不闪退
+        android.net.Uri uri;
+        try {
+            uri = com.yingtu.plus.util.WallpaperHelper.getWallpaperUri(this);
+        } catch (Throwable ignored) {
+            return;
+        }
         if (uri != null) {
             try {
                 android.graphics.Bitmap bmp =

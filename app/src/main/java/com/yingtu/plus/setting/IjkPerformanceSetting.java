@@ -5,9 +5,17 @@ import com.yingtu.plus.util.Prefers;
 public class IjkPerformanceSetting {
     public static final int SCENE_AUTO = 0;
     public static final int SCENE_VOD = 1;
+    public static final int SCENE_LIVE_LOW_LATENCY = 3;
     public static final int WATER_LOW = 0;
     public static final int WATER_STANDARD = 1;
     public static final int DROP_STANDARD = 1;
+    public static final int PROBE_FAST = 1;
+    public static final int PROBE_FULL = 2;
+    public static final int SOFT_TUNE_OFF = 0;
+    public static final int SOFT_TUNE_MILD = 1;
+    public static final int SOFT_TUNE_AGGRESSIVE = 2;
+    public static final int RTSP_TCP = 1;
+    public static final int RTSP_UDP = 2;
 
     public static int getScene() { return Prefers.getInt("perf_ijk_scene", SCENE_AUTO); }
     public static void putScene(int v) { Prefers.put("perf_ijk_scene", v); }
