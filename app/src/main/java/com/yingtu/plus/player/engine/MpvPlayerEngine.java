@@ -948,6 +948,25 @@ public class MpvPlayerEngine implements PlayerEngine {
         return player;
     }
 
+    // mpv framedrop only takes no/vo/decoder/decoder+vo; only the OFF level is
+    // defined in MpvPerformanceSetting, so any value disables frame dropping.
+    private static String frameDropOptionText() {
+        switch (MpvPerformanceSetting.getFrameDropOption()) {
+            case MpvPerformanceSetting.FRAME_DROP_OFF:
+            default:
+                return "no";
+        }
+    }
+
+    // mpv video-sync takes audio/display-resample/...; only SYNC_AUDIO is defined.
+    private static String videoSyncOptionText() {
+        switch (MpvPerformanceSetting.getSyncOption()) {
+            case MpvPerformanceSetting.SYNC_AUDIO:
+            default:
+                return "audio";
+        }
+    }
+
     private MpvPlayerConfig buildConfig() {
         MpvConfigStore.ensureReady();
         MpvConfigStore.ensureCustomButtonScript();
@@ -987,7 +1006,7 @@ public class MpvPlayerEngine implements PlayerEngine {
         SpiderDebug.log("player-engine", "mpv output mode=%s direct=%s render requested=%s nativeVulkan=%s deviceVulkan=%s decode=%s actual=%s/%s fel=%s", MpvPerformanceSetting.getOutputModeText(), surfaceDirect, requestVulkan ? "vulkan" : "opengl", nativeVulkan, deviceVulkan, decode == HARD ? "hard" : "soft", surfaceDirect ? "surface" : useVulkan ? "vulkan" : "opengl", surfaceDirect ? "mediacodec_embed" : useGpuNext ? "gpu-next" : "gpu", dv7FelOutput);
         MpvPlayerConfig.Builder builder = MpvPlayerConfig.builder(App.get())
                 .configDir(MpvConfigStore.configDir())
-                .hwdec(surfaceDirect ? "mediacodec" : decode == HARD ? MpvPerformanceSetting.getHwdecOption() : "no")
+                .hwdec(surfaceDirect ? "mediacodec" : decode == HARD ? (MpvPerformanceSetting.getHwdecOption() == MpvPerformanceSetting.HWDEC_DIRECT ? "mediacodec" : "mediacodec,mediacodec-copy") : "no")
                 .option(HWDEC_SOFTWARE_FALLBACK_OPTION,
                         hardwareDecodeSoftwareFallbackOption(decode))
                 .audioSpdif(resolveAudioSpdifCodecs())
@@ -1009,10 +1028,10 @@ public class MpvPlayerEngine implements PlayerEngine {
                 .deferStartupTrackRefresh(DV7_P81.equals(getDv7HandlingOption()))
                 .restoreFelAutomaticSubtitles(isDv7FelRequested()
                         && TextUtils.isEmpty(MpvConfigStore.getOptionValue("sid")))
-                .option("framedrop", MpvPerformanceSetting.getFrameDropOption())
-                .option("video-sync", MpvPerformanceSetting.getSyncOption())
+                .option("framedrop", frameDropOptionText())
+                .option("video-sync", videoSyncOptionText())
                 .option("interpolation", MpvPerformanceSetting.isInterpolation() ? "yes" : "no")
-                .option("hls-bitrate", MpvPerformanceSetting.getHlsBitrateOption())
+                .option("hls-bitrate", String.valueOf(MpvPerformanceSetting.getHlsBitrateOption()))
                 .option("demuxer-dovi-profile7",
                         dv7DemuxerOption(getDv7HandlingOption()))
                 .option("android-dovi-fel", isDv7FelRequested() ? "yes" : "no")

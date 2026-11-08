@@ -14,7 +14,6 @@ import android.view.TextureView;
 
 import androidx.annotation.Nullable;
 import androidx.media3.common.C;
-import androidx.media3.common.ColorInfo;
 import androidx.media3.common.Format;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
@@ -54,10 +53,11 @@ import java.util.concurrent.TimeUnit;
 import tv.danmaku.ijk.media.player.IMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkMediaPlayer;
 import tv.danmaku.ijk.media.player.IjkTimedText;
+import tv.danmaku.ijk.media.player.misc.IMediaFormat;
 import tv.danmaku.ijk.media.player.misc.ITrackInfo;
 
 @UnstableApi
-class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener {
+class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPreparedListener, IMediaPlayer.OnCompletionListener, IMediaPlayer.OnErrorListener, IMediaPlayer.OnInfoListener, IMediaPlayer.OnBufferingUpdateListener, IMediaPlayer.OnVideoSizeChangedListener, IMediaPlayer.OnTimedTextListener {
 
     private static final long STATE_REFRESH_INTERVAL_MS = 1000;
 
@@ -140,7 +140,17 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         super(Looper.getMainLooper());
         this.decode = decode;
         ijk = new IjkMediaPlayer();
-        ijk.setListener(this);
+        // 2026-11-08 云构建第一轮失败修法：官方 player-ijk:3.3.7 的 IMediaPlayer 没有 FongMi
+        // 改造版的 Listener 接口（setListener/resetListeners 是 FongMi 自带 ijk 源码才有的），
+        // 改走官方 AAR 自带的 7 个分开的 On*Listener 接口 + 对应 setter；resetListeners() 官方
+        // AbstractMediaPlayer 里有，保留不动。
+        ijk.setOnPreparedListener(this);
+        ijk.setOnCompletionListener(this);
+        ijk.setOnErrorListener(this);
+        ijk.setOnInfoListener(this);
+        ijk.setOnBufferingUpdateListener(this);
+        ijk.setOnVideoSizeChangedListener(this);
+        ijk.setOnTimedTextListener(this);
         ijk.setOnNativeInvokeListener(this::onNativeInvoke);
         hlsProxy = new MpvHlsProxy(PlayerSetting.IJK);
         stateRefreshRunnable = this::refreshPlaybackState;
@@ -226,12 +236,25 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         return selectedAudioFormat;
     }
 
+    // 2026-11-08 云构建第四轮修法：官方 player-ijk:3.3.7 的 IjkMediaPlayer 没有
+    // getVideoCodecInfo()/getAudioCodecInfo()（AAR 方法表已核实：只有 private native
+    // _getVideoCodecInfo/_getAudioCodecInfo；这两个 public 方法只在 FongMi 自带 ijk
+    // 源码里有）。等效信息改取已选轨道的 Format：codecs 即轨道编解码器名（如 h264/aac，
+    // 与原生方法返回的编解码器名同义），无 codecs 时退回 sampleMimeType（如 video/avc），
+    // 未选出轨道时返回 null；调用处（IjkPlayerEngine 诊断/音频诊断）均已按 null/空串处理。
+    @Nullable
+    private static String codecInfo(@Nullable Format format) {
+        if (format == null) return null;
+        if (!TextUtils.isEmpty(format.codecs)) return format.codecs;
+        return format.sampleMimeType;
+    }
+
     String getVideoCodecInfoSnapshot() {
-        return ijk.getVideoCodecInfo();
+        return codecInfo(selectedVideoFormat);
     }
 
     String getAudioCodecInfoSnapshot() {
-        return ijk.getAudioCodecInfo();
+        return codecInfo(selectedAudioFormat);
     }
 
     int getVideoDecoderSnapshot() {
@@ -610,7 +633,7 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
     }
 
     @Override
-    public void onInfo(IMediaPlayer mp, int what, int extra) {
+    public boolean onInfo(IMediaPlayer mp, int what, int extra) {
         diagnosticEvent(what == IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START ? "video-rendering-start"
                 : what == IMediaPlayer.MEDIA_INFO_AUDIO_RENDERING_START ? "audio-rendering-start" : "info", what, extra, false);
         if (what == IMediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) diagnostics.evidence(diagnostics.context(), true, 3);
@@ -648,6 +671,10 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
                     longUrlProxied);
         }
         invalidateState();
+        // 官方 OnInfoListener.onInfo 要求返回 boolean：本方法只记录打开阶段/缓冲/
+        // 首帧状态，不消费该事件，返回 false 交由框架默认处理（同文件 onNativeInvoke
+        // 也是返回 false；onError 返回 true 是因为它已全权处理了错误）。
+        return false;
     }
 
     private boolean onNativeInvoke(int event, Bundle bundle) {
@@ -696,7 +723,8 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         invalidateState();
     }
 
-    @Override
+    // 官方 OnBufferingUpdateListener 只有 (IMediaPlayer, int) 一个方法，没有 long 重载，
+    // 这里的 long 版不再是接口实现，去掉 @Override（方法本身保留，回调不到它，不影响行为）。
     public void onBufferingUpdate(IMediaPlayer mp, long positionMs) {
         bufferingPositionMs = Math.max(0, positionMs);
         invalidateState();
@@ -868,13 +896,13 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
                     .observed("audioSelected", prepared ? selectedAudioFormat != null : null)
                     .unknown("audioOutput", com.github.catvod.crawler.diagnostics.DiagnosticEvent.Status.NOT_OBSERVABLE)
                     .observed("nativeHook", "native-hook-required: IJK AudioTrack/OpenSL write/head/actual route");
-            if (prepared) e.observed("decoderName", ijk.getVideoCodecInfo()).observed("decode", ijk.getVideoDecoder());
+            if (prepared) e.observed("decoderName", getVideoCodecInfoSnapshot()).observed("decode", ijk.getVideoDecoder());
         });
         if (prepared) {
             diagnostics.emit("video.output.summary", "ijk-public-properties", e -> e
                     .observed("frameRate", ijk.getVideoOutputFramesPerSecond()).observed("metricScope", "IJK video-output-fps; not display refresh")
                     .observed("bytes", ijk.getVideoCachedBytes()));
-            diagnostics.emit("audio.decoder.output", "ijk-public-properties", e -> e.observed("decoderName", ijk.getAudioCodecInfo())
+            diagnostics.emit("audio.decoder.output", "ijk-public-properties", e -> e.observed("decoderName", getAudioCodecInfoSnapshot())
                     .observed("bytes", ijk.getAudioCachedBytes()).observed("metricScope", "cached input bytes; not accepted output")
                     .unknown("audibility", com.github.catvod.crawler.diagnostics.DiagnosticEvent.Status.NOT_OBSERVABLE));
         }
@@ -1243,8 +1271,8 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
 
     private void refreshTracks() {
         try {
-            List<ITrackInfo> infos = ijk.getTrackInfo();
-            if (infos == null || infos.isEmpty()) {
+            ITrackInfo[] infos = ijk.getTrackInfo();
+            if (infos == null || infos.length == 0) {
                 currentTracks = Tracks.EMPTY;
                 selectedVideoFormat = null;
                 selectedAudioFormat = null;
@@ -1259,7 +1287,11 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
             boolean selectedAudio = false;
             boolean selectedText = false;
             int index = 0;
-            for (ITrackInfo info : infos) {
+            // The array is built in stream order, so the array position is the
+            // stream index that getSelectedTrack() returns.
+            for (int streamIndex = 0; streamIndex < infos.length; streamIndex++) {
+                ITrackInfo info = infos[streamIndex];
+                final int trackId = streamIndex;
                 int type = mediaTrackType(info.getTrackType());
                 if (type == C.TRACK_TYPE_UNKNOWN) continue;
                 boolean selected = switch (type) {
@@ -1275,9 +1307,9 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
                 }
                 Format format = buildFormat(info, type, ++index);
                 if (SpiderDebug.isEnabled()) {
-                    boolean actualSelected = type == C.TRACK_TYPE_VIDEO ? info.getStreamIndex() == selectedVideoStream
-                            : type == C.TRACK_TYPE_AUDIO && info.getStreamIndex() == selectedAudioStream;
-                    diagnostics.emit("media.tracks", "ijk-track-info", e -> e.observed("trackId", info.getStreamIndex())
+                    boolean actualSelected = type == C.TRACK_TYPE_VIDEO ? trackId == selectedVideoStream
+                            : type == C.TRACK_TYPE_AUDIO && trackId == selectedAudioStream;
+                    diagnostics.emit("media.tracks", "ijk-track-info", e -> e.observed("trackId", trackId)
                             .observed("trackType", type).observed("selected", type == C.TRACK_TYPE_TEXT ? null : actualSelected)
                             .observed("mime", format.sampleMimeType).observed("codecs", format.codecs)
                             .observed("sampleRate", format.sampleRate > 0 ? format.sampleRate : null)
@@ -1285,15 +1317,15 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
                     if (type == C.TRACK_TYPE_VIDEO) diagnostics.evidence(diagnostics.context(), true, 0);
                     if (type == C.TRACK_TYPE_AUDIO) diagnostics.evidence(diagnostics.context(), false, 0);
                 }
-                if (type == C.TRACK_TYPE_VIDEO && info.getStreamIndex() == selectedVideoStream) actualVideo = format;
-                if (type == C.TRACK_TYPE_AUDIO && info.getStreamIndex() == selectedAudioStream) actualAudio = format;
+                if (type == C.TRACK_TYPE_VIDEO && trackId == selectedVideoStream) actualVideo = format;
+                if (type == C.TRACK_TYPE_AUDIO && trackId == selectedAudioStream) actualAudio = format;
                 TrackGroup group = new TrackGroup("ijk:" + type + ":" + index, format);
                 groups.add(new Tracks.Group(group, false, new int[]{C.FORMAT_HANDLED}, new boolean[]{selected}));
             }
             currentTracks = groups.isEmpty() ? Tracks.EMPTY : new Tracks(groups);
             selectedVideoFormat = actualVideo;
             selectedAudioFormat = actualAudio;
-            if (SpiderDebug.isEnabled()) SpiderDebug.log("ijk", "tracks refreshed count=%d groups=%d", infos.size(), groups.size());
+            if (SpiderDebug.isEnabled()) SpiderDebug.log("ijk", "tracks refreshed count=%d groups=%d", infos.length, groups.size());
         } catch (Throwable e) {
             currentTracks = Tracks.EMPTY;
             selectedVideoFormat = null;
@@ -1315,13 +1347,14 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
         return switch (ijkType) {
             case ITrackInfo.MEDIA_TRACK_TYPE_VIDEO -> C.TRACK_TYPE_VIDEO;
             case ITrackInfo.MEDIA_TRACK_TYPE_AUDIO -> C.TRACK_TYPE_AUDIO;
-            case ITrackInfo.MEDIA_TRACK_TYPE_TEXT -> C.TRACK_TYPE_TEXT;
+            case ITrackInfo.MEDIA_TRACK_TYPE_TIMEDTEXT, ITrackInfo.MEDIA_TRACK_TYPE_SUBTITLE -> C.TRACK_TYPE_TEXT;
             default -> C.TRACK_TYPE_UNKNOWN;
         };
     }
 
     private Format buildFormat(ITrackInfo info, int type, int index) {
-        String codec = info.getMimeType();
+        IMediaFormat mediaFormat = info.getFormat();
+        String codec = mediaFormat == null ? null : mediaFormat.getString("codec_name");
         Format.Builder builder = new Format.Builder()
                 .setId(type + ":" + index)
                 .setLabel(trackLabel(type, index))
@@ -1329,66 +1362,40 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.Listener 
                 .setLanguage(TextUtils.isEmpty(info.getLanguage()) ? null : info.getLanguage())
                 .setSampleMimeType(sampleMimeType(type, codec));
         if (type == C.TRACK_TYPE_VIDEO) {
-            int width = info.getWidth() > 0 ? info.getWidth() : videoSize.width;
-            int height = info.getHeight() > 0 ? info.getHeight() : videoSize.height;
+            int width = mediaFormat == null ? 0 : mediaFormat.getInteger(IMediaFormat.KEY_WIDTH);
+            if (width <= 0) width = videoSize.width;
+            int height = mediaFormat == null ? 0 : mediaFormat.getInteger(IMediaFormat.KEY_HEIGHT);
+            if (height <= 0) height = videoSize.height;
             if (width > 0) builder.setWidth(width);
             if (height > 0) builder.setHeight(height);
-            if (info.getFps() > 0) builder.setFrameRate(info.getFps());
-            ColorInfo colorInfo = colorInfo(info);
-            if (colorInfo != null) builder.setColorInfo(colorInfo);
+            float frameRate = frameRate(mediaFormat);
+            if (frameRate > 0) builder.setFrameRate(frameRate);
         } else if (type == C.TRACK_TYPE_AUDIO) {
-            if (info.getChannelCount() > 0) builder.setChannelCount(info.getChannelCount());
+            int channels = channelCount(mediaFormat);
+            if (channels > 0) builder.setChannelCount(channels);
+            int sampleRate = mediaFormat == null ? 0 : mediaFormat.getInteger("sample_rate");
+            if (sampleRate > 0) builder.setSampleRate(sampleRate);
         }
-        int bitrate = info.getBitrate();
+        int bitrate = mediaFormat == null ? 0 : mediaFormat.getInteger("bitrate");
         if (bitrate <= 0 && type == C.TRACK_TYPE_VIDEO) bitrate = safeIntBitrate(ijk.getBitRate());
         if (bitrate > 0) builder.setAverageBitrate(bitrate);
         return builder.build();
     }
 
-    @Nullable
-    private ColorInfo colorInfo(ITrackInfo info) {
-        int colorSpace = colorSpace(info);
-        int colorRange = colorRange(info);
-        int colorTransfer = colorTransfer(info);
-        if (colorSpace == C.LENGTH_UNSET && colorRange == C.LENGTH_UNSET && colorTransfer == C.LENGTH_UNSET) return null;
-        ColorInfo.Builder builder = new ColorInfo.Builder();
-        if (colorSpace != C.LENGTH_UNSET) builder.setColorSpace(colorSpace);
-        if (colorRange != C.LENGTH_UNSET) builder.setColorRange(colorRange);
-        if (colorTransfer != C.LENGTH_UNSET) builder.setColorTransfer(colorTransfer);
-        return builder.build();
+    private float frameRate(@Nullable IMediaFormat mediaFormat) {
+        if (mediaFormat == null) return 0;
+        int num = mediaFormat.getInteger("fps_num");
+        int den = mediaFormat.getInteger("fps_den");
+        if (num <= 0 || den <= 0) {
+            num = mediaFormat.getInteger("tbr_num");
+            den = mediaFormat.getInteger("tbr_den");
+        }
+        return num > 0 && den > 0 ? (float) num / den : 0;
     }
 
-    private int colorSpace(ITrackInfo info) {
-        String value = lower(joinColor(info.getColorPrimaries(), info.getColorSpace()));
-        if (value.contains("bt2020") || value.contains("bt.2020") || value.contains("2020")) return C.COLOR_SPACE_BT2020;
-        if (value.contains("bt709") || value.contains("bt.709") || value.contains("709")) return C.COLOR_SPACE_BT709;
-        if (value.contains("bt601") || value.contains("bt.601") || value.contains("601") || value.contains("smpte170m") || value.contains("smpte-170m")) return C.COLOR_SPACE_BT601;
-        return C.LENGTH_UNSET;
-    }
-
-    private int colorRange(ITrackInfo info) {
-        String value = lower(info.getColorRange());
-        if (value.contains("jpeg") || value.contains("pc") || value.contains("full")) return C.COLOR_RANGE_FULL;
-        if (value.contains("mpeg") || value.contains("tv") || value.contains("limited")) return C.COLOR_RANGE_LIMITED;
-        return C.LENGTH_UNSET;
-    }
-
-    private int colorTransfer(ITrackInfo info) {
-        String value = lower(info.getColorTransfer());
-        if (value.contains("smpte2084") || value.contains("st2084") || value.contains("pq")) return C.COLOR_TRANSFER_ST2084;
-        if (value.contains("arib-std-b67") || value.contains("hlg")) return C.COLOR_TRANSFER_HLG;
-        if (value.contains("iec61966") || value.contains("srgb")) return C.COLOR_TRANSFER_SRGB;
-        if (value.contains("linear")) return C.COLOR_TRANSFER_LINEAR;
-        if (value.contains("bt709") || value.contains("bt.709") || value.contains("bt601") || value.contains("bt.601") || value.contains("smpte170m") || value.contains("smpte-170m")) return C.COLOR_TRANSFER_SDR;
-        return C.LENGTH_UNSET;
-    }
-
-    private String joinColor(String first, String second) {
-        return (first == null ? "" : first) + " " + (second == null ? "" : second);
-    }
-
-    private String lower(String value) {
-        return value == null ? "" : value.toLowerCase(Locale.US);
+    private int channelCount(@Nullable IMediaFormat mediaFormat) {
+        if (mediaFormat == null) return 0;
+        return Integer.bitCount(mediaFormat.getInteger("channel_layout"));
     }
 
     private int safeIntBitrate(long bitrate) {
