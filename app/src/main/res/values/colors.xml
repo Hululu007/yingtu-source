@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 品牌 / 强调色（青蓝） -->
+    <color name="colorPrimary">#2BC4D8</color>
+    <color name="colorPrimaryVariant">#1FA7BC</color>
+    <color name="colorOnPrimary">#06202A</color>
+
+    <!-- 海洋渐变背景（窗口底图） -->
+    <color name="gradient_top">#3AA6CC</color>
+    <color name="gradient_mid">#227FA6</color>
+    <color name="gradient_bottom">#145E7E</color>
+
+    <!-- 页面兜底背景（渐变不可用时） -->
+    <color name="bg_page">#17678A</color>
+    <!-- 磨砂卡片（半透明深青） -->
+    <color name="card_bg">#3313384A</color>
+    <color name="card_bg_strong">#59102A3C</color>
+    <color name="bg_sidebar">#2E0C2A3C</color>
+
+    <!-- 文字 -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#C4DEE9</color>
+    <color name="text_hint">#8FB4C4</color>
+    <!-- 设置项右侧取值（青色） -->
+    <color name="value_teal">#5FE4EB</color>
+
+    <!-- 分割线 -->
+    <color name="divider">#33FFFFFF</color>
+
+    <!-- 组件 -->
+    <color name="chip_bg">#33FFFFFF</color>
+    <color name="chip_text">#E4F3F8</color>
+
+    <!-- 分类标签 -->
+    <color name="sort_tab_text">#D2E7EF</color>
+    <color name="sort_tab_selected">#2BC4D8</color>
+
+    <!-- 备注 / 角标 -->
+    <color name="note_bg">#B3000000</color>
+    <!-- 豆瓣热播角标底色 -->
+    <color name="badge_bg">#CC19B2C6</color>
+
+    <!-- 基础颜色（drawable 引用） -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- 透明度变体 -->
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="white_20">#33FFFFFF</color>
+    <color name="white_15">#26FFFFFF</color>
+    <color name="black_40">#66000000</color>
+
+    <!-- Material Amber -->
+    <color name="amber_300">#FFD54F</color>
+
+    <!-- 备注/角标 -->
+    <color name="bg_remark">#B3000000</color>
+    <color name="bg_site">#33FFFFFF</color>
+    <color name="bg_year">#B3000000</color>
+    <color name="startup_background">#17678A</color>
+
+    <!-- 同步设备 -->
+    <color name="sync_device_text">#FFFFFF</color>
+    <color name="sync_device_subtext">#80FFFFFF</color>
+
+    <!-- 对话框 -->
+    <color name="dialog_card_bg">#FF1E1E1E</color>
+    <color name="dialog_card_stroke">#FF333333</color>
+    <color name="dialog_card_action_text">#FF4CAF50</color>
+    <color name="dialog_checkbox_tint">#FF4CAF50</color>
+    <color name="dialog_outlined_button_bg">#00FFFFFF</color>
+    <color name="dialog_outlined_button_stroke">#FFBDBDBD</color>
+    <color name="dialog_outlined_button_text">#FFFFFFFF</color>
+    <color name="dialog_primary_button_bg">#FF4CAF50</color>
+    <color name="dialog_primary_button_text">#FFFFFFFF</color>
+    <color name="dialog_text_button">#FF4CAF50</color>
+    <color name="dialog_toggle_button_bg">#FF424242</color>
+    <color name="dialog_toggle_button_text">#FFFFFFFF</color>
+    <color name="dialog_tonal_button_bg">#FF333333</color>
+    <color name="dialog_tonal_button_text">#FFBDBDBD</color>
+</resources>

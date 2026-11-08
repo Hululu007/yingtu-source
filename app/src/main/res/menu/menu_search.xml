@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 搜索页工具栏菜单（照渔老 webhtv menu_search.xml 的结构自己写）：
+     右侧挂站点切换图标与重置（默认隐藏）。图标用影图树里已有的。 -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_reset"
+        android:icon="@drawable/ic_setting_refresh"
+        android:title="重置"
+        android:visible="false"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/action_site"
+        android:icon="@drawable/ic_source"
+        android:title="切换站点"
+        app:showAsAction="always" />
+
+</menu>

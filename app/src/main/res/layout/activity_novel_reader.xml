@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFF8F0E4"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FF5C4033"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/tv_novel_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="阅读"
+            android:textColor="#FFFFFFFF"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/btn_novel_chapters"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="目录"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btn_novel_font_dec"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="A-"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btn_novel_font_inc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="A+"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btn_novel_bg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="背景"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btn_novel_shelf"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="书架"
+            android:textColor="#FFFFFFFF" />
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/lv_novel_chapters"
+        android:layout_width="match_parent"
+        android:layout_height="220dp"
+        android:background="#FFFFFFFF"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/scroll_novel_content"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tv_novel_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingExtra="6dp"
+            android:textColor="#FF333333"
+            android:textSize="18sp" />
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FFEEEEEE"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btn_novel_prev"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="上一章" />
+
+        <TextView
+            android:id="@+id/tv_novel_chapter_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_novel_next"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="下一章" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- 午夜区标题 + 站数 -->
+    <TextView
+        android:id="@+id/tvMidnightTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="6dp"
+        android:text="午夜"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <!-- 内置午夜站列表（2 列网格，内部滚动） -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvMidnightSites"
+        android:layout_width="match_parent"
+        android:layout_height="176dp"
+        android:clipToPadding="false"
+        android:paddingStart="7dp"
+        android:paddingEnd="7dp"
+        android:scrollbars="vertical" />
+
+    <!-- 内容区：未选站时显示提示，选站后内嵌 HomeMainFragment -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <FrameLayout
+            android:id="@+id/midnightContent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvMidnightHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:text="点一个站开始看"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+    </FrameLayout>
+</LinearLayout>
