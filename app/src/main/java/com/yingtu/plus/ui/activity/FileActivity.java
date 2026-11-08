@@ -46,6 +46,9 @@ public class FileActivity extends BaseActivity {
     private static final int MODE_PICK_PY = 1;
     private static final int MODE_PICK_DIR = 2;
 
+    // 必须声明在 pickLauncher 之前：lambda 初始化器引用了它，放后面会 illegal forward reference。
+    private int pendingMode = MODE_NONE;
+
     private final ActivityResultLauncher<Intent> pickLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() != RESULT_OK || result.getData() == null) return;
@@ -64,7 +67,6 @@ public class FileActivity extends BaseActivity {
     private boolean selectDir;
 
     private boolean importMode;
-    private int pendingMode = MODE_NONE;
     private TextView resultView;
 
     @Override

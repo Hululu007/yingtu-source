@@ -127,8 +127,11 @@ public class ImgUtil {
     private static Drawable getTextDrawable(String text, boolean vod) {
         TextDrawable.Builder builder = new TextDrawable.Builder();
         text = TextUtils.isEmpty(text) ? "！" : text.substring(0, 1);
-        if (vod) builder.buildRect(text, ColorGenerator.get400(text));
-        return builder.buildRoundRect(text, ColorGenerator.get400(text), ResUtil.dp2px(4));
+        // 本地 TextDrawable.Builder 只有 buildRect(String) / buildRoundRect(String, int)，
+        // 颜色不走 build 参数，走 builder.color(int)；vod 走直角，之前丢了 buildRect 返回值。
+        builder.color(ColorGenerator.get400(text));
+        if (vod) return builder.buildRect(text);
+        return builder.buildRoundRect(text, ResUtil.dp2px(4));
     }
 
     private static RequestListener<Drawable> getListener(String text, String url, ImageView view, boolean vod) {

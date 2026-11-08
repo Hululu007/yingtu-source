@@ -197,8 +197,12 @@ public class VodConfig extends BaseConfig {
         setSites(Json.safeListElement(object, "sites").stream().map(e -> Site.objectFrom(e, spider)).distinct().collect(Collectors.toCollection(ArrayList::new)));
         Map<String, Site> items = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
         getSites().forEach(site -> site.sync(items.get(site.getKey())));
-        CustomCspSetting.Result custom = CustomCspSetting.inject(getSites());
-        Site home = !custom.home().isEmpty() ? custom.home() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().isEmpty() ? new Site() : getSites().get(0));
+        // 桩的 inject(List<Object>) 才返回 Result，直接传 List<Site> 会落到 inject(Object)
+        // 的 void 重载上；经通配符强转仍是同一个列表对象。桩 Result 没有 home()（webhtv
+        // 的 Result 是 record Result(Site home)），自定义 homeKey 暂无法取用，先按配置
+        // homeKey / 表首位选 home；等 CustomCspSetting 补上 home() 再恢复 custom.home() 分支。
+        CustomCspSetting.inject((List<Object>) (List<?>) getSites());
+        Site home = getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().isEmpty() ? new Site() : getSites().get(0));
         setHome(config, home, false);
     }
 

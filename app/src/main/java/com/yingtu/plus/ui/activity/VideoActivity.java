@@ -22,6 +22,7 @@ import android.text.InputType;
 import android.text.TextUtils;
 import android.text.style.ClickableSpan;
 import android.util.Log;
+import android.view.DisplayCutout;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -6329,6 +6330,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         else noPadding(mBinding.control.getRoot());
     }
 
+    private void setPadding(ViewGroup layout) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        DisplayCutout cutout = ResUtil.getDisplay(this).getCutout();
+        if (cutout == null) return;
+        int padding = cutout.getSafeInsetLeft() | cutout.getSafeInsetRight() | cutout.getSafeInsetTop() | cutout.getSafeInsetBottom();
+        layout.setPadding(padding, 0, padding, 0);
+    }
+
+    private void noPadding(ViewGroup layout) {
+        layout.setPadding(0, 0, 0, 0);
+    }
+
     private void notifyItemChanged(RecyclerView view, RecyclerView.Adapter<?> adapter) {
         view.post(() -> adapter.notifyItemRangeChanged(0, adapter.getItemCount()));
     }
@@ -6384,7 +6397,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (!player().isPlaying()) return;
         mBinding.widget.speed.setVisibility(View.VISIBLE);
         mBinding.widget.speed.startAnimation(ResUtil.getAnim(R.anim.forward));
-        mBinding.control.action.speed.setText(player().setSpeed(PlayerSetting.getSpeed()));
+        mBinding.control.action.speed.setText(player().setSpeed((float) PlayerSetting.getSpeed()));
     }
 
     @Override
@@ -6618,7 +6631,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     @Override
-    protected void onBackInvoked() {
+    public void onBackPressed() {
         if (hasLutQuick() && mBinding.lutQuick.hideIfVisible()) {
             return;
         } else if (isVisible(mBinding.control.getRoot())) {
@@ -6637,7 +6650,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         markPlaybackExiting();
         stopPlayback();
         if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-        super.onBackInvoked();
+        super.onBackPressed();
     }
 
     @Override

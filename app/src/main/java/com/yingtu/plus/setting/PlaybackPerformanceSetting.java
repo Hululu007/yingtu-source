@@ -27,6 +27,11 @@ public class PlaybackPerformanceSetting {
     public static boolean isDecoderFallbackEnabled() { return Prefers.getBoolean("perf_decoder_fallback", false); }
     public static boolean isDv7P81Enabled() { return Prefers.getBoolean("perf_dv7_p81", false); }
     public static boolean isDv7Hdr10FallbackEnabled() { return Prefers.getBoolean("perf_dv7_hdr10_fallback", false); }
+    // ExoUtil 把它传给 DolbyVisionHdr10FallbackRenderer 当“是否允许降级 HDR10”开关。
+    // 树里没有 webhtv 那种 DV7 处理档位（无 HDR10 档位常量与 getDv7HandlingMode），
+    // HDR10 降级开关就是上面这一个 boolean（perf_dv7_hdr10_fallback，默认关），直接复用它。
+    public static boolean isDv7FallbackAllowed() { return isDv7Hdr10FallbackEnabled(); }
+    public static boolean isVideoDurationProgressEnabled() { return Prefers.getBoolean("perf_video_duration_progress", true); }
     public static boolean isDynamicSchedulingEnabled() { return Prefers.getBoolean("perf_dynamic_sched", true); }
     public static boolean isHighBufferEnabled() { return Prefers.getBoolean("perf_high_buffer", false); }
     public static boolean isLateDropInputEnabled() { return Prefers.getBoolean("perf_late_drop", false); }

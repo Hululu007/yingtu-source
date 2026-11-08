@@ -121,6 +121,12 @@ public class App extends Application {
         MAIN_HANDLER.removeCallbacks(runnable);
     }
 
+    /** 移除主线程 handler 上的多个回调。 */
+    public static void removeCallbacks(Runnable... runnables) {
+        if (runnables == null) return;
+        for (Runnable runnable : runnables) if (runnable != null) MAIN_HANDLER.removeCallbacks(runnable);
+    }
+
     /** 全局 Gson 单例。 */
     public static Gson gson() {
         return GSON;

@@ -15,7 +15,7 @@ public class SiteHealthStore {
     
     public static void flush() {}
     
-    public static List<Object> sortSites(List<Object> sites) {
+    public static <T> List<T> sortSites(List<T> sites) {
         return new ArrayList<>(sites);
     }
 }

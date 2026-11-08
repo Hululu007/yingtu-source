@@ -99,13 +99,17 @@ public class PlayerSetting {
     
     public static int getEpisodesColumn() { return Prefers.getInt("episode_column", 2); }
     public static void putEpisodesColumn(int n) { Prefers.put("episode_column", n); }
+    // 与 getEpisodeColumn() 的 [1,2] 夹取语义一致：只认 1 列，其余一律写 2 列。
+    public static void putEpisodeColumn(int column) { Prefers.put("episode_column", column == 1 ? 1 : 2); }
 
     public static int getEpisodeColumn() { return Math.min(Math.max(getEpisodesColumn(), 1), 2); }
     
     public static boolean isDesktopLyrics() { return Prefers.getBoolean("desktop_lyrics", false); }
     public static void putDesktopLyrics(boolean v) { Prefers.put("desktop_lyrics", v); }
     public static int getDesktopLyricsX() { return Prefers.getInt("desktop_lyrics_x", 0); }
+    public static int getDesktopLyricsX(int defaultValue) { return Prefers.getInt("desktop_lyrics_x", defaultValue); }
     public static int getDesktopLyricsY() { return Prefers.getInt("desktop_lyrics_y", 0); }
+    public static int getDesktopLyricsY(int defaultValue) { return Prefers.getInt("desktop_lyrics_y", defaultValue); }
     public static void putDesktopLyricsPosition(int x, int y) { 
         Prefers.put("desktop_lyrics_x", x); 
         Prefers.put("desktop_lyrics_y", y); 
@@ -137,7 +141,11 @@ public class PlayerSetting {
     public static int getPlayCacheSize() { return Prefers.getInt("play_cache_size", 32 * 1024 * 1024); }
     public static long getPlayCacheSize(int kernel) { return getPlayCacheSize(); }
     public static boolean isVideoPrefer() { return Prefers.getBoolean("video_prefer", false); }
+    // 树里只有一份全局 video_prefer，没有按内核分的存储，带参版直接返回全局值（与 isPreferAAC(int) 等同款模式）。
+    public static boolean isVideoPrefer(int kernel) { return isVideoPrefer(); }
     public static boolean isAudioPrefer() { return Prefers.getBoolean("audio_prefer", false); }
+    // 同上，树里只有一份全局 audio_prefer，带参版直接返回全局值。
+    public static boolean isAudioPrefer(int kernel) { return isAudioPrefer(); }
     
     public static String getMpvRender() { return Prefers.getString("mpv_render", "gpu"); }
     

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -14,10 +15,96 @@
         android:paddingStart="4dp"
         android:paddingEnd="4dp">
 
-        <include
-            layout="@layout/view_top_control"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+        <ImageView
+            android:id="@+id/back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_back" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="marquee"
+                android:singleLine="true"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:visibility="invisible"
+                tools:text="片名：第一集" />
+
+            <TextView
+                android:id="@+id/size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textColor="@color/white_80"
+                android:textSize="11sp"
+                android:visibility="gone"
+                tools:text="1920 x 1080"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/cast"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_cast" />
+
+            <ImageView
+                android:id="@+id/info"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_info" />
+
+            <ImageView
+                android:id="@+id/keep"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_fav_off" />
+
+            <ImageView
+                android:id="@+id/osdDiagnostics"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_osd_diagnostics"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/setting"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_setting" />
+
+        </LinearLayout>
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
@@ -29,10 +116,40 @@
         android:gravity="center"
         android:orientation="horizontal">
 
-        <include
-            layout="@layout/view_center_controls"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+        <ImageView
+            android:id="@+id/prev"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_control_btn"
+            android:src="@drawable/exo_icon_previous"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/play"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="40dp"
+            android:layout_marginEnd="40dp"
+            android:background="@drawable/bg_control_btn"
+            android:src="@drawable/ic_play" />
+
+        <ImageView
+            android:id="@+id/next"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_control_btn"
+            android:src="@drawable/exo_icon_next"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/danmaku"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="center"
+            android:src="@drawable/ic_danmaku" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
@@ -53,10 +170,40 @@
         android:orientation="vertical"
         android:paddingBottom="8dp">
 
-        <include
-            layout="@layout/view_bottom_control"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/parse"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:visibility="gone"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="4dp">
+
+            <com.yingtu.plus.ui.custom.CustomSeekView
+                android:id="@+id/seek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/fullscreen"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="center"
+                android:src="@drawable/ic_fullscreen" />
+
+        </LinearLayout>
 
         <include
             android:id="@+id/action"

@@ -8,6 +8,7 @@ public class ExoPerformanceSetting {
     public static final int CODEC_QUEUE_SYNC = 2;
     public static final int FRAME_RATE_OFF = 0;
     public static final int FRAME_RATE_SEAMLESS = 1;
+    public static final int FRAME_RATE_RESOLUTION_AND_RATE = 3;
 
     public static int getCodecQueueMode() { return Prefers.getInt("perf_exo_codec_queue_mode", CODEC_QUEUE_AUTO); }
     public static void putCodecQueueMode(int v) { Prefers.put("perf_exo_codec_queue_mode", v); }

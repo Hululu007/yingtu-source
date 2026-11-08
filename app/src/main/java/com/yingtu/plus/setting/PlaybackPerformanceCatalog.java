@@ -34,4 +34,9 @@ public class PlaybackPerformanceCatalog {
     public static final String IJK_SCENE = "ijk_scene";
     public static final String EXO_START_BUFFER = "exo_start_buffer";
     public static final String EXO_REBUFFER = "exo_rebuffer";
+    public static final String ADAPTIVE_DOWNGRADE = "adaptive_downgrade";
+    public static final String BANDWIDTH_METER = "bandwidth_meter";
+    public static final String DURATION_PROGRESS = "duration_progress";
+    public static final String EXO_PRIORITIZE_TIME = "exo_prioritize_time";
+    public static final String PRELOAD_TIME = "preload_time";
 }
