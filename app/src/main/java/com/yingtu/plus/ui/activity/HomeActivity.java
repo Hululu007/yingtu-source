@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -81,30 +82,39 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     protected void init() {
-        // 应用自定义壁纸
-        applyCustomWallpaper();
-        tvTitle = find(R.id.tvTitle);
-        bottomNav = find(R.id.bottomNav);
+        // 闪退加固（2.0.0.1108 第三轮）：启动链兜底，整段包 try/catch，
+        // 任何漏网的异常都退化成空首页 + 一句提示，不杀进程。顺序与正常路径不变。
+        try {
+            // 应用自定义壁纸
+            applyCustomWallpaper();
+            tvTitle = find(R.id.tvTitle);
+            bottomNav = find(R.id.bottomNav);
 
-        // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角四个图标入口
-        tvTitle.setOnClickListener(v -> openSourcePopup());
-        find(R.id.ivLogo).setOnClickListener(v -> openSourcePopup());
-        find(R.id.tvSearchBox).setOnClickListener(v ->
-                startActivity(new Intent(this, SearchActivity.class)));
-        find(R.id.ivHistory).setOnClickListener(v ->
-                startActivity(new Intent(this, HistoryActivity.class)));
-        find(R.id.ivFav).setOnClickListener(v -> showFav());
-        find(R.id.ivCast).setOnClickListener(v ->
-                CastDialog.create().show(this));
-        find(R.id.ivWeb).setOnClickListener(v ->
-                startActivity(new Intent(this, WebHomeActivity.class)));
+            // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角四个图标入口
+            tvTitle.setOnClickListener(v -> openSourcePopup());
+            find(R.id.ivLogo).setOnClickListener(v -> openSourcePopup());
+            find(R.id.tvSearchBox).setOnClickListener(v ->
+                    startActivity(new Intent(this, SearchActivity.class)));
+            find(R.id.ivHistory).setOnClickListener(v ->
+                    startActivity(new Intent(this, HistoryActivity.class)));
+            find(R.id.ivFav).setOnClickListener(v -> showFav());
+            find(R.id.ivCast).setOnClickListener(v ->
+                    CastDialog.create().show(this));
+            find(R.id.ivWeb).setOnClickListener(v ->
+                    startActivity(new Intent(this, WebHomeActivity.class)));
 
-        setupBottomNav();
-        showFragment(NAV_MOVIE);
-        handleTabExtra(getIntent());
+            setupBottomNav();
+            showFragment(NAV_MOVIE);
+            handleTabExtra(getIntent());
 
-        setupSourcePopup();
-        refreshTitle();
+            setupSourcePopup();
+            refreshTitle();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            try {
+                Toast.makeText(this, "首页加载失败，请重启应用", Toast.LENGTH_LONG).show();
+            } catch (Throwable ignored) {}
+        }
     }
 
     /** WebHome 桥接的 KEY_TAB=4 → 打开收藏页；其余旧 tab 值已废弃，忽略。
@@ -301,6 +311,8 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void refreshTitle() {
+        // init 失败后 tvTitle 可能还没拿到手，onResume 还会调这里，先守住空指针
+        if (tvTitle == null) return;
         SourceBean home = ApiConfig.get().getHomeSource();
         tvTitle.setText(home != null ? home.getName() : getString(R.string.source_default));
     }
@@ -324,7 +336,13 @@ public class HomeActivity extends BaseActivity {
     }
 
     private void applyCustomWallpaper() {
-        android.net.Uri uri = com.yingtu.plus.util.WallpaperHelper.getWallpaperUri(this);
+        // 包一层：Hawk 没起来时 getWallpaperUri 会抛异常，接住只丢壁纸，不闪退
+        android.net.Uri uri;
+        try {
+            uri = com.yingtu.plus.util.WallpaperHelper.getWallpaperUri(this);
+        } catch (Throwable ignored) {
+            return;
+        }
         if (uri != null) {
             try {
                 android.graphics.Bitmap bmp =
