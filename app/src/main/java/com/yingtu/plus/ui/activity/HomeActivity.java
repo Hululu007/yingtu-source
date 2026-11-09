@@ -417,18 +417,22 @@ public class HomeActivity extends BaseActivity {
         sidebarScrim.setVisibility(View.VISIBLE);
         sidebarPanel.setVisibility(View.VISIBLE);
         sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));
+        sidebarPanel.animate().cancel();
         sidebarPanel.animate().translationX(0).setDuration(250).start();
     }
 
-    /** 侧边栏收回：面板滑回屏幕外再藏掉，遮罩藏掉。 */
+    /** 侧边栏收回：面板立刻藏掉、遮罩藏掉。
+     * 注意：原来靠滑出动画 + withEndAction 藏面板，但在用户手机上（鸿蒙 NEXT 卓易通容器）
+     * 动画的 endAction 不触发，面板一直停在 translationX=0 盖住半屏，点区只换高亮不切区；
+     * 所以这里不再依赖动画做收尾——先取消残留动画，再把面板移出屏外并直接 GONE，
+     * 关栏在点按当下就确定生效。开栏的滑入动画不受影响。 */
     private void closeSidebar() {
         if (!sidebarOpen) return;
         sidebarOpen = false;
         if (sidebarPanel == null || sidebarScrim == null) return;
-        sidebarPanel.animate().translationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP)).setDuration(250)
-                .withEndAction(() -> {
-                    if (sidebarPanel != null) sidebarPanel.setVisibility(View.GONE);
-                }).start();
+        sidebarPanel.animate().cancel();
+        sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));
+        sidebarPanel.setVisibility(View.GONE);
         sidebarScrim.setVisibility(View.GONE);
     }
 
@@ -522,9 +526,13 @@ public class HomeActivity extends BaseActivity {
                 fragment = getSupportFragmentManager().findFragmentByTag(tag);
                 if (fragment == null) fragment = new HomeMainFragment();
             }
+            // 切区必须当下就生效：commit() 在状态已保存时抛错（被 catch 吃掉就只剩高亮变了、
+            // 内容不动），且异步执行还依赖主线程消息队列；改成允许状态丢失 + 立刻同步执行，
+            // 点 tab 的同一帧里分区就换过去，不靠下一轮消息。
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragmentContainer, fragment, tag)
-                    .commit();
+                    .commitAllowingStateLoss();
+            getSupportFragmentManager().executePendingTransactions();
         } catch (Throwable e) {
             e.printStackTrace();
             com.yingtu.plus.App.logCaught(e);

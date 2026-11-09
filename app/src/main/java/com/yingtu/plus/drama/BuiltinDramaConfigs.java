@@ -42,7 +42,7 @@ import java.util.Set;
  */
 public final class BuiltinDramaConfigs {
 
-    /** Built-in drama config (21 sites: 18 py + 3 jar). */
+    /** Built-in drama config (22 sites: 19 py + 3 jar). */
     public static final String DRAMA_CONFIG_ASSET = "builtin_drama.json";
     /** assets jar file (shared with the midnight batch). */
     public static final String JAR_ASSET = "jars/zakatv.jar";
@@ -57,7 +57,7 @@ public final class BuiltinDramaConfigs {
     private static final String SENTINEL_PY = "ai2026";
     private static final String SENTINEL_JAR = "ZakaHuangdou";
 
-    /** This batch's site keys (only the 21 in builtin_drama.json). */
+    /** This batch's site keys (only the 22 in builtin_drama.json). */
     private static final Set<String> dramaKeys = new LinkedHashSet<>();
     /** This batch's original names (key -> name in JSON): rename overlays apply on top. */
     private static final java.util.Map<String, String> dramaNames = new java.util.LinkedHashMap<>();

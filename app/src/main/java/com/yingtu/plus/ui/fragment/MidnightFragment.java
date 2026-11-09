@@ -124,7 +124,8 @@ public class MidnightFragment extends BaseLazyFragment {
             child = new HomeMainFragment();
             getChildFragmentManager().beginTransaction()
                     .replace(R.id.midnightContent, child, TAG_HOME)
-                    .commit();
+                    .commitAllowingStateLoss();
+            getChildFragmentManager().executePendingTransactions();
         } else {
             child.reloadForSourceChange();
         }

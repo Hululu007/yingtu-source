@@ -34,9 +34,9 @@ public final class DramaSites {
     public static final List<String> ORIGINAL_CHANNEL_NAMES =
             Collections.unmodifiableList(Arrays.asList("全部", "推荐", "看剧", "漫剧"));
 
-    /** py drama sites registered in builtin_drama.json (18). */
+    /** py drama sites registered in builtin_drama.json (19). */
     public static final List<String> PY_DRAMA_KEYS = Collections.unmodifiableList(Arrays.asList(
-            "ai2026", "ai4k", "aidj", "aiduanju", "aimove", "aisxpc",
+            "ai2026", "ai4k", "aidj", "aiduanju", "aimove", "hghub", "aisxpc",
             "danai", "dj69", "dj91", "djwo", "duanjuone", "aihi",
             "ficeforand", "aipornx", "aiyinhang", "aiwu", "sexaix", "youzidj"));
 

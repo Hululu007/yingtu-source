@@ -39,7 +39,7 @@ import java.util.concurrent.Executors;
  * 1. Fanqie short-drama stream (ORIGINAL_KEY, default): plan/v seed +
  *    cell/change feed, 3-column poster grid, endless scroll by nextOffset.
  *    Tap a card opens the full-screen vertical feed player.
- * 2. TVBox drama sites (py 18 + jar 3 from builtin_drama.json): tapping a
+ * 2. TVBox drama sites (py 19 + jar 3 from builtin_drama.json): tapping a
  *    site switches the global current source and embeds a HomeMainFragment
  *    below, reusing the whole existing content chain (same pattern as
  *    MidnightFragment).
@@ -223,7 +223,8 @@ public class DramaFragment extends BaseLazyFragment {
             child = new HomeMainFragment();
             getChildFragmentManager().beginTransaction()
                     .replace(R.id.dramaContent, child, TAG_HOME)
-                    .commit();
+                    .commitAllowingStateLoss();
+            getChildFragmentManager().executePendingTransactions();
         } else {
             child.reloadForSourceChange();
         }
