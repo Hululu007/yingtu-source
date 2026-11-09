@@ -42,11 +42,14 @@ import com.github.catvod.utils.Path;
 import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.util.HawkConfig;
 
+import okhttp3.OkHttpClient;
+
 import java.io.File;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class MediaSourceFactory implements MediaSource.Factory {
 
@@ -296,12 +299,10 @@ public class MediaSourceFactory implements MediaSource.Factory {
     private DataSource.Factory getDataSourceFactory() {
         if (dataSourceFactory == null) {
             DataSource.Factory http = getHttpDataSourceFactory();
-            // 缓冲超时：主路 OkHttpDataSource 的连接/读取超时也跟设置走（关闭=默认 8/8 秒，
-            // ExoHttpPolicy 那路是 15/30 秒默认值，两路各按各的默认，只在用户选了秒数时统一改）。
-            int timeoutSec = PlayerSetting.getBufferTimeoutSec();
-            if (timeoutSec > 0 && http instanceof OkHttpDataSource.Factory okFactory) {
-                okFactory.setConnectTimeoutMs(timeoutSec * 1000).setReadTimeoutMs(timeoutSec * 1000);
-            }
+            // 缓冲超时：已在 getHttpDataSourceFactory() 建厂时落在底下的 OkHttpClient 上
+            //（分叉 media3 的 OkHttpDataSource.Factory 没有 setConnectTimeoutMs /
+            // setReadTimeoutMs，只有 DefaultHttpDataSource.Factory 才有；见 ExoHttpPolicy）。
+            // 关闭=默认 8/8 秒，只在用户选了秒数时统一改。
             // 智能去除切片广告：开关开时在清单层过滤广告分片（见 HlsAdFilterDataSource）。
             if (HlsAdFilterDataSource.isEnabled()) http = new HlsAdFilterDataSource.Factory(http);
             DataSource.Factory cacheDataSource = getCacheDataSource(new DefaultDataSource.Factory(App.get(), http));
@@ -321,7 +322,19 @@ public class MediaSourceFactory implements MediaSource.Factory {
     }
 
     private OkHttpDataSource.Factory getHttpDataSourceFactory() {
-        if (httpDataSourceFactory == null) httpDataSourceFactory = new OkHttpDataSource.Factory(OkHttp.player());
+        if (httpDataSourceFactory == null) {
+            // 超时只能落在 OkHttpClient 上：OkHttpDataSource.Factory 没有超时设置方法。
+            // newBuilder() 与共享 client 共用连接池/分发器/拦截器，只改连接/读取两项超时；
+            // 超时 0=关闭时沿用共享 client 的默认 8/8 秒。
+            int timeoutSec = PlayerSetting.getBufferTimeoutSec();
+            OkHttpClient client = timeoutSec > 0
+                    ? OkHttp.player().newBuilder()
+                            .connectTimeout(timeoutSec, TimeUnit.SECONDS)
+                            .readTimeout(timeoutSec, TimeUnit.SECONDS)
+                            .build()
+                    : OkHttp.player();
+            httpDataSourceFactory = new OkHttpDataSource.Factory(client);
+        }
         return httpDataSourceFactory;
     }
 

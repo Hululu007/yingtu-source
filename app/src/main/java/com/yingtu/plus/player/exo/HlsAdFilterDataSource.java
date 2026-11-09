@@ -9,7 +9,6 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.BaseDataSource;
 import androidx.media3.datasource.DataSource;
 import androidx.media3.datasource.DataSpec;
-import androidx.media3.datasource.TransferListener;
 
 import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.util.HawkConfig;
@@ -62,12 +61,6 @@ public final class HlsAdFilterDataSource extends BaseDataSource {
         } catch (Throwable e) {
             return true;
         }
-    }
-
-    @Override
-    public void addTransferListener(TransferListener listener) {
-        super.addTransferListener(listener);
-        upstream.addTransferListener(listener);
     }
 
     @Override

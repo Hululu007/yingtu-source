@@ -63,7 +63,7 @@ public final class VodResultCache {
 
     private static final Map<String, Entry> CACHE = new LinkedHashMap<String, Entry>(64, 0.75f, true) {
         @Override
-        protected boolean removeEldestEntry(Map.Entry<String, Entry> eldest) {
+        protected boolean removeEldestEntry(Map.Entry<String, VodResultCache.Entry> eldest) {
             return size() > MAX_ENTRIES;
         }
     };

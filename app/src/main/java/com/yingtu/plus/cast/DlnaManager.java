@@ -225,6 +225,7 @@ public class DlnaManager {
         String title = TextUtils.isEmpty(video.getName()) ? "影图" : video.getName();
         String metadata = buildMetadata(title, url);
         long position = Math.max(0, video.getPosition());
+        final String castUrl = url;
         try {
             upnpService.getControlPoint().execute(new SetAVTransportURI(avTransport, url, metadata) {
                 @Override
@@ -233,7 +234,7 @@ public class DlnaManager {
                         @Override
                         public void success(ActionInvocation invocation) {
                             castingDevice = device;
-                            castingUrl = url;
+                            castingUrl = castUrl;
                             if (position > 1000) {
                                 upnpService.getControlPoint().execute(new Seek(avTransport, SeekMode.REL_TIME, formatTime(position)) {
                                     @Override
