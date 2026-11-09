@@ -53,7 +53,9 @@ import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
+import com.yingtu.plus.impl.ParseCallback;
 import com.yingtu.plus.player.NonVideoRouter;
+import com.yingtu.plus.player.ParseJob;
 import com.yingtu.plus.player.PlaybackPreload;
 import com.yingtu.plus.player.exo.ExoHttpPolicy;
 import com.yingtu.plus.player.exo.ExoUtil;
@@ -65,6 +67,7 @@ import com.yingtu.plus.util.HistoryHelper;
 import com.yingtu.plus.util.OkGo;
 import com.yingtu.plus.utils.ImgUtil;
 import com.yingtu.plus.utils.ResUtil;
+import com.yingtu.plus.utils.UrlUtil;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 
@@ -150,6 +153,8 @@ private VodInfo.VodSeriesFlag playingFlag;
 private VodInfo.VodSeries playingSeries;
 private int playingIndex;
 private long playingResume;
+private ParseJob sniffJob;
+private String sniffFailReason = "";
 // 当前播出流的地址与头：推送（投屏）用；没播出流时推送按钮先提示，不造假。
 private String currentPlayUrl;
 private Map<String, String> currentPlayHeaders;
@@ -228,10 +233,15 @@ viewModel.getDetail(sourceKey, vodId);
 
 private void bind(VodInfo info) {
 setLoading(false);
+TextView tvTitle = find(R.id.tvTitle);
 if (info == null) {
-setText(R.id.tvTitle, "加载失败");
+// 详情取失败：标题改成可点的重试入口，点后重调详情接口；不另加布局。
+setText(R.id.tvTitle, "加载失败，点击重试");
+if (tvTitle != null) tvTitle.setOnClickListener(v -> retryDetail());
 return;
 }
+// 取成功后清掉失败时挂在标题上的重试点击，不让正常标题可点。
+if (tvTitle != null) tvTitle.setOnClickListener(null);
 this.vodInfo = info;
 
 // 标题（录像里标题前有个 ⊕）+ 来源（站名）+ 评述 + 标签 + 简介。
@@ -273,6 +283,15 @@ onFlagSelected(0);
 preloadDetailPlayback();
 
 loadRelated();
+}
+
+/** 详情取失败重试：先清掉标题上的重试点击、亮加载圈，再重调详情接口。 */
+private void retryDetail() {
+TextView tvTitle = find(R.id.tvTitle);
+if (tvTitle != null) tvTitle.setOnClickListener(null);
+setText(R.id.tvTitle, "加载中…");
+setLoading(true);
+viewModel.getDetail(sourceKey, vodId);
 }
 
 /** 详情视图1只显标题：只留标题行，隐藏简介与剧照区；详情页样式“简洁文字”：藏剧照与毛玻璃背景。 */
@@ -561,7 +580,7 @@ if (h!= null && h.playFlag == vodInfo.playFlag && h.playIndex == seriesIndex) {
 resume = h.position;
 }
 
-// 先在详情页顶部直接播；播不了再跳播放页兜底（VideoActivity 那条路留着，不删）。
+// 先在详情页顶部直接播；顶上播放器播不起来再跳播放页兜底（VideoActivity 那条路留着，不删），取流失败留在详情页报真实错。
 // 当前集标绿 + 集数行显示“M / N”（点选集本身也会调 setPlaying，这里补上是
 // 为了 playFirstEpisode 这种程序触发的播放同样高亮）。
 seriesAdapter.setPlaying(seriesIndex);
@@ -616,17 +635,17 @@ if (TextUtils.isEmpty(url)) throw new IllegalStateException("取流地址为空"
 OkGo.main(() -> onPlayerResult(result, flag, series, seriesIndex, resume));
 } catch (Exception e) {
 App.logCaught(e);
-OkGo.main(() -> fallbackToVideoPlayer(e.getMessage(), flag, series, seriesIndex, resume));
+OkGo.main(() -> trySniffFallback(e.getMessage(), flag, series, seriesIndex, resume));
 }
 });
 }
 
 /** 取流成功后的统一处理（预加载命中与现取两条路共用）：非视频走小说/图片
- * 分流，否则进顶上播放器开播；失败由调用方走 fallbackToVideoPlayer。 */
+ * 分流，否则进顶上播放器开播；地址为空走 showPlayError 留在详情页报真实错。 */
 private void onPlayerResult(Result result, VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
 String url = result.getRealUrl();
 if (TextUtils.isEmpty(url)) {
-fallbackToVideoPlayer("取流地址为空", flag, series, seriesIndex, resume);
+trySniffFallback("取流地址为空", flag, series, seriesIndex, resume);
 return;
 }
 if (NonVideoRouter.isNonVideo(url)) {
@@ -637,15 +656,127 @@ return;
 startDetailPlayer(url, result.getHeader());
 }
 
-/** 内联播失败的统一出口：退全屏、放掉死播放器、toast 带真实原因、跳播放页兜底。
- * 原因不只写“播放失败”：取流空是“取流地址为空”，蜘蛛抛错是蜘蛛的原消息，
- * 播放器报错是 ExoPlayer 的原消息；完整堆栈同时进 crash.log。 */
+/** 取流失败留在详情页报真实错：取流地址为空就是取流地址为空、Source error 就是
+ * Source error。取流失败时根本没东西可播，起播放页也是白起（VideoActivity 重取
+ * 还是空），不跳走、不说“正在用播放页打开”。清理后海报墙恢复原样（播放钮还在），
+ * 用户点播放可再试。 */
+private void showPlayError(String reason) {
+if (detailFullscreen) toggleDetailFullscreen(false);
+releaseDetailPlayer();
+setLoading(false);
+if (TextUtils.isEmpty(reason)) reason = "未知错误";
+Toast.makeText(DetailActivity.this, "播放失败：" + reason, Toast.LENGTH_LONG).show();
+}
+
+/** 取流失败后的嗅探兜底：先停旧嗅探，再拿页面地址开 WebView 嗅探真地址。
+ * 页面地址取不到直接报原错，不空等 15 秒；嗅探到真地址走正常路开播；
+ * 抓到广告/预告或超时同样报原错。取流成功与预加载命中完全不走这里。 */
+private void trySniffFallback(String reason, VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+stopSniff();
+String pageUrl = resolveSniffPageUrl(series == null ? "" : series.url);
+if (TextUtils.isEmpty(pageUrl)) {
+showPlayError(reason);
+return;
+}
+sniffFailReason = TextUtils.isEmpty(reason) ? "未知错误" : reason;
+Toast.makeText(DetailActivity.this, "正在嗅探播放地址…", Toast.LENGTH_SHORT).show();
+Map<String, String> header = new HashMap<>(VodConfig.get().getSite(sourceKey).getHeader());
+header.put("Referer", pageUrl);
+Result r = new Result();
+r.setKey(sourceKey);
+r.setFlag(flag == null ? "" : flag.name);
+r.setUrl(pageUrl);
+r.setHeader(header);
+sniffJob = ParseJob.create(new ParseCallback() {
+@Override
+public void onParseSuccess(Map<String, String> headers, String url, String from) {
+OkGo.main(() -> {
+if (isFinishing() || isDestroyed()) {
+stopSniff();
+return;
+}
+if (isSniffedAdOrPreview(url)) {
+SpiderDebug.log("sniff", "sniff hit ad/preview, give up url=%s", url);
+showPlayError(sniffFailReason);
+sniffJob = null;
+return;
+}
+Result s = new Result();
+s.setUrl(url);
+s.setHeader(headers == null ? new HashMap<>() : headers);
+sniffJob = null;
+onPlayerResult(s, flag, series, seriesIndex, resume);
+});
+}
+
+@Override
+public void onParseError() {
+OkGo.main(() -> {
+if (isFinishing() || isDestroyed()) {
+stopSniff();
+return;
+}
+showPlayError(sniffFailReason);
+sniffJob = null;
+});
+}
+}).start(r, false);
+}
+
+/** 从集地址里取嗅探用的页面地址：TVBox“集名$地址”取最后一个 $ 之后；
+ * http(s) 直接回；/ 开头用 vodId（是完整 URL 时）或站点 api（是 URL 时）
+ * 做基底拼；其余（内部 token 如 hghub 的“正片$post:123”、纯集 id）返回
+ * 空串，调用方直接报原错，不嗅探。 */
+private String resolveSniffPageUrl(String seriesUrl) {
+if (TextUtils.isEmpty(seriesUrl)) return "";
+String u = seriesUrl;
+int dollar = u.lastIndexOf('$');
+if (dollar >= 0) u = u.substring(dollar + 1);
+u = u.trim();
+if (u.startsWith("http://") || u.startsWith("https://")) return u;
+if (u.startsWith("/")) {
+String base = "";
+if (!TextUtils.isEmpty(vodId) && (vodId.startsWith("http://") || vodId.startsWith("https://"))) {
+base = vodId;
+} else {
+String api = VodConfig.get().getSite(sourceKey).getApi();
+if (!TextUtils.isEmpty(api) && (api.startsWith("http://") || api.startsWith("https://"))) base = api;
+}
+if (TextUtils.isEmpty(base)) return "";
+String resolved = UrlUtil.resolve(base, u);
+if (resolved.startsWith("http://") || resolved.startsWith("https://")) return resolved;
+return "";
+}
+return "";
+}
+
+/** 嗅到的地址是不是广告/预告：含 advert、preroll、pre-roll、/ads/、
+ * preview、trailer、预告任一即 true。不拦单独的 ad 与 gg，防误伤正常地址。
+ * ParseJob 首次命中即胜出，被拦的首个命中意味着本次嗅探失败，不再等第二个。 */
+private boolean isSniffedAdOrPreview(String url) {
+if (TextUtils.isEmpty(url)) return true;
+String u = url.toLowerCase();
+return u.contains("advert") || u.contains("preroll") || u.contains("pre-roll")
+|| u.contains("/ads/") || u.contains("preview") || u.contains("trailer") || u.contains("预告");
+}
+
+private void stopSniff() {
+if (sniffJob != null) {
+sniffJob.stop();
+sniffJob = null;
+}
+}
+
+/** 内联播放器报错后的兜底（取流已成功、但顶上播放器播不起来时才走这里）：退全屏、
+ * 放掉死播放器、toast 带真实原因、跳播放页用另一条管线重试。取流失败不走这里，
+ * 取流失败走 showPlayError（留在详情页报真实错、不跳播放页）。
+ * 原因不只写“播放失败”：播放器报错是 ExoPlayer 的原消息；完整堆栈同时进 crash.log。 */
 private void fallbackToVideoPlayer(String reason, VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
 if (detailFullscreen) toggleDetailFullscreen(false);
 releaseDetailPlayer();
 setLoading(false);
 if (TextUtils.isEmpty(reason)) reason = "未知错误";
-Toast.makeText(DetailActivity.this, "详情页播放失败（" + reason + "），正在用播放页打开…", Toast.LENGTH_LONG).show();
+Toast.makeText(DetailActivity.this, "详情页播放失败（" + reason + "），正在用播放页重试…", Toast.LENGTH_LONG).show();
 openVideoActivity(flag, series, seriesIndex, resume);
 }
 
@@ -839,7 +970,9 @@ playerBox.setLayoutParams(lp);
 }
 if (ivPlayOverlay != null) ivPlayOverlay.setVisibility(View.GONE);
 } else {
-setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+// 退出全屏不锁竖屏：跟 WebHomeActivity.hideCustomView 学，用 UNSPECIFIED
+// 交回系统/传感器，否则退出后转屏与自动旋转永久失效。
+setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
 showDetailSystemBars();
 if (fixedInfo != null) fixedInfo.setVisibility(View.VISIBLE);
 if (scrollDetail != null) scrollDetail.setVisibility(View.VISIBLE);
@@ -887,6 +1020,7 @@ super.onBackPressed();
 
 @Override
 protected void onDestroy() {
+stopSniff();
 releaseDetailPlayer();
 super.onDestroy();
 }
@@ -895,12 +1029,17 @@ super.onDestroy();
 private void openVideoActivity(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
 if (flag == null || series == null) return;
 Intent i = new Intent(this, VideoActivity.class);
+// 传参加裸 key：VideoActivity 只读 "key"/"id"/"name"/"pic"（getKey/getId/getName/getPic），
+// 它定义的 KEY_SOURCE/KEY_VOD_ID/KEY_VOD_NAME/KEY_VOD_PIC 常量（"sourceKey"/"vodId"/
+// "vodName"/"vodPic"）全树没人读；之前用它们传参，兜底起来的播放页收到的 key/id/name
+// 全是空，只能走 setEmpty 显示错误页，从来没拿到过能播的东西。裸 key 才是全树标准
+// （VideoActivity.start、列表/收藏/推送/直播/网盘/续播全是裸 key）。
+i.putExtra("key", sourceKey);
+i.putExtra("id", vodId);
+i.putExtra("name", vodInfo.name);
+i.putExtra("pic", vodInfo.pic);
 i.putExtra(VideoActivity.KEY_TITLE, vodInfo.name + " " + series.name);
 i.putExtra(VideoActivity.KEY_URL, series.url);
-i.putExtra(VideoActivity.KEY_SOURCE, sourceKey);
-i.putExtra(VideoActivity.KEY_VOD_ID, vodId);
-i.putExtra(VideoActivity.KEY_VOD_NAME, vodInfo.name);
-i.putExtra(VideoActivity.KEY_VOD_PIC, vodInfo.pic);
 i.putExtra(VideoActivity.KEY_FLAG, vodInfo.playFlag);
 i.putExtra(VideoActivity.KEY_FLAG_NAME, flag.name);
 i.putExtra(VideoActivity.KEY_INDEX, seriesIndex);

@@ -25,8 +25,11 @@ public final class PlaybackOrientation {
     }
 
     public static int getExitFullscreenOrientation(boolean portMode) {
-        if (portMode) return ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
-        return ActivityInfo.SCREEN_ORIENTATION_FULL_USER;
+        // F7：退出全屏一律强制回竖屏。旧逻辑横屏退出时给 FULL_USER，手机还横拿着
+        // 就停在横屏非全屏详情布局。详情页是竖屏布局，先回 USER_PORTRAIT；
+        // 2 秒后 setOrient（mR3）见竖屏 + 自动旋转开会再给 FULL_USER 解锁跟传感器。
+        // 参数保留只为兼容旧调用，退出方向不再由它决定。
+        return ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
     }
 
     public static int getPortAutoRotateOrientation() {
@@ -34,7 +37,10 @@ public final class PlaybackOrientation {
     }
 
     public static int getLandAutoRotateOrientation() {
-        return ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE;
+        // F2：横屏分支原来钉死 USER_LANDSCAPE，进全屏 2 秒后 setOrient 一跑方向就
+        // 钉死，转回竖屏不产生配置变化、退不了全屏。改成 FULL_USER，跟竖屏分支一致，
+        // 自动旋转开时跟传感器走。
+        return ActivityInfo.SCREEN_ORIENTATION_FULL_USER;
     }
 
     public static int getPortraitVideoSizeOrientation() {

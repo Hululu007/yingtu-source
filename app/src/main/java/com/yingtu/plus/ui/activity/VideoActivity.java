@@ -546,10 +546,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         return Setting.getReset() == 1;
     }
 
-    private boolean isFromCollect() {
-        return getIntent().getBooleanExtra("collect", false);
-    }
-
     private boolean isAutoRotate() {
         return Settings.System.getInt(getContentResolver(), Settings.System.ACCELEROMETER_ROTATION, 0) == 1;
     }
@@ -560,6 +556,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private boolean isPort() {
         return mBinding.getRoot().getTag().equals("port");
+    }
+
+    private void syncOrientationTag(boolean land) {
+        if (mBinding == null) return;
+        mBinding.getRoot().setTag(land ? "land" : "port");
     }
 
     protected boolean isVisible(View view) {
@@ -599,6 +600,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         setLut();
         applyDeferredFullscreenOrientation();
         checkLand();
+        syncOrientationTag(ResUtil.isLand(this));
         if (consumePendingPlaybackResult()) return;
         checkId();
     }
@@ -1275,7 +1277,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void checkId() {
         if (getId().startsWith("push://")) getIntent().putExtra("key", SiteApi.PUSH).putExtra("id", getId().substring(7));
-        if (getId().isEmpty() || getId().startsWith("msearch:")) setEmpty(false);
+        if (getId().isEmpty() || getId().startsWith("msearch:")) setEmpty("");
         else getDetail();
     }
 
@@ -1315,21 +1317,23 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         SpiderDebug.log("video-flow", "detail finish cost=%dms empty=%s msg=%s", cost, result.getList().isEmpty(), result.getMsg());
         recordDetailHealth(result, cost);
         mBinding.swipeLayout.setRefreshing(false);
-        if (result.getList().isEmpty()) setEmpty(false);
-        else setDetail(result.getVod());
-        Notify.show(result.getMsg());
+        if (result.getList().isEmpty()) setEmpty(result.getMsg());
+        else {
+            setDetail(result.getVod());
+            Notify.show(result.getMsg());
+        }
     }
 
-    private void setEmpty(boolean finish) {
-        if (isFromCollect() || finish) {
-            finish();
-        } else if (getName().isEmpty()) {
-            showEmpty();
-        } else {
-            mBinding.name.setText(getName());
-            App.post(mR4, 10000);
-            checkSearch(false);
-        }
+    private void setEmpty(String reason) {
+        // D：详情取空立即显错，不再等 10 秒（mR4 不再 post）。finish / isFromCollect
+        // 分支是死代码：两个调用点原来都传 false，collect=true 全树没有调用方
+        // （VideoActivity.start 的 collect 重载只被以 false 串下来），已删。
+        // 真实原因在这里弹一次 Toast；setDetail 成功那路的 Notify 不动。
+        showEmpty();
+        if (!TextUtils.isEmpty(reason)) Notify.show(reason);
+        if (getName().isEmpty()) return;
+        mBinding.name.setText(getName());
+        checkSearch(false);
     }
 
     private void showEmpty() {
@@ -1434,6 +1438,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         if (isFinishing() || isDestroyed()) return;
         if (service() == null) {
             mPendingPlayerResult = result;
+            return;
+        }
+        // C：取流失败立刻报真实原因，不等引擎报错或 15 秒超时。解析模式（shouldUseParse）
+        // 下 PlaySpec.fromParse 不用真实地址，空地址是合法的，不能拦。
+        if (result == null || (!result.shouldUseParse() && TextUtils.isEmpty(result.getRealUrl()))) {
+            String msg = result != null && result.hasMsg() ? result.getMsg() : "取流地址为空";
+            SpiderDebug.log("video-flow", "player empty url msg=%s", msg);
+            mBinding.swipeLayout.setRefreshing(false);
+            showError(msg);
             return;
         }
         SpiderDebug.log("video-flow", "player finish cost=%dms useParse=%s multi=%s msg=%s", System.currentTimeMillis() - playerStartTime, result.shouldUseParse(), result.getUrl().isMulti(), result.getMsg());
@@ -4317,6 +4330,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void setOrient() {
+        // F3：全屏期间不解锁方向。进全屏时 mR3 会在 2 秒后调到这里，竖屏视频
+        // 走 USER_PORTRAIT 锁定，全屏期间绝不能被改回 FULL_USER（一倾斜就转横屏）。
+        // 退全屏时 exitFullscreen 同样 post mR3，那时已不在全屏，正常跑解锁。
+        if (isFullscreen()) return;
         if (isPort() && isAutoRotate()) setRequestedOrientation(PlaybackOrientation.getPortAutoRotateOrientation());
         if (isLand() && isAutoRotate()) setRequestedOrientation(PlaybackOrientation.getLandAutoRotateOrientation());
     }
@@ -4463,11 +4480,61 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         } else if (preservePlayback) {
             restoreFlagSelectionWithoutPlayback();
         } else {
+            applyIntentEpisode(item);
             onItemClick(mHistory.getFlag());
             if (mHistory.isRevSort()) reverseEpisode(true);
         }
         if (preservePlayback) SpiderDebug.log("karaoke-result", "configuration restore preserved playback key=%s episode=%s", player().getKey(), mHistory.getVodRemarks());
         mRestoringConfigurationPlayback = false;
+    }
+
+    /**
+     * A：DetailActivity 兜底跳过来的指定集。KEY_FLAG 是线路下标（int）、KEY_INDEX 是集下标（int），
+     * 另有 KEY_FLAG_NAME / KEY_EPISODE / KEY_URL 作名字与地址兜底、KEY_POSITION 是续播进度（毫秒）。
+     * 详情取回来后、按 History 选集之前，先把这组值写进 mHistory，否则旧 History 会把播放拉回
+     * 上次那集（播错集），getPlayer 里的 updateHistory 还会把续播进度清掉（丢续播）。
+     * 线路先按名字匹配（两边详情解析的线路顺序未必一致，下标不可靠），名字对不上再按下标；
+     * 集先按下标，再按集名、地址找。写进 mHistory 后，seamless 按 vodRemarks / episodeUrl
+     * 找到同一集，updateHistory 认作同集保留进度，onPrepare 的 setPosition 再 seek 到进度。
+     * 用一次就从 Intent 里清掉，站内切集 / 切站重进详情时不再被拉回这一集。
+     */
+    private void applyIntentEpisode(Vod item) {
+        if (mHistory == null || item.getFlags().isEmpty()) return;
+        int flagIndex = getIntent().getIntExtra(KEY_FLAG, -1);
+        int episodeIndex = getIntent().getIntExtra(KEY_INDEX, -1);
+        String flagName = Objects.toString(getIntent().getStringExtra(KEY_FLAG_NAME), "");
+        String episodeName = Objects.toString(getIntent().getStringExtra(KEY_EPISODE), "");
+        String episodeUrl = Objects.toString(getIntent().getStringExtra(KEY_URL), "");
+        long position = getIntent().getLongExtra(KEY_POSITION, -1);
+        if (flagIndex < 0 && episodeIndex < 0 && TextUtils.isEmpty(flagName) && TextUtils.isEmpty(episodeName) && TextUtils.isEmpty(episodeUrl) && position <= 0) return;
+        List<Flag> flags = item.getFlags();
+        Flag target = null;
+        if (!TextUtils.isEmpty(flagName)) {
+            for (Flag flag : flags) if (TextUtils.equals(flag.getFlag(), flagName) || TextUtils.equals(flag.getShow(), flagName)) { target = flag; break; }
+        }
+        if (target == null && flagIndex >= 0 && flagIndex < flags.size()) target = flags.get(flagIndex);
+        if (target == null) return;
+        List<Episode> episodes = target.getEpisodes();
+        if (episodes.isEmpty()) return;
+        Episode episode = null;
+        if (episodeIndex >= 0 && episodeIndex < episodes.size()) episode = episodes.get(episodeIndex);
+        if (episode == null && !TextUtils.isEmpty(episodeName)) episode = target.find(episodeName, false);
+        if (episode == null && !TextUtils.isEmpty(episodeUrl)) {
+            for (Episode e : episodes) if (TextUtils.equals(e.getUrl(), episodeUrl)) { episode = e; break; }
+        }
+        if (episode == null) episode = episodes.get(0);
+        mHistory.setVodFlag(target.getFlag());
+        mHistory.setVodRemarks(episode.getName());
+        mHistory.setEpisodeUrl(episode.getUrl());
+        if (position > 0) mHistory.setPosition(position);
+        getIntent().removeExtra(KEY_TITLE);
+        getIntent().removeExtra(KEY_URL);
+        getIntent().removeExtra(KEY_FLAG);
+        getIntent().removeExtra(KEY_FLAG_NAME);
+        getIntent().removeExtra(KEY_INDEX);
+        getIntent().removeExtra(KEY_EPISODE);
+        getIntent().removeExtra(KEY_POSITION);
+        SpiderDebug.log("video-flow", "apply intent episode flag=%s episode=%s position=%d", target.getFlag(), episode.getName(), position);
     }
 
     private void restoreFlagSelectionWithoutPlayback() {
@@ -6589,7 +6656,10 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         } else {
             showDanmaku();
             restoreContextWall();
-            if (isStop()) finish();
+            // PiP：删掉旧的 if (isStop()) finish()。isStop 由 onStop（非纯音频即置真）
+            // 与 onStart 维护，与画中画状态无关；画中画期间 Activity 若又被盖住走一次
+            // onStop，再退出画中画就误 finish。画中画窗口被划掉时系统本来就会销毁
+            // Activity，这里不需要再 finish。
         }
         updateDiscMenuTools();
     }
@@ -6612,13 +6682,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             recreate();
             return;
         }
+        syncOrientationTag(newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE);
         syncFullscreenForOrientation(newConfig.orientation);
         setupCustomActionButtons();
         if (isFullscreen()) Util.hideSystemUI(this);
     }
 
     private void syncFullscreenForOrientation(int orientation) {
-        if (!isAutoRotate() || !isPort()) {
+        // F1：门口只判自动旋转开关，不判 tag。onConfigurationChanged 是先
+        // syncOrientationTag(新方向) 再调这里，转横屏后 tag 已是 "land"，旧门口
+        // 的 !isPort() 直接 return，横屏进全屏分支永远走不到。按传进来的
+        // orientation 参数分支才是对的。
+        if (!isAutoRotate()) {
             deferredFullscreenOrientation = Configuration.ORIENTATION_UNDEFINED;
             return;
         }

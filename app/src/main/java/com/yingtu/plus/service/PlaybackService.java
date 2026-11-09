@@ -21,7 +21,6 @@ import androidx.core.app.NotificationManagerCompat;
 import com.yingtu.plus.R;
 import com.yingtu.plus.player.lyrics.LyricsLine;
 import com.yingtu.plus.player.lyrics.LyricsResult;
-import com.yingtu.plus.ui.activity.HomeActivity;
 import com.yingtu.plus.ui.activity.VideoActivity;
 import com.yingtu.plus.util.Prefers;
 
@@ -254,9 +253,22 @@ public class PlaybackService extends Service {
     }
 
     private android.app.Notification buildNotification() {
-        Intent home = new Intent(this, HomeActivity.class)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent content = PendingIntent.getActivity(this, 0, home,
+        // 点通知正文回正在播的 VideoActivity，不回 HomeActivity：
+        // 旧写法指 HomeActivity（singleTop）+ CLEAR_TOP，会把 Home 之上的
+        // VideoActivity / DetailActivity 全部 finish，VideoActivity.onDestroy
+        // 调 PlaybackService.stopBackground() 停服务放播放器，表现就是
+        // “一点通知就回首页且播停了”。在播的 key/id/name/pic 由
+        // startBackground() 每次开播时写进 Prefers，与 buildResumeIntent
+        // 同一份来源；VideoActivity 是标准启动模式，CLEAR_TOP +
+        // SINGLE_TOP 让已在栈里的播放页复用实例（onNewIntent 里同 id
+        // 直接 return，不重载不断播），已被系统销毁时则按这四个参数重建。
+        Intent video = new Intent(this, VideoActivity.class);
+        video.putExtra("key", Prefers.getString(PREF_SITE_KEY, ""));
+        video.putExtra("id", Prefers.getString(PREF_VOD_ID, ""));
+        video.putExtra("name", Prefers.getString(PREF_VOD_NAME, ""));
+        video.putExtra("pic", Prefers.getString(PREF_VOD_PIC, ""));
+        video.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent content = PendingIntent.getActivity(this, 0, video,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_play)

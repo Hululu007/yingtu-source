@@ -122,6 +122,9 @@ public class LiveActivity extends BaseActivity {
         player.setPlayWhenReady(true);
         playerView.setPlayer(player);
         playerView.setKeepScreenOn(true);
+        // PlayerView 自带全屏按钮：没接监听就不显示/不响应（media3 只有接了监听才亮按钮）；
+        // 接法跟 DetailActivity/DramaPlayerActivity 同款，点它走全屏页 openFullscreen()。
+        playerView.setFullscreenButtonClickListener(isFullscreen -> openFullscreen());
         player.addListener(new Player.Listener() {
             @Override
             public void onPlaybackStateChanged(int state) {
@@ -531,7 +534,10 @@ public class LiveActivity extends BaseActivity {
 
     /** 直接换台（短按转点播关时走这里，长按始终走这里）。 */
     private void playChannelDirect(LiveChannel channel) {
-        if (channel.urls.isEmpty()) return;
+        if (channel == null || channel.urls.isEmpty()) {
+            Toast.makeText(this, "该频道没有可播地址", Toast.LENGTH_SHORT).show();
+            return;
+        }
         String first = channel.currentUrl();
         if (first != null && first.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) {
             resolveSpiderChannel(channel);
@@ -582,7 +588,10 @@ public class LiveActivity extends BaseActivity {
     private void playCurrentUrl() {
         if (player == null || currentChannel == null) return;
         String url = currentChannel.currentUrl();
-        if (TextUtils.isEmpty(url)) return;
+        if (TextUtils.isEmpty(url)) {
+            Toast.makeText(this, "该频道没有可播地址", Toast.LENGTH_SHORT).show();
+            return;
+        }
         DefaultHttpDataSource.Factory httpFactory = new DefaultHttpDataSource.Factory();
         if (!TextUtils.isEmpty(currentChannel.ua)) httpFactory.setUserAgent(currentChannel.ua);
         // ExoPlayer 实例没有换源工厂的方法（那是 Builder 的方法）：

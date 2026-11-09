@@ -18,6 +18,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -101,27 +102,7 @@ public class DramaPlayerActivity extends AppCompatActivity {
         });
         List<DramaVideo> feed = DramaSession.getFeed();
         if (feed.isEmpty()) {
-            tvHint.setVisibility(View.VISIBLE);
-            tvHint.setText("正在加载短剧…");
-            io.execute(() -> {
-                try {
-                    FanqieDramaClient client = new FanqieDramaClient(this);
-                    FeedPage page = client.feedFirstPage();
-                    if (destroyed) return;
-                    DramaSession.setCursor(page.cellId, page.sessionId, page.nextOffset, page.hasMore);
-                    runOnUiThread(() -> {
-                        tvHint.setVisibility(View.GONE);
-                        adapter.setData(page.items);
-                        viewPager.setCurrentItem(0, false);
-                    });
-                } catch (Exception e) {
-                    if (destroyed) return;
-                    runOnUiThread(() -> {
-                        tvHint.setVisibility(View.VISIBLE);
-                        tvHint.setText("短剧加载失败：" + e.getMessage());
-                    });
-                }
-            });
+            loadFeedFirstPage();
         } else {
             adapter.setData(feed);
             viewPager.setCurrentItem(DramaSession.getPosition(), false);
@@ -148,6 +129,44 @@ public class DramaPlayerActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+    @Override
+    public void onBackPressed() {
+        if (dramaFullscreen) {
+            toggleDramaFullscreen(false);
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    /** Load the first feed page; also the retry entry when the feed fails. */
+    private void loadFeedFirstPage() {
+        tvHint.setVisibility(View.VISIBLE);
+        tvHint.setText("正在加载短剧…");
+        tvHint.setClickable(false);
+        tvHint.setOnClickListener(null);
+        io.execute(() -> {
+            try {
+                FanqieDramaClient client = new FanqieDramaClient(this);
+                FeedPage page = client.feedFirstPage();
+                if (destroyed) return;
+                DramaSession.setCursor(page.cellId, page.sessionId, page.nextOffset, page.hasMore);
+                runOnUiThread(() -> {
+                    tvHint.setVisibility(View.GONE);
+                    adapter.setData(page.items);
+                    viewPager.setCurrentItem(0, false);
+                });
+            } catch (Exception e) {
+                if (destroyed) return;
+                runOnUiThread(() -> {
+                    tvHint.setVisibility(View.VISIBLE);
+                    tvHint.setText("短剧加载失败：" + e.getMessage() + "\n点此重试");
+                    tvHint.setClickable(true);
+                    tvHint.setOnClickListener(v -> loadFeedFirstPage());
+                });
+            }
+        });
+    }
+
     /**
      * Fullscreen toggle from the PlayerView controller button. media3 only
      * shows that button once a listener is set, so before this change the
@@ -159,7 +178,7 @@ public class DramaPlayerActivity extends AppCompatActivity {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             hideSystemBars();
         } else {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
             showSystemBars();
         }
         if (adapter != null) {
@@ -323,6 +342,46 @@ public class DramaPlayerActivity extends AppCompatActivity {
             return st;
         }
 
+        /** Load a series' detail (episode list); failure leaves a retry entry on tvEpisode. */
+        private void loadDetail(DramaVideo video, int position) {
+            PageState st = stateFor(position);
+            if (st.detailLoading) return;
+            st.detailLoading = true;
+            io.execute(() -> {
+                try {
+                    FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
+                    DramaDetail detail = client.videoDetail(video.seriesId);
+                    if (destroyed) return;
+                    runOnUiThread(() -> {
+                        st.detailLoading = false;
+                        PageVH holder = holders.get(position);
+                        if (holder == null || holder.pagePosition != position) return;
+                        if (detail.episodes.isEmpty()) {
+                            holder.tvEpisode.setText("该剧暂无选集");
+                            holder.tvEpisode.setClickable(false);
+                            holder.tvEpisode.setOnClickListener(null);
+                            return;
+                        }
+                        st.detail = detail;
+                        if (detail.title != null && !detail.title.isEmpty()) {
+                            holder.tvTitle.setText(detail.title);
+                        }
+                        playEpisode(position, 0);
+                    });
+                } catch (Exception e) {
+                    if (destroyed) return;
+                    runOnUiThread(() -> {
+                        st.detailLoading = false;
+                        PageVH holder = holders.get(position);
+                        if (holder == null || holder.pagePosition != position) return;
+                        holder.tvEpisode.setText("选集加载失败，点此重试");
+                        holder.tvEpisode.setClickable(true);
+                        holder.tvEpisode.setOnClickListener(v -> loadDetail(video, position));
+                    });
+                }
+            });
+        }
+
         /** Resolve and play episodeIndex of the series at position. */
         private void playEpisode(int position, int episodeIndex) {
             PageVH h = holders.get(position);
@@ -480,8 +539,13 @@ public class DramaPlayerActivity extends AppCompatActivity {
 
             void bind(DramaVideo video, int position) {
                 pagePosition = position;
+                // 新翻到的页按当前全屏态同步全屏按钮，否则按钮状态停在旧页。
+                playerView.setFullscreenButtonState(dramaFullscreen);
                 tvTitle.setText(video.displayTitle());
                 tvEpisode.setText("加载中…");
+                // 复用的 holder 可能带着上一页的“点此重试”监听，先清掉。
+                tvEpisode.setClickable(false);
+                tvEpisode.setOnClickListener(null);
                 btnEpisodes.setOnClickListener(v -> showEpisodePanel(position));
                 btnNextEpisode.setOnClickListener(v -> onEpisodeEnded(position));
                 PageState st = stateFor(position);
@@ -490,32 +554,7 @@ public class DramaPlayerActivity extends AppCompatActivity {
                     return;
                 }
                 if (st.detailLoading) return;
-                st.detailLoading = true;
-                io.execute(() -> {
-                    try {
-                        FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
-                        DramaDetail detail = client.videoDetail(video.seriesId);
-                        if (destroyed) return;
-                        runOnUiThread(() -> {
-                            st.detailLoading = false;
-                            if (detail.episodes.isEmpty()) {
-                                tvEpisode.setText("该剧暂无选集");
-                                return;
-                            }
-                            st.detail = detail;
-                            if (detail.title != null && !detail.title.isEmpty()) {
-                                tvTitle.setText(detail.title);
-                            }
-                            playEpisode(position, 0);
-                        });
-                    } catch (Exception e) {
-                        if (destroyed) return;
-                        runOnUiThread(() -> {
-                            st.detailLoading = false;
-                            tvEpisode.setText("选集加载失败");
-                        });
-                    }
-                });
+                loadDetail(video, position);
             }
 
             void playStream(DramaStream stream) {
@@ -536,6 +575,19 @@ public class DramaPlayerActivity extends AppCompatActivity {
                     @Override
                     public void onPlaybackStateChanged(int state) {
                         if (state == Player.STATE_ENDED) onEpisodeEnded(pos);
+                    }
+
+                    @Override
+                    public void onPlayerError(PlaybackException error) {
+                        // 取流成功但播放器播不起来（403/解码失败/无效地址）：
+                        // 以前无任何提示，只能手动滑走。只处理当前页的报错，
+                        // 离屏页的播放器随后会被回收，不打扰用户。
+                        if (destroyed || pos != viewPager.getCurrentItem()) return;
+                        String msg = error.getMessage();
+                        if (msg == null || msg.isEmpty()) msg = String.valueOf(error);
+                        Toast.makeText(DramaPlayerActivity.this,
+                                "播放失败：" + msg, Toast.LENGTH_LONG).show();
+                        onEpisodeEnded(pos);
                     }
                 });
                 player.prepare();

@@ -1,10 +1,13 @@
 package com.yingtu.plus.ui.activity;
 
 import android.annotation.SuppressLint;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -12,12 +15,16 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.CookieManager;
+import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+
 import com.yingtu.plus.R;
 import com.yingtu.plus.base.BaseActivity;
+import com.yingtu.plus.utils.Util;
 import com.yingtu.plus.web.HomeWebBridge;
 import com.yingtu.plus.web.WebHomeSdk;
 import com.yingtu.plus.web.WebServer;
@@ -42,6 +49,10 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
     private String chromeMode = "normal";
     private boolean sdkReady = false;
+
+    // WebView 内嵌 <video> 全屏：WebChromeClient 回调进来的 custom view
+    private View customView;
+    private WebChromeClient.CustomViewCallback customViewCallback;
 
     // 缓存视口度量（在 UI 线程更新），供后台 bridge 线程安全读取
     private volatile int vpWidth = 0;
@@ -134,6 +145,28 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
                 android.util.Log.d("webview", msg.message() + " @" + msg.lineNumber());
                 return true;
             }
+
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback callback) {
+                if (customView != null) {
+                    callback.onCustomViewHidden();
+                    return;
+                }
+                customView = view;
+                customViewCallback = callback;
+                ((ViewGroup) getWindow().getDecorView()).addView(customView,
+                        new FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT));
+                bar.setVisibility(View.GONE);
+                Util.hideSystemUI(WebHomeActivity.this);
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+            }
+
+            @Override
+            public void onHideCustomView() {
+                hideCustomView();
+            }
         });
     }
 
@@ -145,11 +178,27 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     }
 
     private void pushViewport() {
+        if (webView == null) return;
         vpWidth = px2dp(webView.getWidth());
         vpHeight = px2dp(webView.getHeight());
         vpSafeTop = px2dp(getStatusBarHeight());
         String js = WebHomeSdk.viewportVars(vpWidth, vpHeight, vpSafeTop, 0, vpSafeTop, chromeMode);
         webView.evaluateJavascript(js, null);
+    }
+
+    private void hideCustomView() {
+        if (customView == null) return;
+        ((ViewGroup) getWindow().getDecorView()).removeView(customView);
+        customView = null;
+        boolean edge = "edge".equals(chromeMode) || "immersive".equals(chromeMode)
+                || "tv-full".equals(chromeMode) || "fullscreen".equals(chromeMode);
+        bar.setVisibility(edge ? View.GONE : View.VISIBLE);
+        Util.showSystemUI(this);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        if (customViewCallback != null) {
+            customViewCallback.onCustomViewHidden();
+            customViewCallback = null;
+        }
     }
 
     private int px2dp(int px) {
@@ -167,11 +216,22 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     }
 
     private void handleBackPressed() {
+        if (customView != null) {
+            hideCustomView();
+            return;
+        }
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
             finish();
         }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 转屏后 WebView 宽高变了，视口变量要重推；post 到布局完成后再量，避免量到旧尺寸
+        if (webView != null) webView.post(() -> pushViewport());
     }
 
     @Override
