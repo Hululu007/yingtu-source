@@ -15,11 +15,15 @@
 
     <string name="title_source">视频源</string>
     <string name="title_search">搜索</string>
+    <string name="title_fast_search">快搜</string>
+    <string name="title_collect">收藏</string>
+    <string name="title_apps">应用</string>
     <string name="title_history">观看历史</string>
     <string name="title_setting">设置</string>
 
     <string name="hint_source_url">输入 TVBox 订阅地址 (json)</string>
     <string name="hint_search">搜索影片</string>
+    <string name="hint_fast_search">输入片名，同时搜全部站源</string>
     <string name="action_search">搜索</string>
     <string name="action_load">加载</string>
 
@@ -30,6 +34,8 @@
 
     <string name="empty_default">暂无内容，请在「我的」中配置视频源</string>
     <string name="empty_search">暂无搜索结果</string>
+    <string name="empty_collect">还没有收藏的影片\n在详情页点收藏即可加入这里</string>
+    <string name="empty_apps">没有找到可打开的应用</string>
     <string name="empty_history">还没有观看记录</string>
     <string name="empty_links">还没有收藏的直链\n点击右下角 + 添加可直接播放的地址</string>
     <string name="empty_fav_vod">还没有收藏的影片\n在详情页点收藏即可加入这里</string>
@@ -354,6 +360,23 @@
     <!-- 2026-11-08 M1 补缺：以下 205 条为清点出的缺失引用，按使用处逐条核对后补写 -->
     <string name="all">全部</string>
     <string name="cast_not_ready">投屏尚未就绪</string>
+    <string name="cast_searching">正在搜索 DLNA 设备…</string>
+    <string name="cast_empty">未发现可投屏设备</string>
+    <string name="cast_pushed">已推送到 %1$s</string>
+    <string name="cast_push_failed">投屏失败：%1$s</string>
+    <string name="cast_stop">停止投屏</string>
+    <string name="cast_stopped">已停止投屏</string>
+    <string name="cast_need_video">请先打开视频再投屏</string>
+    <string name="row_background_play">后台播放</string>
+    <string name="bg_channel_name">后台播放</string>
+    <string name="bg_playing">正在后台播放</string>
+    <string name="bg_prev">上一集</string>
+    <string name="bg_next">下一集</string>
+    <string name="bg_play">播放</string>
+    <string name="bg_pause">暂停</string>
+    <string name="bg_stop">停止</string>
+    <string name="bg_resume_title">上次后台播放已中断</string>
+    <string name="bg_resume_text">点击继续播放 %1$s</string>
     <string name="copied">已复制</string>
     <string name="detail_actor">演员：%1$s</string>
     <string name="detail_area">地区：%1$s</string>

@@ -377,6 +377,7 @@ public abstract class PlaybackActivity extends BaseActivity implements ServiceCo
 
     @Override
     protected void onDestroy() {
+        PlaybackService.stopBackground(this);
         if (bound) {
             try {
                 unbindService(this);

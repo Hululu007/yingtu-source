@@ -40,8 +40,11 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
     public void setPlaying(int index) {
         int old = playing;
         playing = index;
-        notifyItemChanged(old);
-        notifyItemChanged(index);
+        // 位置 -1 是“无当前集”（如切线路后复位）：notifyItemChanged(-1) 会越界，
+        // 只通知有效位置；-1 时整表刷新一次即可。
+        if (old >= 0) notifyItemChanged(old);
+        if (index >= 0) notifyItemChanged(index);
+        if (old < 0 && index < 0) notifyDataSetChanged();
     }
 
     @NonNull

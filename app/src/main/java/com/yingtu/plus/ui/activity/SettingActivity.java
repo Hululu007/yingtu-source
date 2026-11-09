@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.TextView;
@@ -19,9 +20,11 @@ import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
 import com.yingtu.plus.base.BaseActivity;
+import com.yingtu.plus.setting.BackgroundPlaybackPolicy;
 import com.yingtu.plus.bean.ParseBean;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.util.HawkConfig;
+import com.yingtu.plus.util.ZoneSites;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.ByteArrayOutputStream;
@@ -112,10 +115,75 @@ public class SettingActivity extends BaseActivity {
                 startActivity(new Intent(this, SourceActivity.class)));
         find(R.id.btnSourceDisable).setOnClickListener(v ->
                 startActivity(new Intent(this, SourceActivity.class)));
-        find(R.id.rowStartSource).setOnClickListener(v ->
-                startActivity(new Intent(this, SourceActivity.class)));
+        find(R.id.rowStartSource).setOnClickListener(v -> showStartupSitesDialog());
         find(R.id.rowHomeRec).setOnClickListener(v -> pickHomeRec());
         find(R.id.rowSearchShow).setOnClickListener(v -> toast("搜索展示：图片｜文字"));
+        refreshStartSource();
+    }
+
+    /** 启动站源行的值：已设几个区（0 个显示“未设置”）。 */
+    private void refreshStartSource() {
+        if (tvStartSource == null) return;
+        int count = 0;
+        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_MOVIE).isEmpty()) count++;
+        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_DRAMA).isEmpty()) count++;
+        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_MIDNIGHT).isEmpty()) count++;
+        tvStartSource.setText(count == 0 ? "未设置" : "已设 " + count + " 个区");
+    }
+
+    /** 启动站源（三区独立）：点开一个三行弹窗，每行显示该区当前设的启动站；点一行选该区的站。 */
+    private void showStartupSitesDialog() {
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_startup_sites, null);
+        TextView tvMovie = view.findViewById(R.id.tvStartupMovie);
+        TextView tvDrama = view.findViewById(R.id.tvStartupDrama);
+        TextView tvMidnight = view.findViewById(R.id.tvStartupMidnight);
+        Runnable refreshRows = () -> {
+            tvMovie.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_MOVIE));
+            tvDrama.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_DRAMA));
+            tvMidnight.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_MIDNIGHT));
+        };
+        refreshRows.run();
+        view.findViewById(R.id.rowStartupMovie).setOnClickListener(v ->
+                pickStartupSite(ZoneSites.ZONE_MOVIE, "影视", refreshRows));
+        view.findViewById(R.id.rowStartupDrama).setOnClickListener(v ->
+                pickStartupSite(ZoneSites.ZONE_DRAMA, "短剧", refreshRows));
+        view.findViewById(R.id.rowStartupMidnight).setOnClickListener(v ->
+                pickStartupSite(ZoneSites.ZONE_MIDNIGHT, "午夜", refreshRows));
+        androidx.appcompat.app.AlertDialog dialog =
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("启动站源")
+                        .setView(view)
+                        .setPositiveButton("完成", null)
+                        .create();
+        dialog.setOnDismissListener(d -> refreshStartSource());
+        dialog.show();
+    }
+
+    /** 选某区的启动站：单选列表，首项“不设置”用于清除；三个区各存各的键。 */
+    private void pickStartupSite(String zone, String zoneName, Runnable refreshRows) {
+        List<SourceBean> sites = ZoneSites.getZoneSites(zone);
+        if (sites == null || sites.isEmpty()) {
+            Toast.makeText(this, zoneName + "区暂无可选站点", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String current = ZoneSites.getStartupSiteKey(zone);
+        String[] names = new String[sites.size() + 1];
+        names[0] = "不设置";
+        int checked = 0;
+        for (int i = 0; i < sites.size(); i++) {
+            names[i + 1] = sites.get(i).getName();
+            if (sites.get(i).getKey().equals(current)) checked = i + 1;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(zoneName + "区启动站")
+                .setSingleChoiceItems(names, checked, (d, which) -> {
+                    ZoneSites.setStartupSiteKey(zone, which == 0 ? "" : sites.get(which - 1).getKey());
+                    d.dismiss();
+                    if (refreshRows != null) refreshRows.run();
+                    refreshStartSource();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void refreshHomeRec() {
@@ -232,6 +300,14 @@ public class SettingActivity extends BaseActivity {
             toast(checked ? "短剧预加载已开启" : "短剧预加载已关闭");
         });
 
+        // 后台播放开关：开着时切后台音频继续播（前台服务保活 + 通知栏控制），默认关。
+        SwitchCompat swBackgroundPlay = find(R.id.swBackgroundPlay);
+        swBackgroundPlay.setChecked(BackgroundPlaybackPolicy.isEnabled());
+        swBackgroundPlay.setOnCheckedChangeListener((CompoundButton b, boolean checked) -> {
+            BackgroundPlaybackPolicy.putEnabled(checked);
+            toast(checked ? "后台播放已开启" : "后台播放已关闭");
+        });
+
         bindWallpaperSection();
     }
 
@@ -332,6 +408,7 @@ public class SettingActivity extends BaseActivity {
         refreshParseName();
         refreshImportLabel();
         refreshBuiltinZoneLabel();
+        refreshStartSource();
         TextView tv = find(R.id.tvWallpaper);
         if (tv != null) refreshWallpaperLabel(tv);
     }

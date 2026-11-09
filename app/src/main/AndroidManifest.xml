@@ -14,6 +14,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <uses-feature
         android:name="android.hardware.touchscreen"
@@ -21,6 +25,15 @@
     <uses-feature
         android:name="android.software.leanback"
         android:required="false" />
+
+    <!-- 应用页（AppsActivity）列出已装可启动应用：Android 11+ 没有这段声明，
+         queryIntentActivities 只能看到少量应用；只声明启动器 intent，不申请 QUERY_ALL_PACKAGES。 -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:name=".App"
@@ -110,7 +123,37 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".ui.activity.FastSearchActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.CollectActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.AppsActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".ui.activity.LiveActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.DriveActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.PushActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.EpgActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />
 
@@ -158,6 +201,22 @@
 
         <service
             android:name=".service.PlaybackService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- DLNA 发现：jupnp 的 AndroidUpnpServiceImpl（须声明，否则绑定失败）。 -->
+        <service
+            android:name="org.jupnp.android.AndroidUpnpServiceImpl"
             android:exported="false" />
+
+        <!-- 开机 / 更新后恢复：后台播放中重启过，发一条续播通知（不自动重播）。 -->
+        <receiver
+            android:name=".service.PlaybackBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

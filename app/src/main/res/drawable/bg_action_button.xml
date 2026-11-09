@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 详情页操作钮底（老版影图录像里全屏/推送/快搜/收藏/简介/菜单那排橙色圆角钮） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="90"
+        android:endColor="#EA580C"
+        android:startColor="#F97316"
+        android:type="linear" />
+    <corners android:radius="8dp" />
+</shape>

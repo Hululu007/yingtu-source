@@ -115,6 +115,7 @@ import com.yingtu.plus.player.lut.LutSetting;
 import com.yingtu.plus.player.lut.LutStore;
 import com.yingtu.plus.player.mpv.MpvConfigStore;
 import com.yingtu.plus.service.PlaybackService;
+import com.yingtu.plus.setting.BackgroundPlaybackPolicy;
 import com.yingtu.plus.setting.DanmakuSetting;
 import com.yingtu.plus.setting.LyricsSetting;
 import com.yingtu.plus.setting.PlayerButtonSetting;
@@ -4631,6 +4632,12 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
             syncPiPForPlaybackMode();
             Util.moveToBackground(VideoActivity.this);
         }
+
+        @Override
+        public void onTogglePlay() {
+            if (player().isPlaying()) onPaused();
+            else onPlay();
+        }
     };
 
     @Override
@@ -5850,6 +5857,20 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         syncKaraokePosition();
         boolean audioMode = syncPiPForPlaybackMode();
         if (isPlaying || isPaused()) updatePlayControl(isPlaying, audioMode);
+        syncBackgroundPlayback(isPlaying);
+    }
+
+    /** 后台播放：开关开着时，播起来就起前台服务保活，播完就停服务。 */
+    private void syncBackgroundPlayback(boolean isPlaying) {
+        if (!BackgroundPlaybackPolicy.isEnabled() || mHistory == null) return;
+        String title = mBinding.name.getText() == null ? "" : mBinding.name.getText().toString();
+        if (isPlaying) {
+            PlaybackService.startBackground(this, title, mHistory.getSiteKey(), mHistory.getVodId(), mHistory.getVodName(), mHistory.getVodPic());
+        } else if (isEnded()) {
+            PlaybackService.stopBackground(this);
+        } else {
+            PlaybackService.updatePlaying(this, title, false);
+        }
     }
 
     private void updatePlayControl(boolean isPlaying, boolean audioMode) {

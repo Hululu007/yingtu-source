@@ -1,5 +1,6 @@
 package com.yingtu.plus.ui.activity;
 
+import android.content.Intent;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -53,6 +54,10 @@ public class LiveActivity extends BaseActivity {
 
     /** 内置区列表点直播源进来时用：要打开的源 id（xiuguo / maiyoux / bnzb / user_m3u）。 */
     public static final String EXTRA_SOURCE_ID = "source_id";
+    /** 节目单点频道进来时用：要找的频道名（节目单名录里的 note）。 */
+    public static final String EXTRA_CHANNEL_NAME = "channel_name";
+    /** 节目单点频道进来时用：频道别名表，逗号分隔（名录 name 字段原样）。 */
+    public static final String EXTRA_CHANNEL_ALIASES = "channel_aliases";
 
     private PlayerView playerView;
     private ExoPlayer player;
@@ -73,6 +78,9 @@ public class LiveActivity extends BaseActivity {
     private int currentGroupIndex = -1;
     private int currentChannelIndex = -1;
     private boolean sourceSpinnerReady = false;
+    /** 节目单带过来的待找频道别名：频道列表一加载好就按别名找台，找到就播，找不到如实提示。 */
+    private final List<String> pendingAliases = new ArrayList<>();
+    private boolean pendingToastShown = false;
 
     @Override
     protected int getLayoutId() {
@@ -89,6 +97,19 @@ public class LiveActivity extends BaseActivity {
         find(R.id.ivBack).setOnClickListener(v -> finish());
         find(R.id.btnLine).setOnClickListener(v -> switchLine());
         find(R.id.btnFull).setOnClickListener(v -> openFullscreen());
+        find(R.id.btnEpg).setOnClickListener(v -> startActivity(new Intent(this, EpgActivity.class)));
+        // 节目单点频道进来：把别名记下来，等频道列表加载好再找台。
+        String aliasesExtra = getIntent().getStringExtra(EXTRA_CHANNEL_ALIASES);
+        if (!TextUtils.isEmpty(aliasesExtra)) {
+            for (String alias : aliasesExtra.split(",")) {
+                String a = alias.trim();
+                if (!TextUtils.isEmpty(a) && !pendingAliases.contains(a)) pendingAliases.add(a);
+            }
+        }
+        String nameExtra = getIntent().getStringExtra(EXTRA_CHANNEL_NAME);
+        if (!TextUtils.isEmpty(nameExtra) && !pendingAliases.contains(nameExtra.trim())) {
+            pendingAliases.add(0, nameExtra.trim());
+        }
 
         playerView = find(R.id.exo);
         player = new ExoPlayer.Builder(this).build();
@@ -285,6 +306,56 @@ public class LiveActivity extends BaseActivity {
         tvEmpty.setVisibility(View.GONE);
         groupAdapter.submit(groups);
         showGroup(0);
+        tryPlayPendingChannel();
+    }
+
+    /**
+     * 节目单带过来的待找频道：按别名在已加载的分组里找。
+     * 先精确匹配（别名 == 频道名），再包含匹配。找到就切分组播它；
+     * pingtai 源的分组是懒加载（点分组才拉频道），目标分组还没拉到就先切过去触发加载，
+     * 等 onResult 回来再找一次；全加载完还找不到就如实提示并清掉待找。
+     */
+    private void tryPlayPendingChannel() {
+        if (pendingAliases.isEmpty() || groups.isEmpty()) return;
+        for (int gi = 0; gi < groups.size(); gi++) {
+            for (LiveChannel channel : groups.get(gi).channels) {
+                for (String alias : pendingAliases) {
+                    if (alias.equals(channel.name)) {
+                        playPendingFound(gi, channel);
+                        return;
+                    }
+                }
+            }
+        }
+        for (int gi = 0; gi < groups.size(); gi++) {
+            for (LiveChannel channel : groups.get(gi).channels) {
+                for (String alias : pendingAliases) {
+                    if (channel.name.contains(alias) || alias.contains(channel.name)) {
+                        playPendingFound(gi, channel);
+                        return;
+                    }
+                }
+            }
+        }
+        if (isPingtai()) {
+            for (int i = 0; i < groupLoaded.size(); i++) {
+                if (!groupLoaded.get(i)) {
+                    if (!pendingToastShown) {
+                        pendingToastShown = true;
+                        Toast.makeText(this, "节目单频道正在加载，稍后在列表里找", Toast.LENGTH_SHORT).show();
+                    }
+                    return;
+                }
+            }
+        }
+        pendingAliases.clear();
+        Toast.makeText(this, "当前直播源里没有这个频道", Toast.LENGTH_SHORT).show();
+    }
+
+    private void playPendingFound(int groupIndex, LiveChannel channel) {
+        pendingAliases.clear();
+        showGroup(groupIndex);
+        playChannel(channel);
     }
 
     private void showGroup(int index) {
@@ -320,6 +391,7 @@ public class LiveActivity extends BaseActivity {
                 channelAdapter.submit(groups.get(index).channels);
                 channelAdapter.setSelected(groups.get(index).channels.indexOf(currentChannel));
                 if (currentChannel == null && !channels.isEmpty()) playChannel(channels.get(0));
+                tryPlayPendingChannel();
             }
 
             @Override

@@ -12,11 +12,10 @@ import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.util.UnstableApi;
-import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 
-import java.util.HashMap;
+import com.yingtu.plus.player.exo.ExoHttpPolicy;
+
 import java.util.Map;
 
 /**
@@ -78,18 +77,8 @@ public class ExoPlayerCore implements AbstractPlayer {
                 .setUri(Uri.parse(url))
                 .setMediaMetadata(new MediaMetadata.Builder().build())
                 .build();
-        DefaultHttpDataSource.Factory f = new DefaultHttpDataSource.Factory();
-        if (headers != null && !headers.isEmpty()) {
-            String ua = null;
-            Map<String, String> extra = new HashMap<>();
-            for (Map.Entry<String, String> e : headers.entrySet()) {
-                if ("User-Agent".equalsIgnoreCase(e.getKey())) ua = e.getValue();
-                else extra.put(e.getKey(), e.getValue());
-            }
-            if (ua != null) f.setUserAgent(ua);
-            if (!extra.isEmpty()) f.setDefaultRequestProperties(extra);
-        }
-        player.setMediaSource(new DefaultMediaSourceFactory(f).createMediaSource(item));
+        // 黄瓜密钥修法：默认 8 秒超时改走统一策略（连接 15 秒/读取 30 秒，重试 3 次）。
+        player.setMediaSource(ExoHttpPolicy.newMediaSourceFactory(ExoHttpPolicy.newHttpDataSourceFactory(headers)).createMediaSource(item));
     }
 
     @Override

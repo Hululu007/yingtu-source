@@ -1,5 +1,6 @@
 package com.yingtu.plus.setting;
 
+import com.yingtu.plus.bean.Channel;
 import com.yingtu.plus.util.Prefers;
 import java.util.List;
 import java.util.ArrayList;
@@ -34,14 +35,31 @@ public class LiveEpgSetting {
     
     public static void clearHistory() { Prefers.remove(KEY_HISTORY); }
     
-    public static List<String> getXmlUrls(Object live) { 
-        return new ArrayList<>(); 
+    /**
+     * 第九批第三路接线：之前这里是空实现，配了节目源地址也不会生效。
+     * 现在返回已配的 XMLTV 地址（默认空，没配就返回空表、不拉节目），
+     * LiveApi.parseXml / Channel.live 走这条把地址挂到频道上。
+     */
+    public static List<String> getXmlUrls(Object live) {
+        String url = getEffectiveUrl(live);
+        if (url == null || url.isEmpty()) return new ArrayList<>();
+        List<String> urls = new ArrayList<>();
+        urls.add(url);
+        return urls;
     }
-    
-    public static String getEffectiveUrl(Object live) { 
-        return getUrl(); 
+
+    public static String getEffectiveUrl(Object live) {
+        return getUrl();
     }
-    
+
     public static void apply(Object live) {}
-    public static void apply(Object live, Object channel) {}
+
+    /** 频道本身没配 epg 地址时，把设置里的 XMLTV 地址挂上去；频道自带地址的不动。 */
+    public static void apply(Object live, Object channel) {
+        if (!(channel instanceof Channel)) return;
+        Channel item = (Channel) channel;
+        String url = getEffectiveUrl(live);
+        if (url == null || url.isEmpty()) return;
+        if (item.getEpg() == null || item.getEpg().isEmpty()) item.setEpg(url);
+    }
 }

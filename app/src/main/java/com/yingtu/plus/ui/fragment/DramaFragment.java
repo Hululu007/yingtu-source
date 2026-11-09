@@ -1,5 +1,6 @@
 package com.yingtu.plus.ui.fragment;
 
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -22,7 +23,7 @@ import com.yingtu.plus.drama.DramaSites;
 import com.yingtu.plus.drama.FanqieDramaClient;
 import com.yingtu.plus.ui.activity.DramaPlayerActivity;
 import com.yingtu.plus.ui.adapter.DramaFeedAdapter;
-import com.yingtu.plus.ui.adapter.SourceGridAdapter;
+import com.yingtu.plus.util.ZoneSites;
 
 import java.util.HashSet;
 import java.util.List;
@@ -60,9 +61,7 @@ public class DramaFragment extends BaseLazyFragment {
     private TextView tvChWatch;
     private TextView tvChManju;
     private FrameLayout contentContainer;
-    private RecyclerView rvSites;
     private RecyclerView rvFeed;
-    private SourceGridAdapter siteAdapter;
     private DramaFeedAdapter feedAdapter;
 
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -73,7 +72,6 @@ public class DramaFragment extends BaseLazyFragment {
     private boolean hasMore = true;
     private boolean loadingFeed;
     private boolean feedStarted;
-    private String selectedKey = DramaSites.ORIGINAL_KEY;
 
     @Override
     protected int getLayoutId() {
@@ -89,13 +87,7 @@ public class DramaFragment extends BaseLazyFragment {
         tvChWatch = root.findViewById(R.id.tvChWatch);
         tvChManju = root.findViewById(R.id.tvChManju);
         contentContainer = root.findViewById(R.id.dramaContent);
-        rvSites = root.findViewById(R.id.rvDramaSites);
         rvFeed = root.findViewById(R.id.rvDramaFeed);
-
-        rvSites.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        siteAdapter = new SourceGridAdapter();
-        siteAdapter.setOnSourceClick(this::onSitePicked);
-        rvSites.setAdapter(siteAdapter);
 
         rvFeed.setLayoutManager(new GridLayoutManager(getContext(), 3));
         feedAdapter = new DramaFeedAdapter();
@@ -118,8 +110,8 @@ public class DramaFragment extends BaseLazyFragment {
 
         View.OnClickListener channelClick = v -> {
             markChannel((TextView) v);
-            selectedKey = DramaSites.ORIGINAL_KEY;
-            siteAdapter.setCurrentKey(selectedKey);
+            // 点频道就是回番茄流：本区当前站记回番茄短剧，下次进 tab 不再跳回蜘蛛站。
+            ZoneSites.setCurrentSiteKey(ZoneSites.ZONE_DRAMA, DramaSites.ORIGINAL_KEY);
             reloadFeed();
         };
         tvChAll.setOnClickListener(channelClick);
@@ -133,23 +125,48 @@ public class DramaFragment extends BaseLazyFragment {
         if (getContext() == null) return;
         BuiltinDramaConfigs.ensureLoaded(getContext());
         VodConfigSync.sync();
-        refreshSites();
+        List<SourceBean> sites = BuiltinDramaConfigs.getDramaSites();
+        tvDramaTitle.setText("短剧 · " + sites.size() + " 个站 + 番茄短剧");
         // 内置区列表点短剧站进来：直接进该站（否则只显示番茄流，进不了站）。
+        boolean picked = false;
         if (getActivity() != null && getActivity().getIntent() != null) {
             String extra = getActivity().getIntent()
                     .getStringExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
             if (extra != null && BuiltinDramaConfigs.isDramaSite(extra)) {
                 getActivity().getIntent()
                         .removeExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
-                for (SourceBean s : BuiltinDramaConfigs.getDramaSites()) {
+                for (SourceBean s : sites) {
                     if (s.getKey().equals(extra)) {
-                        onSitePicked(s);
+                        pickSite(s);
+                        picked = true;
                         break;
                     }
                 }
             }
         }
-        if (!feedStarted) {
+        if (!picked) {
+            // 分区独立记站：本区上次选的站（或启动站）优先；没选过默认番茄流。
+            String zoneKey = ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_DRAMA);
+            if (!TextUtils.isEmpty(zoneKey)) {
+                if (DramaSites.ORIGINAL_KEY.equals(zoneKey)) {
+                    showFeed();
+                    picked = true;
+                    if (!feedStarted) {
+                        feedStarted = true;
+                        loadFirstFeed();
+                    }
+                } else {
+                    for (SourceBean s : sites) {
+                        if (s.getKey().equals(zoneKey)) {
+                            pickSite(s);
+                            picked = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (!picked && !feedStarted) {
             feedStarted = true;
             loadFirstFeed();
         }
@@ -161,11 +178,21 @@ public class DramaFragment extends BaseLazyFragment {
         io.shutdownNow();
     }
 
-    private void refreshSites() {
-        List<SourceBean> sites = BuiltinDramaConfigs.getDramaSites();
-        siteAdapter.submit(sites);
-        siteAdapter.setCurrentKey(selectedKey);
-        tvDramaTitle.setText("短剧 · " + sites.size() + " 个站 + 番茄短剧");
+    /** 点站（分区弹窗与内置区列表点进来共用）：番茄短剧显示信息流，
+     * 蜘蛛站内嵌 HomeMainFragment；同时记进短剧区自己的键。 */
+    public void pickSite(SourceBean source) {
+        if (source == null) return;
+        ZoneSites.setCurrentSiteKey(ZoneSites.ZONE_DRAMA, source.getKey());
+        if (DramaSites.ORIGINAL_KEY.equals(source.getKey())) {
+            showFeed();
+            if (!feedStarted) {
+                feedStarted = true;
+                loadFirstFeed();
+            }
+            return;
+        }
+        ApiConfig.get().setSourceBean(source);
+        showSpiderContent();
     }
 
     private void markChannel(TextView selected) {
@@ -177,19 +204,6 @@ public class DramaFragment extends BaseLazyFragment {
             t.setTypeface(null, on ? android.graphics.Typeface.BOLD
                     : android.graphics.Typeface.NORMAL);
         }
-    }
-
-    /** Tap a site: the Fanqie stream shows the feed, spider sites embed HomeMain. */
-    private void onSitePicked(SourceBean source) {
-        if (source == null) return;
-        selectedKey = source.getKey();
-        siteAdapter.setCurrentKey(selectedKey);
-        if (DramaSites.ORIGINAL_KEY.equals(selectedKey)) {
-            showFeed();
-            return;
-        }
-        ApiConfig.get().setSourceBean(source);
-        showSpiderContent();
     }
 
     private void showFeed() {

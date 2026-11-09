@@ -131,6 +131,20 @@
                 android:text="全屏"
                 android:textColor="@color/colorPrimary"
                 android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/btnEpg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip"
+                android:paddingStart="12dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="6dp"
+                android:text="节目单"
+                android:textColor="@color/colorPrimary"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <FrameLayout

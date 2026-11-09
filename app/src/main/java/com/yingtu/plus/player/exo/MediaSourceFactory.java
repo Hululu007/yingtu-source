@@ -78,7 +78,10 @@ public class MediaSourceFactory implements MediaSource.Factory {
             @Nullable ExoAssSession assSession) {
         this.dolbyVisionPlaybackState = dolbyVisionPlaybackState;
         this.assSession = assSession;
-        defaultMediaSourceFactory = new DefaultMediaSourceFactory(getDataSourceFactory(), getExtractorsFactory()).setLoadOnlySelectedTracks(PlaybackPerformanceSetting.isLoadOnlySelectedTracksEnabled());
+        defaultMediaSourceFactory = new DefaultMediaSourceFactory(getDataSourceFactory(), getExtractorsFactory());
+        // 黄瓜密钥修法：重试策略写成显式值（3 次，退避 1/2/4 秒），不再只依赖默认。
+        defaultMediaSourceFactory.setLoadErrorHandlingPolicy(ExoHttpPolicy.newRetryPolicy());
+        defaultMediaSourceFactory.setLoadOnlySelectedTracks(PlaybackPerformanceSetting.isLoadOnlySelectedTracksEnabled());
     }
 
     static DataSource.Factory createUpstreamDataSourceFactory(Map<String, String> headers) {
@@ -195,6 +198,8 @@ public class MediaSourceFactory implements MediaSource.Factory {
     @NonNull
     @Override
     public MediaSource.Factory setLoadErrorHandlingPolicy(@NonNull LoadErrorHandlingPolicy loadErrorHandlingPolicy) {
+        // 原来是空实现：外层传进来的策略被直接丢掉，工厂一直用默认策略；现在透传下去。
+        defaultMediaSourceFactory.setLoadErrorHandlingPolicy(loadErrorHandlingPolicy);
         return this;
     }
 
@@ -215,6 +220,7 @@ public class MediaSourceFactory implements MediaSource.Factory {
             // Bind the collection to this source's extractors. Old loaders cannot populate a new video.
             // Container ASS needs its attachments even when no external subtitle was configured.
             return new DefaultMediaSourceFactory(getDataSourceFactory(), Media3DiagnosticBridge.extractors(buildExtractorsFactory(fonts), mediaItem))
+                    .setLoadErrorHandlingPolicy(ExoHttpPolicy.newRetryPolicy())
                     .setLoadOnlySelectedTracks(PlaybackPerformanceSetting.isLoadOnlySelectedTracksEnabled())
                     .createMediaSource(mediaItem);
         }
@@ -225,6 +231,7 @@ public class MediaSourceFactory implements MediaSource.Factory {
         ConcatenatingMediaSource2.Builder builder = new ConcatenatingMediaSource2.Builder();
         DefaultMediaSourceFactory sourceFactory = new DefaultMediaSourceFactory(getDataSourceFactory(),
                 Media3DiagnosticBridge.extractors(getExtractorsFactory(), mediaItem))
+                .setLoadErrorHandlingPolicy(ExoHttpPolicy.newRetryPolicy())
                 .setLoadOnlySelectedTracks(PlaybackPerformanceSetting.isLoadOnlySelectedTracksEnabled());
         for (String split : url.split(CONCAT_SOURCE_SEPARATOR_REGEX)) {
             String[] info = split.split(CONCAT_DURATION_SEPARATOR_REGEX);

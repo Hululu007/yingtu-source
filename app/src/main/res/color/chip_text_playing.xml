@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 选集当前集文字色：老版影图录像里当前集（18/254、68/254 那种）标绿 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true" android:color="#22C55E" />
+    <item android:color="@color/chip_text" />
+</selector>

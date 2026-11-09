@@ -1,11 +1,9 @@
 package com.yingtu.plus.ui.fragment;
 
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
@@ -13,19 +11,18 @@ import com.yingtu.plus.api.BuiltinConfigs;
 import com.yingtu.plus.api.VodConfigSync;
 import com.yingtu.plus.base.BaseLazyFragment;
 import com.yingtu.plus.bean.SourceBean;
-import com.yingtu.plus.ui.adapter.SourceGridAdapter;
+import com.yingtu.plus.util.ZoneSites;
 
 import java.util.List;
 
 /**
  * 「午夜」页（底部导航第四项，H 批）。
  *
- * 上半是内置午夜站列表（156 站，来自 assets/builtin_midnight.json），
- * 点站后下半内嵌一个 HomeMainFragment，复用影视页整条内容链路
+ * 上半只剩标题（站数），下半内嵌一个 HomeMainFragment，复用影视页整条内容链路
  * （分类行 / 筛选 / 海报墙 / 翻页 / 点卡进详情），不另写取数。
- * 注意：切站走全局当前源（ApiConfig.setSourceBean），与影视页共用同一个
- * 当前源；切回影视 tab 时内容仍是该午夜站，直到在影视区重选站。
- * 分区独立记站不在本批范围，需总协调另定。
+ * 站点网格已移进顶栏站名点的分区弹窗（第八版）：切站统一走弹窗，这里不再列站。
+ * 分区独立记站：当前站记在午夜区自己的 Hawk 键里，切站只改本区，
+ * 影视/短剧区的站不动；顶栏也按本区显示站名。
  */
 public class MidnightFragment extends BaseLazyFragment {
 
@@ -34,10 +31,7 @@ public class MidnightFragment extends BaseLazyFragment {
     private TextView tvMidnightTitle;
     private TextView tvMidnightHint;
     private FrameLayout contentContainer;
-    private RecyclerView rvSites;
-    private SourceGridAdapter siteAdapter;
 
-    private String selectedKey = "";
     private boolean autoPicked = false;
 
     @Override
@@ -50,12 +44,6 @@ public class MidnightFragment extends BaseLazyFragment {
         tvMidnightTitle = root.findViewById(R.id.tvMidnightTitle);
         tvMidnightHint = root.findViewById(R.id.tvMidnightHint);
         contentContainer = root.findViewById(R.id.midnightContent);
-        rvSites = root.findViewById(R.id.rvMidnightSites);
-
-        rvSites.setLayoutManager(new GridLayoutManager(getContext(), 2));
-        siteAdapter = new SourceGridAdapter();
-        siteAdapter.setOnSourceClick(this::onSitePicked);
-        rvSites.setAdapter(siteAdapter);
     }
 
     @Override
@@ -66,9 +54,10 @@ public class MidnightFragment extends BaseLazyFragment {
         // J 批：内置站是合并进 ApiConfig 的，补回后也要同步进 VodConfig，
         // 否则午夜站走 VodConfig.getSite(key) 读不到（replaceSites 整体替换，不叠加）
         VodConfigSync.sync();
-        refreshSites();
-        // 选站优先级：内置区列表点进来的站 > 当前已选的午夜站 > 首次打开默认首站。
-        // 原先每次进 tab 都默认首站，会把用户上次选的站顶掉。
+        List<SourceBean> sites = BuiltinConfigs.getMidnightSites();
+        tvMidnightTitle.setText("午夜 · " + sites.size() + " 个站");
+        // 选站优先级：内置区列表点进来的站 > 本区上次选的站（或启动站）
+        // > 全局当前源（若正好是午夜站，老数据认领）> 首次打开默认首站。
         String pickKey = null;
         if (getActivity() != null && getActivity().getIntent() != null) {
             String extra = getActivity().getIntent()
@@ -80,12 +69,17 @@ public class MidnightFragment extends BaseLazyFragment {
             }
         }
         if (pickKey == null) {
+            String zoneKey = ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_MIDNIGHT);
+            if (!TextUtils.isEmpty(zoneKey) && BuiltinConfigs.isMidnightSite(zoneKey)) {
+                pickKey = zoneKey;
+            }
+        }
+        if (pickKey == null) {
             SourceBean home = ApiConfig.get().getHomeSource();
             if (home != null && BuiltinConfigs.isMidnightSite(home.getKey())) {
                 pickKey = home.getKey();
             }
         }
-        List<SourceBean> sites = BuiltinConfigs.getMidnightSites();
         if (pickKey == null && !autoPicked && !sites.isEmpty()) {
             pickKey = sites.get(0).getKey();
         }
@@ -93,26 +87,20 @@ public class MidnightFragment extends BaseLazyFragment {
             for (SourceBean s : sites) {
                 if (s.getKey().equals(pickKey)) {
                     autoPicked = true;
-                    onSitePicked(s);
+                    pickSite(s);
                     break;
                 }
             }
         }
     }
 
-    /** 刷新站列表（数量标题 + 选中高亮）。 */
-    private void refreshSites() {
-        List<SourceBean> sites = BuiltinConfigs.getMidnightSites();
-        siteAdapter.submit(sites);
-        siteAdapter.setCurrentKey(selectedKey);
-        tvMidnightTitle.setText("午夜 · " + sites.size() + " 个站");
-    }
-
-    /** 点站：切全局当前源，下半内嵌的 HomeMainFragment 加载该站内容。 */
-    private void onSitePicked(SourceBean source) {
+    /**
+     * 点站（分区弹窗与内置区列表点进来共用）：切全局当前源，
+     * 下半内嵌的 HomeMainFragment 加载该站内容；同时记进午夜区自己的键。
+     */
+    public void pickSite(SourceBean source) {
         if (source == null) return;
-        selectedKey = source.getKey();
-        siteAdapter.setCurrentKey(selectedKey);
+        ZoneSites.setCurrentSiteKey(ZoneSites.ZONE_MIDNIGHT, source.getKey());
         ApiConfig.get().setSourceBean(source);
         showContent();
     }

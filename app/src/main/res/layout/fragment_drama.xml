@@ -78,16 +78,7 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- 内置短剧站列表（py 18 + jar 3，内部滚动；番茄短剧不在此表，走下方信息流） -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvDramaSites"
-        android:layout_width="match_parent"
-        android:layout_height="176dp"
-        android:clipToPadding="false"
-        android:paddingStart="7dp"
-        android:paddingEnd="7dp"
-        android:scrollbars="vertical" />
-
+    <!-- 站点列表已移进顶栏站名点的分区弹窗（第八版）：这里只剩频道条 + 内容区 -->
     <!-- 内容区：番茄短剧信息流 / 选站后内嵌 HomeMainFragment -->
     <FrameLayout
         android:layout_width="match_parent"

@@ -2,11 +2,13 @@ package com.yingtu.plus.ui.activity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.Menu;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -20,8 +22,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.bottomnavigation.LabelVisibilityMode;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
@@ -34,6 +34,8 @@ import com.yingtu.plus.ui.fragment.FavVodFragment;
 import com.yingtu.plus.ui.fragment.HomeMainFragment;
 import com.yingtu.plus.ui.fragment.MidnightFragment;
 import com.yingtu.plus.util.OkGo;
+import com.yingtu.plus.util.ResUtil;
+import com.yingtu.plus.util.ZoneSites;
 import com.google.android.material.chip.Chip;
 
 import java.util.ArrayList;
@@ -41,10 +43,9 @@ import java.util.List;
 
 /**
  * 首页外壳。顶栏：Logo + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
- * 下方是内容区 + 底部导航（影视 / 短剧 / 直播 / 午夜 / 文件）。
- * 注意：BottomNavigationView 最多只能放 5 项（material 1.11.0 硬上限），
- * 第 6 项“设置”加不上，所以设置入口搬到了顶栏右上角（ivSetting）。
- * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
+ * 下方是内容区（全屏，底部导航已删）。十一个去向（影视 / 短剧 / 直播 / 午夜 / 文件 /
+ * 快搜 / 收藏 / 应用 / 网盘 / 推送 / 节目单）收进右侧边栏（第八版，华为手机侧边栏式）：平时右边缘只留一条细把手，从边缘
+ * 向左划或点把手滑出面板，点选或 5 秒不动自动收回；边缘划入只认最右 16dp。
  * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
  * 影视区只列用户自己导入的站：内置站（午夜区、短剧区的内置配置站）由
  * ApiConfig.isBuiltinSite(key) 判定后过滤，该方法是 H 批（午夜区）在 ApiConfig 里加的。
@@ -56,7 +57,7 @@ public class HomeActivity extends BaseActivity {
      * 顶部 tab 已删，只剩 4（收藏）还有效，其余值忽略。
      */
     public static final String KEY_TAB = "tab";
-    /** 内置区列表点站进来时用：要打开的底部 tab（NAV_MOVIE / NAV_DRAMA / NAV_MIDNIGHT）。 */
+    /** 内置区列表点站进来时用：要打开的侧边栏去向（NAV_MOVIE / NAV_DRAMA / NAV_MIDNIGHT）。 */
     public static final String EXTRA_NAV_TAB = "nav_tab";
     /** 内置区列表点站进来时用：要进的站 key，分区页在 onVisible 里认领。 */
     public static final String EXTRA_SITE_KEY = "site_key";
@@ -66,13 +67,45 @@ public class HomeActivity extends BaseActivity {
     public static final int NAV_LIVE = 1003;
     public static final int NAV_MIDNIGHT = 1004;
     public static final int NAV_FILE = 1005;
+    /** 第九批第二路：三个独立页直达（快搜 / 收藏 / 应用），接法与直播/文件同一路。 */
+    public static final int NAV_FASTSEARCH = 1006;
+    public static final int NAV_COLLECT = 1007;
+    public static final int NAV_APPS = 1008;
+    /** 第九批第三路：三个独立页直达（网盘 / 推送 / 节目单），接法与直播/文件同一路。 */
+    public static final int NAV_DRIVE = 1009;
+    public static final int NAV_PUSH = 1010;
+    public static final int NAV_EPG = 1011;
 
     private TextView tvTitle, tvSourceCount;
-    private BottomNavigationView bottomNav;
     private SourceGridAdapter sourceAdapter;
     private PopupWindow sourcePopup;
     private EditText etSearch;
     private LinearLayout chipContainer;
+    // 右侧边栏（第八版）：面板 / 遮罩 / 把手 / 边缘划入区 + 十一个去向的文字行。
+    private View sidebarPanel;
+    private View sidebarScrim;
+    private TextView tvSbMovie, tvSbDrama, tvSbLive, tvSbMidnight, tvSbFile;
+    private TextView tvSbFastSearch, tvSbCollect, tvSbApps;
+    private TextView tvSbDrive, tvSbPush, tvSbEpg;
+    private View sbMovieRow, sbDramaRow, sbLiveRow, sbMidnightRow, sbFileRow;
+    private View sbFastSearchRow, sbCollectRow, sbAppsRow;
+    private View sbDriveRow, sbPushRow, sbEpgRow;
+    private boolean sidebarOpen = false;
+    // 面板打开后 5 秒不动自动收回；面板里点按一次就重新计时。
+    private static final long SIDEBAR_IDLE_MS = 5000;
+    private static final int SIDEBAR_WIDTH_DP = 200;
+    private static final int EDGE_SWIPE_MIN_DX_DP = 40;
+    private final Handler sidebarHandler = new Handler(Looper.getMainLooper());
+    private final Runnable sidebarAutoClose = this::closeSidebar;
+    private float edgeDownX;
+    private float edgeDownY;
+    private boolean edgeSwiping;
+    // 站源弹窗里的标题 / 网格 / 空态视图：每次打开按当前区重填（标题、站数、空态提示）。
+    private TextView tvPopupTitle;
+    private View rvSourceView;
+    private View popupEmpty;
+    private TextView tvPopupEmpty;
+    private View btnPopupImport;
 
     private int currentNav = NAV_MOVIE;
     private boolean showingFav = false;
@@ -90,7 +123,6 @@ public class HomeActivity extends BaseActivity {
             // 应用自定义壁纸
             applyCustomWallpaper();
             tvTitle = find(R.id.tvTitle);
-            bottomNav = find(R.id.bottomNav);
 
             // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角五个图标入口
             tvTitle.setOnClickListener(v -> openSourcePopup());
@@ -110,11 +142,13 @@ public class HomeActivity extends BaseActivity {
                 web.putExtra(WebHomeActivity.KEY_TITLE, "网页首页");
                 startActivity(web);
             });
-            // 设置入口在顶栏（底部导航最多 5 项，第 6 项加不上，见 setupBottomNav）。
+            // 设置入口在顶栏右上角（底部导航已删，见 setupSidebar）。
             find(R.id.ivSetting).setOnClickListener(v ->
                     startActivity(new Intent(this, SettingActivity.class)));
 
-            setupBottomNav();
+            setupSidebar();
+            // 各区启动站：设置里按区设好的启动站，冷启动时写进各区当前站。
+            ZoneSites.applyStartupSites();
             showFragment(NAV_MOVIE);
             handleTabExtra(getIntent());
 
@@ -130,14 +164,13 @@ public class HomeActivity extends BaseActivity {
     }
 
     /** WebHome 桥接的 KEY_TAB=4 → 打开收藏页；其余旧 tab 值已废弃，忽略。
-     * 内置区列表点站进来带 EXTRA_NAV_TAB：切到对应分区 tab，站 key 留给分区页认领。 */
+     * 内置区列表点站进来带 EXTRA_NAV_TAB：切到对应分区，站 key 留给分区页认领。 */
     private void handleTabExtra(Intent intent) {
         if (intent == null) return;
         if (intent.getIntExtra(KEY_TAB, -1) == 4) showFav();
         int navTab = intent.getIntExtra(EXTRA_NAV_TAB, -1);
         if (navTab == NAV_MOVIE || navTab == NAV_DRAMA || navTab == NAV_MIDNIGHT) {
             showFragment(navTab);
-            bottomNav.setSelectedItemId(navTab);
         }
     }
 
@@ -149,67 +182,200 @@ public class HomeActivity extends BaseActivity {
         handleTabExtra(intent);
     }
 
-    private void setupBottomNav() {
-        // 底部导航栏颜色与主题背景一致（2.0.0.1108 第四轮追加）：
-        // 主题背景是纵向渐变 #3AA6CC → #227FA6 → #145E7E（themes.xml 的
-        // windowBackground=@drawable/bg_main_gradient），导航栏在屏幕最底部，
-        // 那里正好是渐变末尾色 #145E7E，用它做纯色背景才与背景融为一体。
-        // 注意不能只在布局里写 android:background：NavigationBarView 构造时
-        // 会把纯色背景包进 MaterialShapeDrawable 再叠一层深色提亮，颜色偏亮；
-        // 渐变 drawable 则会被整段压进导航栏高度，顶部发亮、接缝明显。
-        // 代码里 setBackgroundColor 直接换掉构造时装的背景，颜色分毫不差。
-        try {
-            bottomNav.setBackgroundColor(getColor(R.color.gradient_bottom));
-        } catch (Throwable e) {
-            e.printStackTrace();
-            com.yingtu.plus.App.logCaught(e);
-        }
-        // 闪退加固（2.0.0.1108 第四轮）：BottomNavigationView 最多只能放 5 项，
-        // 第 6 项 menu.add 会抛 IllegalArgumentException，之前它拖死了整个 init
-        //（监听没挂上、首页没加载）。先挂监听、再逐项加，每项各包 try/catch，
-        // 某项坏了记一笔、继续加下一项，标签模式也包一层。
-        bottomNav.setOnItemSelectedListener(item -> {
-            int id = item.getItemId();
-            if (id == NAV_LIVE) {
-                startActivity(new Intent(this, LiveActivity.class));
+    /** 右侧边栏接线（第八版，华为手机侧边栏式）：把手点按 + 边缘左划滑出面板，
+     * 面板里十一个去向带图标带字，点选切区/开页后自动收回，5 秒不动也自动收回。
+     * 边缘划入只认最右 16dp（顶栏 56dp 不占），不抢内容区分类 chips 的横滑。
+     * 底部导航随此一起消失：BottomNavigationView 的 5 项硬上限那段旧代码
+     * （第四轮根治过的 addInternal 抛错）也一并没了，不留死代码。 */
+    private void setupSidebar() {
+        sidebarPanel = find(R.id.sidebarPanel);
+        sidebarScrim = find(R.id.sidebarScrim);
+        sbMovieRow = find(R.id.sbMovie);
+        sbDramaRow = find(R.id.sbDrama);
+        sbLiveRow = find(R.id.sbLive);
+        sbMidnightRow = find(R.id.sbMidnight);
+        sbFileRow = find(R.id.sbFile);
+        sbFastSearchRow = find(R.id.sbFastSearch);
+        sbCollectRow = find(R.id.sbCollect);
+        sbAppsRow = find(R.id.sbApps);
+        sbDriveRow = find(R.id.sbDrive);
+        sbPushRow = find(R.id.sbPush);
+        sbEpgRow = find(R.id.sbEpg);
+        tvSbMovie = find(R.id.tvSbMovie);
+        tvSbDrama = find(R.id.tvSbDrama);
+        tvSbLive = find(R.id.tvSbLive);
+        tvSbMidnight = find(R.id.tvSbMidnight);
+        tvSbFile = find(R.id.tvSbFile);
+        tvSbFastSearch = find(R.id.tvSbFastSearch);
+        tvSbCollect = find(R.id.tvSbCollect);
+        tvSbApps = find(R.id.tvSbApps);
+        tvSbDrive = find(R.id.tvSbDrive);
+        tvSbPush = find(R.id.tvSbPush);
+        tvSbEpg = find(R.id.tvSbEpg);
+
+        // 点小把手滑出面板
+        find(R.id.sidebarHandle).setOnClickListener(v -> openSidebar());
+        // 点遮罩收回面板
+        if (sidebarScrim != null) sidebarScrim.setOnClickListener(v -> closeSidebar());
+        // 面板里点按一次就重新计时（5 秒不动才收回）
+        if (sidebarPanel != null) {
+            sidebarPanel.setOnTouchListener((v, e) -> {
+                if (e.getActionMasked() == MotionEvent.ACTION_DOWN) scheduleSidebarAutoClose();
                 return false;
-            }
-            if (id == NAV_FILE) {
-                startActivity(new Intent(this, FileActivity.class));
-                return false;
-            }
-            showFragment(id);
-            return true;
-        });
-        try {
-            bottomNav.setLabelVisibilityMode(LabelVisibilityMode.LABEL_VISIBILITY_LABELED);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            com.yingtu.plus.App.logCaught(e);
+            });
         }
-        addNavItem(NAV_MOVIE, "影视", R.drawable.ic_play_circle);
-        addNavItem(NAV_DRAMA, "短剧", R.drawable.ic_play);
-        addNavItem(NAV_LIVE, "直播", R.drawable.ic_live);
-        addNavItem(NAV_MIDNIGHT, "午夜", R.drawable.ic_fav_on);
-        addNavItem(NAV_FILE, "文件", R.drawable.ic_file);
-        // “设置”不在这里加：BottomNavigationView 最多 5 项，第 6 项一加就抛，
-        // 设置入口已搬到顶栏右上角（ivSetting），见 init()。
+        // 原有五个去向
+        if (sbMovieRow != null) sbMovieRow.setOnClickListener(v -> onSidebarNav(NAV_MOVIE));
+        if (sbDramaRow != null) sbDramaRow.setOnClickListener(v -> onSidebarNav(NAV_DRAMA));
+        if (sbLiveRow != null) sbLiveRow.setOnClickListener(v -> onSidebarNav(NAV_LIVE));
+        if (sbMidnightRow != null) sbMidnightRow.setOnClickListener(v -> onSidebarNav(NAV_MIDNIGHT));
+        if (sbFileRow != null) sbFileRow.setOnClickListener(v -> onSidebarNav(NAV_FILE));
+        // 第九批第二路：三个独立页直达
+        if (sbFastSearchRow != null) sbFastSearchRow.setOnClickListener(v -> onSidebarNav(NAV_FASTSEARCH));
+        if (sbCollectRow != null) sbCollectRow.setOnClickListener(v -> onSidebarNav(NAV_COLLECT));
+        if (sbAppsRow != null) sbAppsRow.setOnClickListener(v -> onSidebarNav(NAV_APPS));
+        // 第九批第三路：三个独立页直达
+        if (sbDriveRow != null) sbDriveRow.setOnClickListener(v -> onSidebarNav(NAV_DRIVE));
+        if (sbPushRow != null) sbPushRow.setOnClickListener(v -> onSidebarNav(NAV_PUSH));
+        if (sbEpgRow != null) sbEpgRow.setOnClickListener(v -> onSidebarNav(NAV_EPG));
+
+        // 边缘划入：只认最右 16dp 那一小段；左划 40dp 以上且以横向为主才打开，
+        // 内容区分类 chips 的横滑从中间起手，不会误触；顶栏 56dp 不占，
+        // 右上角五个图标的点按不受影响。
+        View edgeZone = find(R.id.edgeSwipeZone);
+        if (edgeZone != null) {
+            final int minDx = ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP);
+            edgeZone.setOnTouchListener((v, e) -> {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        edgeDownX = e.getX();
+                        edgeDownY = e.getY();
+                        edgeSwiping = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (!edgeSwiping) {
+                            float dx = e.getX() - edgeDownX;
+                            float dy = e.getY() - edgeDownY;
+                            if (dx < -minDx && Math.abs(dx) > Math.abs(dy) * 2) {
+                                edgeSwiping = true;
+                                openSidebar();
+                            }
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        return true;
+                    default:
+                        return true;
+                }
+            });
+        }
     }
 
-    /** 底部导航加一项：坏了只记一笔（进 crash.log），不拖死整个导航和首页。 */
-    private void addNavItem(int id, String title, int iconRes) {
-        try {
-            bottomNav.getMenu().add(Menu.NONE, id, Menu.NONE, title).setIcon(iconRes);
-        } catch (Throwable e) {
-            e.printStackTrace();
-            com.yingtu.plus.App.logCaught(e);
+    /** 侧边栏滑出：遮罩露出来，面板从右边缘滑进来，当前区高亮，开始 5 秒倒计时。 */
+    private void openSidebar() {
+        if (sidebarOpen) return;
+        if (sidebarPanel == null || sidebarScrim == null) return;
+        sidebarOpen = true;
+        setSidebarSelected(currentNav);
+        sidebarScrim.setVisibility(View.VISIBLE);
+        sidebarPanel.setVisibility(View.VISIBLE);
+        sidebarPanel.setTranslationX(ResUtil.dp2px(SIDEBAR_WIDTH_DP));
+        sidebarPanel.animate().translationX(0).setDuration(250).start();
+        scheduleSidebarAutoClose();
+    }
+
+    /** 侧边栏收回：面板滑回屏幕外再藏掉，遮罩藏掉，倒计时取消；把手一直留着。 */
+    private void closeSidebar() {
+        if (!sidebarOpen) return;
+        sidebarOpen = false;
+        sidebarHandler.removeCallbacks(sidebarAutoClose);
+        if (sidebarPanel == null || sidebarScrim == null) return;
+        sidebarPanel.animate().translationX(ResUtil.dp2px(SIDEBAR_WIDTH_DP)).setDuration(250)
+                .withEndAction(() -> {
+                    if (sidebarPanel != null) sidebarPanel.setVisibility(View.GONE);
+                }).start();
+        sidebarScrim.setVisibility(View.GONE);
+    }
+
+    private void scheduleSidebarAutoClose() {
+        sidebarHandler.removeCallbacks(sidebarAutoClose);
+        sidebarHandler.postDelayed(sidebarAutoClose, SIDEBAR_IDLE_MS);
+    }
+
+    /** 面板里点一个去向：先收回面板；直播/文件/快搜/收藏/应用是独立页直接打开，其余切内容区。
+     * 切区逻辑与原来底部导航那路一致（showFragment），顶栏站名与各区站点弹窗
+     * 仍按当前选中去向所在区来。 */
+    private void onSidebarNav(int navId) {
+        closeSidebar();
+        if (navId == NAV_LIVE) {
+            startActivity(new Intent(this, LiveActivity.class));
+            return;
         }
+        if (navId == NAV_FILE) {
+            startActivity(new Intent(this, FileActivity.class));
+            return;
+        }
+        if (navId == NAV_FASTSEARCH) {
+            startActivity(new Intent(this, FastSearchActivity.class));
+            return;
+        }
+        if (navId == NAV_COLLECT) {
+            startActivity(new Intent(this, CollectActivity.class));
+            return;
+        }
+        if (navId == NAV_APPS) {
+            startActivity(new Intent(this, AppsActivity.class));
+            return;
+        }
+        if (navId == NAV_DRIVE) {
+            startActivity(new Intent(this, DriveActivity.class));
+            return;
+        }
+        if (navId == NAV_PUSH) {
+            startActivity(new Intent(this, PushActivity.class));
+            return;
+        }
+        if (navId == NAV_EPG) {
+            startActivity(new Intent(this, EpgActivity.class));
+            return;
+        }
+        showFragment(navId);
+    }
+
+    /** 面板里当前区高亮：文字变主题色 + 加粗，行底加一层浅底；直播/文件/快搜/收藏/应用是独立页，
+     * 不在面板里标当前（切走后面板已收回，下次打开仍按内容区当前区标）。 */
+    private void setSidebarSelected(int navId) {
+        if (tvSbMovie == null) return;
+        setSidebarRow(sbMovieRow, tvSbMovie, navId == NAV_MOVIE);
+        setSidebarRow(sbDramaRow, tvSbDrama, navId == NAV_DRAMA);
+        setSidebarRow(sbLiveRow, tvSbLive, false);
+        setSidebarRow(sbMidnightRow, tvSbMidnight, navId == NAV_MIDNIGHT);
+        setSidebarRow(sbFileRow, tvSbFile, false);
+        setSidebarRow(sbFastSearchRow, tvSbFastSearch, false);
+        setSidebarRow(sbCollectRow, tvSbCollect, false);
+        setSidebarRow(sbAppsRow, tvSbApps, false);
+        setSidebarRow(sbDriveRow, tvSbDrive, false);
+        setSidebarRow(sbPushRow, tvSbPush, false);
+        setSidebarRow(sbEpgRow, tvSbEpg, false);
+    }
+
+    private void setSidebarRow(View row, TextView tv, boolean selected) {
+        if (row == null || tv == null) return;
+        tv.setTextColor(getColor(selected ? R.color.colorPrimary : R.color.text_primary));
+        tv.setTypeface(null, selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+        row.setBackgroundColor(selected ? 0x33FFFFFF : 0x00000000);
     }
 
     private void showFragment(int navId) {
         try {
             currentNav = navId;
             showingFav = false;
+            // 侧边栏面板里当前区高亮跟着切（从内置区列表、返回键等路子切过来也一样）。
+            setSidebarSelected(navId);
+            // 切 tab 就按新区刷新顶栏站名（之前顶栏一直显示全局当前源，
+            // 在午夜区会错显示短剧站名）。
+            refreshTitle();
             String tag;
             Fragment fragment;
             if (navId == NAV_DRAMA) {
@@ -261,6 +427,11 @@ public class HomeActivity extends BaseActivity {
         etSearch = popupView.findViewById(R.id.etSearch);
         chipContainer = popupView.findViewById(R.id.chipContainer);
         tvSourceCount = popupView.findViewById(R.id.tvSourceCount);
+        tvPopupTitle = popupView.findViewById(R.id.tvPopupTitle);
+        rvSourceView = popupView.findViewById(R.id.rvSource);
+        popupEmpty = popupView.findViewById(R.id.popupEmpty);
+        tvPopupEmpty = popupView.findViewById(R.id.tvPopupEmpty);
+        btnPopupImport = popupView.findViewById(R.id.btnPopupImport);
 
         androidx.recyclerview.widget.RecyclerView rv = popupView.findViewById(R.id.rvSource);
         rv.setLayoutManager(new GridLayoutManager(this, 2));
@@ -285,6 +456,14 @@ public class HomeActivity extends BaseActivity {
             if (sourcePopup.isShowing()) sourcePopup.dismiss();
             startActivity(new Intent(this, SourceActivity.class));
         });
+
+        // 空态里的“去导入”按钮：用户自己点才跳订阅页，绝不自动跳。
+        if (btnPopupImport != null) {
+            btnPopupImport.setOnClickListener(v -> {
+                if (sourcePopup.isShowing()) sourcePopup.dismiss();
+                startActivity(new Intent(this, SourceActivity.class));
+            });
+        }
     }
 
     private void buildChips() {
@@ -323,21 +502,30 @@ public class HomeActivity extends BaseActivity {
             startActivity(new Intent(this, SourceActivity.class));
             return;
         }
-        // 影视区只列用户自己导入的站，内置站（午夜区、短剧区）不过滤进这里
-        List<SourceBean> sources = new ArrayList<>();
-        for (SourceBean s : ApiConfig.get().getSourceBeanList()) {
-            if (!ApiConfig.get().isBuiltinSite(s.getKey())) sources.add(s);
-        }
-        if (sources.isEmpty()) {
-            // 影视区只列用户自己导入的站，内置站不进这里；新装没有自有站是常态，
-            // 不能一 tap 就跳到视频源订阅页。只提示去向，留在原地。
-            Toast.makeText(this, "影视区暂无自有站点：内置站都在午夜/短剧区，影视区只列你自己导入的站（设置 → 导入本地 JSON 文件）", Toast.LENGTH_LONG).show();
-            return;
+        // 按当前所在区分区列站：午夜列午夜站、短剧列短剧站 + 番茄短剧、
+        // 影视列用户自己导入的站（内置站不进影视区，老口径不动）。
+        String zone = zoneOf(currentNav);
+        List<SourceBean> sources = ZoneSites.getZoneSites(zone);
+        if (currentNav == NAV_MOVIE) {
+            sourceAdapter.setOnSourceClick(this::onSourcePicked);
+            if (tvPopupTitle != null) tvPopupTitle.setText("站源选择");
+            // 影视区没自有站是新装常态：弹窗里给空态提示 +“去导入”按钮，
+            // 用户自己点才跳订阅页，绝不自动跳。
+            setPopupEmptyState(sources.isEmpty(),
+                    "影视区暂无自有站点：内置站都在午夜/短剧区，影视区只列你自己导入的站",
+                    true);
+            sourceAdapter.setCurrentKey(ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_MOVIE));
+            if (tvSourceCount != null) tvSourceCount.setText(sources.size() + " 个源");
+        } else {
+            sourceAdapter.setOnSourceClick(s -> onZoneSourcePicked(zone, s));
+            if (tvPopupTitle != null) {
+                tvPopupTitle.setText(currentNav == NAV_DRAMA ? "短剧站点" : "午夜站点");
+            }
+            setPopupEmptyState(sources.isEmpty(), "该区暂无站点", false);
+            sourceAdapter.setCurrentKey(ZoneSites.getCurrentSiteKey(zone));
+            if (tvSourceCount != null) tvSourceCount.setText(sources.size() + " 个站");
         }
         sourceAdapter.submit(sources);
-        SourceBean home = ApiConfig.get().getHomeSource();
-        if (home != null) sourceAdapter.setCurrentKey(home.getKey());
-        if (tvSourceCount != null) tvSourceCount.setText(sources.size() + " 个源");
         if (etSearch != null) etSearch.setText("");
         sourceAdapter.setSearch("");
         sourceAdapter.setFilterChip("全部");
@@ -361,6 +549,8 @@ public class HomeActivity extends BaseActivity {
 
     private void onSourcePicked(SourceBean source) {
         ApiConfig.get().setSourceBean(source);
+        // 影视区独立记站：这次选的站记进影视区键，午夜/短剧区的站不动。
+        ZoneSites.setCurrentSiteKey(ZoneSites.ZONE_MOVIE, source.getKey());
         // J 批：同配置换当前源，同步 VodConfig 的 home 站（站表本身不变，
         // replaceSites 整体替换，不叠加；jar 已加载过，parseJar 直接返回）
         VodConfigSync.sync();
@@ -372,8 +562,39 @@ public class HomeActivity extends BaseActivity {
         refreshTitle();
         if (sourcePopup.isShowing()) sourcePopup.dismiss();
         showFragment(NAV_MOVIE);
-        bottomNav.setSelectedItemId(NAV_MOVIE);
         notifyHomeReload();
+    }
+
+    /** 分区弹窗里点站：只换本区的站，其他区不动；不切 tab，留在本区看内容。 */
+    private void onZoneSourcePicked(String zone, SourceBean source) {
+        if (source == null) return;
+        ZoneSites.setCurrentSiteKey(zone, source.getKey());
+        if (ZoneSites.ZONE_DRAMA.equals(zone)) {
+            Fragment f = getSupportFragmentManager().findFragmentByTag("drama");
+            if (f instanceof DramaFragment) ((DramaFragment) f).pickSite(source);
+        } else if (ZoneSites.ZONE_MIDNIGHT.equals(zone)) {
+            Fragment f = getSupportFragmentManager().findFragmentByTag("midnight");
+            if (f instanceof MidnightFragment) ((MidnightFragment) f).pickSite(source);
+        }
+        refreshTitle();
+        if (sourcePopup != null && sourcePopup.isShowing()) sourcePopup.dismiss();
+    }
+
+    /** 当前底部 tab 对应的分区键。 */
+    private static String zoneOf(int navId) {
+        if (navId == NAV_DRAMA) return ZoneSites.ZONE_DRAMA;
+        if (navId == NAV_MIDNIGHT) return ZoneSites.ZONE_MIDNIGHT;
+        return ZoneSites.ZONE_MOVIE;
+    }
+
+    /** 弹窗空态：列表空时藏起网格/搜索/chip，只显示提示 +（影视区）“去导入”按钮。 */
+    private void setPopupEmptyState(boolean empty, String hint, boolean showImport) {
+        if (rvSourceView != null) rvSourceView.setVisibility(empty ? View.GONE : View.VISIBLE);
+        if (popupEmpty != null) popupEmpty.setVisibility(empty ? View.VISIBLE : View.GONE);
+        if (tvPopupEmpty != null) tvPopupEmpty.setText(hint);
+        if (btnPopupImport != null) btnPopupImport.setVisibility(showImport ? View.VISIBLE : View.GONE);
+        if (etSearch != null) etSearch.setVisibility(empty ? View.GONE : View.VISIBLE);
+        if (chipContainer != null) chipContainer.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 
     private void notifyHomeReload() {
@@ -386,8 +607,13 @@ public class HomeActivity extends BaseActivity {
     private void refreshTitle() {
         // init 失败后 tvTitle 可能还没拿到手，onResume 还会调这里，先守住空指针
         if (tvTitle == null) return;
-        SourceBean home = ApiConfig.get().getHomeSource();
-        tvTitle.setText(home != null ? home.getName() : getString(R.string.source_default));
+        // 顶栏显示当前所在区的站名，不再显示全局当前源（之前在午夜区会错显示短剧站名）。
+        // Hawk 没起来时 ZoneSites 会抛，接住只显示“请选择源”，不拖死切 tab。
+        String name = null;
+        try {
+            name = ZoneSites.getCurrentSiteName(zoneOf(currentNav));
+        } catch (Throwable ignored) {}
+        tvTitle.setText(name != null ? name : getString(R.string.source_default));
     }
 
     @Override
@@ -398,11 +624,12 @@ public class HomeActivity extends BaseActivity {
 
     @Override
     public void onBackPressed() {
-        if (sourcePopup != null && sourcePopup.isShowing()) {
+        if (sidebarOpen) {
+            closeSidebar();
+        } else if (sourcePopup != null && sourcePopup.isShowing()) {
             sourcePopup.dismiss();
         } else if (showingFav || currentNav != NAV_MOVIE) {
             showFragment(NAV_MOVIE);
-            bottomNav.setSelectedItemId(NAV_MOVIE);
         } else {
             super.onBackPressed();
         }
@@ -432,6 +659,7 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        sidebarHandler.removeCallbacks(sidebarAutoClose);
         if (sourcePopup != null && sourcePopup.isShowing()) sourcePopup.dismiss();
     }
 

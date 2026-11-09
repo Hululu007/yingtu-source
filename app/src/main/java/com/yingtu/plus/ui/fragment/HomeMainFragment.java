@@ -22,6 +22,7 @@ import com.yingtu.plus.ui.activity.DetailActivity;
 import com.yingtu.plus.ui.adapter.CategoryTabAdapter;
 import com.yingtu.plus.ui.adapter.FilterChipAdapter;
 import com.yingtu.plus.ui.adapter.GridMovieAdapter;
+import com.yingtu.plus.util.ZoneSites;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 
 import java.util.ArrayList;
@@ -157,7 +158,7 @@ public class HomeMainFragment extends BaseLazyFragment {
     protected void onVisible() {
         // init 失败过则控件还没建好，这里直接返回，留空首页，不再崩一次
         if (rvCategory == null || filterContainer == null || tvHint == null || adapter == null) return;
-        SourceBean home = ApiConfig.get().getHomeSource();
+        SourceBean home = zoneSource();
         String key = home == null ? "" : home.getKey();
         if (home == null) {
             rvCategory.setVisibility(View.GONE);
@@ -174,10 +175,22 @@ public class HomeMainFragment extends BaseLazyFragment {
         loadHome();
     }
 
+    /**
+     * 本页当前站：被午夜/短剧区内嵌时用全局当前源（分区页切站时写进去）；
+     * 顶层影视页用影视区独立记的站——午夜/短剧区切站不再顶掉影视区的站，
+     * 影视区没选站时显示空引导，不拿别的区的站来凑数。
+     */
+    private SourceBean zoneSource() {
+        if (getParentFragment() != null) return ApiConfig.get().getHomeSource();
+        String key = ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_MOVIE);
+        if (key == null || key.isEmpty()) return null;
+        return ApiConfig.get().getSource(key);
+    }
+
     /** 由 HomeActivity 在站源抽屉切源后调用，强制重载首页内容。 */
     public void reloadForSourceChange() {
         if (!isAdded()) return;
-        SourceBean home = ApiConfig.get().getHomeSource();
+        SourceBean home = zoneSource();
         if (home == null) return;
         currentSourceKey = home.getKey();
         bindObservers();

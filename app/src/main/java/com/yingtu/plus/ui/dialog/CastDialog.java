@@ -22,13 +22,21 @@ import com.yingtu.plus.bean.CastVideo;
 import com.yingtu.plus.bean.Config;
 import com.yingtu.plus.bean.Device;
 import com.yingtu.plus.bean.History;
+import com.yingtu.plus.cast.DlnaManager;
 import com.yingtu.plus.event.CastEvent;
+import com.yingtu.plus.utils.Notify;
 import com.yingtu.plus.utils.ResUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-// 按调用点重建
+// 按调用点重建；本轮接真 DLNA：打开即用 DlnaManager 做 SSDP 发现，
+// 把局域网里的 MediaRenderer（电视/盒子）与数据库里配对过的 App 设备
+// 合并列出。DLNA 设备点选后直接 AVTransport 推流；App 设备仍走老路
+// 发 CastEvent（对端 App 收到后弹 ReceiveDialog）。
 public final class CastDialog extends BottomSheetDialogFragment {
 
     public interface Listener {
@@ -38,6 +46,17 @@ public final class CastDialog extends BottomSheetDialogFragment {
     private History history;
     private CastVideo video;
     private boolean fm;
+
+    private DeviceAdapter adapter;
+    private TextView statusView;
+    private TextView stopView;
+    private final List<Device> dlnaDevices = new ArrayList<>();
+
+    private final DlnaManager.Listener dlnaListener = devices -> {
+        dlnaDevices.clear();
+        dlnaDevices.addAll(devices);
+        refreshDevices();
+    };
 
     public static CastDialog create() {
         return new CastDialog();
@@ -85,6 +104,13 @@ public final class CastDialog extends BottomSheetDialogFragment {
             params.topMargin = ResUtil.dp2px(6);
             root.addView(name, params);
         }
+        statusView = new TextView(requireContext());
+        statusView.setText(R.string.cast_searching);
+        statusView.setTextSize(13);
+        statusView.setTextColor(0xFF94A3B8);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        statusParams.topMargin = ResUtil.dp2px(8);
+        root.addView(statusView, statusParams);
         RecyclerView recycler = new RecyclerView(requireContext());
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         recycler.setItemAnimator(null);
@@ -92,25 +118,75 @@ public final class CastDialog extends BottomSheetDialogFragment {
         LinearLayout.LayoutParams recyclerParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         recyclerParams.topMargin = ResUtil.dp2px(8);
         root.addView(recycler, recyclerParams);
-        List<Device> devices = new ArrayList<>();
-        try {
-            devices.addAll(Device.getAll());
-        } catch (Exception ignored) {
+        adapter = new DeviceAdapter(new ArrayList<>());
+        recycler.setAdapter(adapter);
+        if (DlnaManager.get().isCasting()) {
+            stopView = new TextView(requireContext());
+            stopView.setText(R.string.cast_stop);
+            stopView.setTextSize(14);
+            stopView.setTextColor(0xFFF87171);
+            stopView.setGravity(Gravity.CENTER);
+            stopView.setPadding(ResUtil.dp2px(12), ResUtil.dp2px(12), ResUtil.dp2px(12), ResUtil.dp2px(12));
+            stopView.setBackgroundColor(0x33FFFFFF);
+            LinearLayout.LayoutParams stopParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            stopParams.topMargin = ResUtil.dp2px(12);
+            root.addView(stopView, stopParams);
+            stopView.setOnClickListener(v -> DlnaManager.get().stop((ok, message) -> {
+                Notify.show(R.string.cast_stopped);
+                refreshDevices();
+            }));
         }
-        if (devices.isEmpty()) {
-            TextView empty = new TextView(requireContext());
-            empty.setText("未发现可投屏设备");
-            empty.setTextSize(14);
-            empty.setTextColor(0xFF94A3B8);
-            empty.setGravity(Gravity.CENTER);
-            empty.setPadding(0, ResUtil.dp2px(16), 0, ResUtil.dp2px(16));
-            root.addView(empty);
-        }
-        recycler.setAdapter(new DeviceAdapter(devices));
+        refreshDevices();
+        DlnaManager.get().addListener(dlnaListener);
+        DlnaManager.get().startDiscovery();
         return root;
     }
 
+    @Override
+    public void onDismiss(@NonNull android.content.DialogInterface dialog) {
+        DlnaManager.get().removeListener(dlnaListener);
+        DlnaManager.get().stopDiscovery();
+        super.onDismiss(dialog);
+    }
+
+    /** 数据库配对设备 + 实时发现的 DLNA 设备合并，DLNA 同 uuid 的覆盖旧记录。 */
+    private void refreshDevices() {
+        if (adapter == null) return;
+        Map<String, Device> merged = new LinkedHashMap<>();
+        try {
+            for (Device device : Device.getAll()) merged.put(device.getUuid(), device);
+        } catch (Exception ignored) {
+        }
+        for (Device device : dlnaDevices) merged.put(device.getUuid(), device);
+        List<Device> devices = new ArrayList<>(merged.values());
+        Collections.sort(devices);
+        adapter.setItems(devices);
+        if (statusView != null) {
+            boolean anyDlna = !dlnaDevices.isEmpty();
+            statusView.setVisibility(anyDlna ? View.GONE : View.VISIBLE);
+            // 对话框开着期间 SSDP 发现一直在跑，没发现设备就是“正在搜索”，不是“搜完了没有”。
+            if (!anyDlna && devices.isEmpty()) statusView.setText(R.string.cast_searching);
+        }
+    }
+
     private void onDeviceClick(Device device) {
+        if (device.isDLNA()) {
+            if (video == null || TextUtils.isEmpty(video.getUrl())) {
+                Notify.show(R.string.cast_need_video);
+                return;
+            }
+            DlnaManager.get().play(device, video, (ok, message) -> {
+                if (ok) {
+                    Notify.show(ResUtil.getString(R.string.cast_pushed, device.getName()));
+                    FragmentActivity activity = getActivity();
+                    if (activity instanceof Listener listener) listener.onCasted();
+                    dismiss();
+                } else {
+                    Notify.show(ResUtil.getString(R.string.cast_push_failed, message == null ? "" : message));
+                }
+            });
+            return;
+        }
         if (history != null) CastEvent.post(Config.vod(), device, history);
         FragmentActivity activity = getActivity();
         if (activity instanceof Listener listener) listener.onCasted();
@@ -118,10 +194,15 @@ public final class CastDialog extends BottomSheetDialogFragment {
     }
 
     private class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.Holder> {
-        private final List<Device> items;
+        private List<Device> items;
 
         DeviceAdapter(List<Device> items) {
             this.items = items;
+        }
+
+        void setItems(List<Device> items) {
+            this.items = items;
+            notifyDataSetChanged();
         }
 
         @NonNull

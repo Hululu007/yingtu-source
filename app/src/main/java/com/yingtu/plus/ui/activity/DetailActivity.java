@@ -1,5 +1,8 @@
 package com.yingtu.plus.ui.activity;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
@@ -8,11 +11,14 @@ import android.os.Build;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.widget.FrameLayout;
+import android.widget.PopupMenu;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,9 +27,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
-import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -37,6 +41,7 @@ import com.yingtu.plus.R;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
 import com.yingtu.plus.base.BaseActivity;
+import com.yingtu.plus.bean.CastVideo;
 import com.yingtu.plus.bean.Class;
 import com.yingtu.plus.bean.FavVod;
 import com.yingtu.plus.bean.History;
@@ -45,7 +50,9 @@ import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
+import com.yingtu.plus.player.exo.ExoHttpPolicy;
 import com.yingtu.plus.player.exo.ExoUtil;
+import com.yingtu.plus.ui.dialog.CastDialog;
 import com.yingtu.plus.ui.adapter.SeriesAdapter;
 import com.yingtu.plus.ui.adapter.SeriesFlagAdapter;
 import com.yingtu.plus.util.FavHelper;
@@ -57,7 +64,6 @@ import com.yingtu.plus.viewmodel.SourceViewModel;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -68,9 +74,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
-* 详情页（FongMiTV 模式）：毛玻璃海报背景 + 头项（标题/海报/主演）
-* + 剧情简介 + 播放线路行 + 选集 + 本片剧照 + 相关推荐。
-* 点击某一集 → 跳转 VideoActivity 播放；点相关推荐卡片 → 进该片详情页。
+* 详情页（老版影图录像版式，第八版）：最顶上是 16:9 播放器（加载时海报当背景、
+* “正在获取播放信息”转圈，右上角显示播放中分辨率），下面依次是标题 + 来源 + 评述
+* + 标签 + 简介，再下面是操作钮（全屏/推送/快搜/收藏/简介/菜单），再下面是清晰度
+* 行（线路 chip，有几档出几档 + 当前集/总集数），再下面是五列选集网格（当前集标绿）、
+* 本片剧照、相关推荐。播放器与信息块固定在顶部，只有选集以下滚动；全屏时播放器
+* 独占全屏。点海报播第一集，点选集/线路也在顶上播放器里播；播不了弹真实原因
+* 再跳 VideoActivity 兜底。
 *
 * 本片剧照：详情数据 Vod/VodInfo 里没有剧照字段（只有 vod_pic 一张海报），
 * 本节不编图、默认隐藏；背景毛玻璃直接用本片海报模糊后做底。
@@ -89,16 +99,28 @@ private SourceViewModel viewModel;
 private SeriesFlagAdapter flagAdapter;
 private SeriesAdapter seriesAdapter;
 private RelatedAdapter relatedAdapter;
-private ProgressBar progress;
 
 private VodInfo vodInfo;
 private String sourceKey;
 private String vodId;
 private boolean relatedLoaded = false;
+private boolean descExpanded = false;
 
-// 顶部内联播放器：点选集后在详情页里直接播，不跳走；播不了再跳 VideoActivity 兜底。
+// 顶上播放器：PlayerView 叠在海报同一框里，点海报播第一集，
+// 点选集/线路也在这个播放器里播；播不了再跳 VideoActivity 兜底。
+// 播放器与信息块固定在顶部，只有选集以下在 ScrollView 里滚动。
 private FrameLayout playerBox;
 private PlayerView pvDetail;
+private ImageView ivPlayOverlay;
+private View loadingOverlay;
+private TextView tvResolution;
+private View fixedInfo;
+private ScrollView scrollDetail;
+private TextView btnFav;
+private TextView tvEpisodeCount;
+private TextView tvReview;
+private TextView tvTags;
+private View tagsRow;
 private ExoPlayer detailPlayer;
 private boolean detailFullscreen;
 private boolean detailFallbackDone;
@@ -107,6 +129,9 @@ private VodInfo.VodSeriesFlag playingFlag;
 private VodInfo.VodSeries playingSeries;
 private int playingIndex;
 private long playingResume;
+// 当前播出流的地址与头：推送（投屏）用；没播出流时推送按钮先提示，不造假。
+private String currentPlayUrl;
+private Map<String, String> currentPlayHeaders;
 
 @Override
 protected int getLayoutId() {
@@ -118,22 +143,37 @@ protected void init() {
 sourceKey = getIntent().getStringExtra(KEY_SOURCE);
 vodId = getIntent().getStringExtra(KEY_VOD_ID);
 
-progress = find(R.id.progress);
-find(R.id.ivBack).setOnClickListener(v -> finish());
-find(R.id.ivFav).setOnClickListener(v -> toggleFav());
-find(R.id.ivShare).setOnClickListener(v -> shareVod());
-refreshFavIcon();
+// 返回（播放器左上角浮层）：全屏时先退全屏，否则退出详情页。
+find(R.id.ivBack).setOnClickListener(v -> onBackPressed());
+find(R.id.btnFullscreen).setOnClickListener(v -> toggleDetailFullscreen(!detailFullscreen));
+find(R.id.btnCast).setOnClickListener(v -> castCurrent());
+find(R.id.btnQuickSearch).setOnClickListener(v -> quickSearch());
+find(R.id.btnFav).setOnClickListener(v -> toggleFav());
+find(R.id.btnDesc).setOnClickListener(v -> toggleDesc());
+find(R.id.btnMenu).setOnClickListener(v -> showDetailMenu(v));
+btnFav = find(R.id.btnFav);
+tvEpisodeCount = find(R.id.tvEpisodeCount);
+tvReview = find(R.id.tvReview);
+tvTags = find(R.id.tvTags);
+tagsRow = find(R.id.tagsRow);
+fixedInfo = find(R.id.fixedInfo);
+scrollDetail = find(R.id.scrollDetail);
+loadingOverlay = find(R.id.loadingOverlay);
+tvResolution = find(R.id.tvResolution);
+refreshFavButton();
 
-// 顶部播放器接线：16:9 高度按屏幕宽算；全屏按钮切横竖屏 + 沉浸栏（短剧页同款接法）。
-// 注意：playerBox 初始是 GONE，量它自己的宽度永远是 0，高度就永远设不上，
-// 播起来也是 0 高看不见（第六版的 bug）。直接用屏幕宽减去两边各 16dp 的内边距。
+// 顶上播放器接线：16:9 高度按全屏宽算（播放器全宽贴边，与录像一致）；
+// 全屏按钮切横竖屏 + 沉浸栏（短剧页同款接法）。
 playerBox = find(R.id.playerBox);
 pvDetail = find(R.id.pvDetail);
+ivPlayOverlay = find(R.id.ivPlayOverlay);
 pvDetail.setFullscreenButtonClickListener(isFullscreen -> toggleDetailFullscreen(isFullscreen));
-detailPlayerHeight = (ResUtil.getScreenWidth() - ResUtil.dp2px(32)) * 9 / 16;
-ViewGroup.LayoutParams playerLp = playerBox.getLayoutParams();
-playerLp.height = detailPlayerHeight;
-playerBox.setLayoutParams(playerLp);
+detailPlayerHeight = ResUtil.getScreenWidth() * 9 / 16;
+ViewGroup.LayoutParams wallLp = playerBox.getLayoutParams();
+wallLp.height = detailPlayerHeight;
+playerBox.setLayoutParams(wallLp);
+// 点海报（或播放器上的播放钮）播第一集；已有播放器在播时点按由 PlayerView 自己接。
+playerBox.setOnClickListener(v -> playFirstEpisode());
 
 RecyclerView rvFlag = find(R.id.rvFlag);
 rvFlag.setLayoutManager(new LinearLayoutManager(
@@ -158,23 +198,25 @@ rvRelated.setAdapter(relatedAdapter);
 viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
 viewModel.detailResult.observe(this, this::bind);
 
-progress.setVisibility(View.VISIBLE);
+// 详情加载中：播放器里转圈（背景就是海报），加载完 bind() 里关掉。
+setLoading(true);
 viewModel.getDetail(sourceKey, vodId);
 }
 
 private void bind(VodInfo info) {
-progress.setVisibility(View.GONE);
+setLoading(false);
 if (info == null) {
-((TextView) find(R.id.tvName)).setText("加载失败");
+setText(R.id.tvTitle, "加载失败");
 return;
 }
 this.vodInfo = info;
 
-((TextView) find(R.id.tvName)).setText(info.name);
-setText(R.id.tvSub, join(" · ", info.year, info.area, info.type));
-setText(R.id.tvActor, TextUtils.isEmpty(info.actor)? "": "主演：" + info.actor);
-setText(R.id.tvDirector, TextUtils.isEmpty(info.director)? "": "导演：" + info.director);
+// 标题（录像里标题前有个 ⊕）+ 来源（站名）+ 评述 + 标签 + 简介。
+setText(R.id.tvTitle, "⊕ " + info.name);
+setText(R.id.tvSource, "来源：" + siteName());
+updateReview();
 setText(R.id.tvDesc, TextUtils.isEmpty(info.des)? "暂无简介": info.des);
+bindTags(info.type);
 
 ImageView iv = find(R.id.ivPoster);
 Glide.with(this).load(ImgUtil.getUrl(info.pic))
@@ -307,6 +349,79 @@ private void onFlagSelected(int index) {
 vodInfo.playFlag = index;
 flagAdapter.setSelected(index);
 seriesAdapter.submit(vodInfo.seriesFlags.get(index).list);
+// 切线路后当前集复位（高亮清掉）；集数行回“共 N 集”，播了某集再显示“M / N”。
+seriesAdapter.setPlaying(-1);
+playingIndex = -1;
+int total = vodInfo.seriesFlags.get(index).list.size();
+if (tvEpisodeCount != null) tvEpisodeCount.setText("共 " + total + " 集");
+updateReview();
+}
+
+/** 评述行：详情自带 note（如“全254集”/“更新至254集”）就用它；没有就按当前线路
+ * 的总集数写“全 N 集”；连集数都没有（无线路）就藏起这一行。 */
+private void updateReview() {
+if (tvReview == null) return;
+if (vodInfo == null) {
+tvReview.setVisibility(View.GONE);
+return;
+}
+if (!TextUtils.isEmpty(vodInfo.note)) {
+tvReview.setText("评述：" + vodInfo.note);
+tvReview.setVisibility(View.VISIBLE);
+return;
+}
+int total = 0;
+if (vodInfo.seriesFlags != null && !vodInfo.seriesFlags.isEmpty()
+&& vodInfo.playFlag >= 0 && vodInfo.playFlag < vodInfo.seriesFlags.size()
+&& vodInfo.seriesFlags.get(vodInfo.playFlag).list != null) {
+total = vodInfo.seriesFlags.get(vodInfo.playFlag).list.size();
+}
+if (total > 0) {
+tvReview.setText("评述：全" + total + "集");
+tvReview.setVisibility(View.VISIBLE);
+} else {
+tvReview.setVisibility(View.GONE);
+}
+}
+
+/** 标签行：类型字段里有几个就出几个（按 空格 / / / ，/ 、 切）；类型为空藏起整行。 */
+private void bindTags(String type) {
+if (tagsRow == null || tvTags == null) return;
+if (TextUtils.isEmpty(type)) {
+tagsRow.setVisibility(View.GONE);
+return;
+}
+String[] parts = type.split("[\\s/,，、]+");
+StringBuilder sb = new StringBuilder();
+for (String p: parts) {
+if (TextUtils.isEmpty(p)) continue;
+if (sb.length() > 0) sb.append("  ");
+sb.append(p);
+}
+if (sb.length() == 0) {
+tagsRow.setVisibility(View.GONE);
+return;
+}
+tvTags.setText(sb.toString());
+tagsRow.setVisibility(View.VISIBLE);
+}
+
+/** 站名：VodConfig 里该站的显示名，取不到回退站 key。 */
+private String siteName() {
+try {
+Site site = VodConfig.get().getSite(sourceKey);
+if (site != null && !TextUtils.isEmpty(site.getName())) return site.getName();
+} catch (Exception ignored) {}
+return sourceKey != null ? sourceKey : "";
+}
+
+/** 播放器加载态：转圈 +“正在获取播放信息”，背景就是下面的海报；关掉时
+ * 没在播就把播放钮露出来。 */
+private void setLoading(boolean loading) {
+if (loadingOverlay != null) loadingOverlay.setVisibility(loading ? View.VISIBLE : View.GONE);
+if (ivPlayOverlay != null) {
+ivPlayOverlay.setVisibility(loading || detailPlayer != null ? View.GONE : View.VISIBLE);
+}
 }
 
 private void playSeries(int seriesIndex) {
@@ -321,17 +436,36 @@ resume = h.position;
 }
 
 // 先在详情页顶部直接播；播不了再跳播放页兜底（VideoActivity 那条路留着，不删）。
+// 当前集标绿 + 集数行显示“M / N”（点选集本身也会调 setPlaying，这里补上是
+// 为了 playFirstEpisode 这种程序触发的播放同样高亮）。
+seriesAdapter.setPlaying(seriesIndex);
+if (tvEpisodeCount != null) tvEpisodeCount.setText((seriesIndex + 1) + " / " + flag.list.size());
 playInline(flag, series, seriesIndex, resume);
 }
 
-/** 详情页顶部内联播放：走现成的 playerContent 取流 + 建面，不跳走。 */
+/** 点海报播第一集：没取到详情（选集为空）先提示“正在加载…”，不空播。 */
+private void playFirstEpisode() {
+if (detailPlayer != null) return;
+if (vodInfo == null || vodInfo.seriesFlags == null || vodInfo.seriesFlags.isEmpty()) {
+Toast.makeText(this, "正在加载…", Toast.LENGTH_SHORT).show();
+return;
+}
+VodInfo.VodSeriesFlag flag = vodInfo.seriesFlags.get(vodInfo.playFlag);
+if (flag == null || flag.list == null || flag.list.isEmpty()) {
+Toast.makeText(this, "正在加载…", Toast.LENGTH_SHORT).show();
+return;
+}
+playSeries(0);
+}
+
+/** 详情页顶上播放器内联播放：走现成的 playerContent 取流 + 建面，不跳走。 */
 private void playInline(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
 playingFlag = flag;
 playingSeries = series;
 playingIndex = seriesIndex;
 playingResume = resume;
 detailFallbackDone = false;
-playerBox.setVisibility(View.VISIBLE);
+setLoading(true);
 OkGo.io(() -> {
 try {
 Result result = SiteApi.playerContent(sourceKey, flag.name, series.url);
@@ -341,22 +475,45 @@ Map<String, String> headers = result.getHeader();
 OkGo.main(() -> startDetailPlayer(url, headers));
 } catch (Exception e) {
 App.logCaught(e);
-OkGo.main(() -> {
-Toast.makeText(DetailActivity.this, "详情页播放失败，正在用播放页打开…", Toast.LENGTH_SHORT).show();
-openVideoActivity(flag, series, seriesIndex, resume);
-});
+OkGo.main(() -> fallbackToVideoPlayer(e.getMessage(), flag, series, seriesIndex, resume));
 }
 });
 }
 
+/** 内联播失败的统一出口：退全屏、放掉死播放器、toast 带真实原因、跳播放页兜底。
+ * 原因不只写“播放失败”：取流空是“取流地址为空”，蜘蛛抛错是蜘蛛的原消息，
+ * 播放器报错是 ExoPlayer 的原消息；完整堆栈同时进 crash.log。 */
+private void fallbackToVideoPlayer(String reason, VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+if (detailFullscreen) toggleDetailFullscreen(false);
+releaseDetailPlayer();
+setLoading(false);
+if (TextUtils.isEmpty(reason)) reason = "未知错误";
+Toast.makeText(DetailActivity.this, "详情页播放失败（" + reason + "），正在用播放页打开…", Toast.LENGTH_LONG).show();
+openVideoActivity(flag, series, seriesIndex, resume);
+}
+
+/** 顶上播放器切到播放态：PlayerView 露出来，播放钮藏起来（别压在画面上），转圈关掉。 */
+private void showPlayerWall() {
+if (pvDetail != null) pvDetail.setVisibility(View.VISIBLE);
+setLoading(false);
+}
+
+/** 顶上播放器回到海报态：PlayerView 藏起来，海报 + 播放钮露出来，分辨率角标藏掉。 */
+private void showPosterWall() {
+if (pvDetail != null) pvDetail.setVisibility(View.GONE);
+if (tvResolution != null) tvResolution.setVisibility(View.GONE);
+setLoading(false);
+}
+
 private void startDetailPlayer(String url, Map<String, String> headers) {
 releaseDetailPlayer();
+// 记下播出流的地址与头：推送（投屏）用这条真地址。
+currentPlayUrl = url;
+currentPlayHeaders = headers;
 ExoPlayer.Builder builder = new ExoPlayer.Builder(this);
-if (headers != null && !headers.isEmpty()) {
-DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory();
-dataSourceFactory.setDefaultRequestProperties(headers);
-builder.setMediaSourceFactory(new DefaultMediaSourceFactory(dataSourceFactory));
-}
+// 黄瓜密钥修法：不管有没有头都走统一策略——默认 8 秒超时刚好撞上流主机 8 秒单请求，
+// 无头分支原来连工厂都不设，直接用的也是 8 秒默认；重试 3 次、退避 1/2/4 秒。
+builder.setMediaSourceFactory(ExoHttpPolicy.newMediaSourceFactory(ExoHttpPolicy.newHttpDataSourceFactory(headers)));
 detailPlayer = builder.build();
 // 建面：先建输出面再接播放器（短剧页黑屏同款根因），渲染方式认用户设置。
 ExoUtil.setPlayerView(pvDetail);
@@ -364,15 +521,30 @@ pvDetail.setPlayer(detailPlayer);
 detailPlayer.setMediaItem(MediaItem.fromUri(url));
 detailPlayer.addListener(new Player.Listener() {
 @Override
+public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
+// 播放器右上角分辨率角标（录像里 1920x1080 那种）：按实际视频尺寸写。
+if (tvResolution != null && videoSize.width > 0 && videoSize.height > 0) {
+tvResolution.setText(videoSize.width + "x" + videoSize.height);
+tvResolution.setVisibility(View.VISIBLE);
+}
+}
+
+@Override
 public void onPlayerError(PlaybackException error) {
 if (detailFallbackDone) return;
 detailFallbackDone = true;
-Toast.makeText(DetailActivity.this, "详情页播放失败，正在用播放页打开…", Toast.LENGTH_SHORT).show();
-openVideoActivity(playingFlag, playingSeries, playingIndex, playingResume);
+// 之前这条路没记日志：取流成功但播不起来时 crash.log 里什么都没有，
+// 下次用户报障就定不了是哪一步断的；现在把播放器原错记下来。
+App.logCaught(error);
+String reason = error.getMessage();
+if (TextUtils.isEmpty(reason)) reason = error.getErrorCodeName();
+if (TextUtils.isEmpty(reason)) reason = error.toString();
+fallbackToVideoPlayer(reason, playingFlag, playingSeries, playingIndex, playingResume);
 }
 });
 detailPlayer.prepare();
 detailPlayer.setPlayWhenReady(true);
+showPlayerWall();
 }
 
 private void releaseDetailPlayer() {
@@ -381,27 +553,34 @@ if (pvDetail != null) pvDetail.setPlayer(null);
 detailPlayer.release();
 detailPlayer = null;
 }
+showPosterWall();
 }
 
-/** 全屏：切横竖屏 + 沉浸栏，播放器框全屏高 / 恢复 16:9。 */
+/** 全屏：切横竖屏 + 沉浸栏，播放器独占全屏（信息块与滚动区都藏掉）/ 恢复 16:9。 */
 private void toggleDetailFullscreen(boolean toFullscreen) {
 detailFullscreen = toFullscreen;
 if (toFullscreen) {
 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
 hideDetailSystemBars();
+if (fixedInfo != null) fixedInfo.setVisibility(View.GONE);
+if (scrollDetail != null) scrollDetail.setVisibility(View.GONE);
 if (playerBox != null) {
 ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
 lp.height = getResources().getDisplayMetrics().heightPixels;
 playerBox.setLayoutParams(lp);
 }
+if (ivPlayOverlay != null) ivPlayOverlay.setVisibility(View.GONE);
 } else {
 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 showDetailSystemBars();
+if (fixedInfo != null) fixedInfo.setVisibility(View.VISIBLE);
+if (scrollDetail != null) scrollDetail.setVisibility(View.VISIBLE);
 if (playerBox != null && detailPlayerHeight > 0) {
 ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
 lp.height = detailPlayerHeight;
 playerBox.setLayoutParams(lp);
 }
+if (detailPlayer == null) showPosterWall();
 }
 if (pvDetail != null) pvDetail.setFullscreenButtonState(toFullscreen);
 }
@@ -466,20 +645,82 @@ private void setText(int id, String text) {
 ((TextView) find(id)).setText(text == null? "": text);
 }
 
-private void refreshFavIcon() {
+private void refreshFavButton() {
+if (btnFav == null) return;
 boolean fav = FavHelper.isFav(sourceKey, vodId);
-((ImageView) find(R.id.ivFav)).setImageResource(
-fav? R.drawable.ic_fav_on: R.drawable.ic_fav_off);
+btnFav.setText(fav ? "已收藏" : "收藏");
 }
 
 private void toggleFav() {
 String name = vodInfo!= null? vodInfo.name: "";
 String pic = vodInfo!= null? vodInfo.pic: "";
 FavHelper.toggleVod(new FavVod(sourceKey, vodId, name, pic));
-refreshFavIcon();
+refreshFavButton();
 boolean fav = FavHelper.isFav(sourceKey, vodId);
 android.widget.Toast.makeText(this, fav? "已收藏": "已取消收藏",
 android.widget.Toast.LENGTH_SHORT).show();
+}
+
+/** 推送（投屏）：把当前播出流的真地址推给局域网设备（CastDialog，DLNA）。
+ * 没播出流时没有地址可推，先提示，不造一个假的推。 */
+private void castCurrent() {
+if (TextUtils.isEmpty(currentPlayUrl)) {
+Toast.makeText(this, "请先点选集播放", Toast.LENGTH_SHORT).show();
+return;
+}
+String title = vodInfo != null ? vodInfo.name : "";
+if (playingSeries != null && !TextUtils.isEmpty(playingSeries.name)) title += " " + playingSeries.name;
+long pos = detailPlayer != null ? detailPlayer.getCurrentPosition() : 0;
+CastDialog.create()
+.video(new CastVideo(title, currentPlayUrl, pos, currentPlayHeaders))
+.show(this);
+}
+
+/** 快搜：按本片片名跨站搜（SearchActivity 接 keyword 预置词）。 */
+private void quickSearch() {
+if (vodInfo == null || TextUtils.isEmpty(vodInfo.name)) {
+Toast.makeText(this, "片名还没加载出来", Toast.LENGTH_SHORT).show();
+return;
+}
+Intent i = new Intent(this, SearchActivity.class);
+i.putExtra("keyword", vodInfo.name);
+startActivity(i);
+}
+
+/** 简介：简介行三行收起 / 全文展开来回切。 */
+private void toggleDesc() {
+descExpanded = !descExpanded;
+TextView tvDesc = find(R.id.tvDesc);
+if (tvDesc != null) tvDesc.setMaxLines(descExpanded ? Integer.MAX_VALUE : 3);
+}
+
+/** 菜单：分享影片、复制片名（都是现成的能力，不造新入口）。 */
+private void showDetailMenu(View anchor) {
+PopupMenu menu = new PopupMenu(this, anchor);
+menu.getMenu().add(Menu.NONE, 1, Menu.NONE, "分享");
+menu.getMenu().add(Menu.NONE, 2, Menu.NONE, "复制片名");
+menu.setOnMenuItemClickListener(item -> {
+if (item.getItemId() == 1) {
+shareVod();
+} else if (item.getItemId() == 2) {
+copyVodName();
+}
+return true;
+});
+menu.show();
+}
+
+private void copyVodName() {
+String name = vodInfo != null ? vodInfo.name : "";
+if (TextUtils.isEmpty(name)) {
+Toast.makeText(this, "片名还没加载出来", Toast.LENGTH_SHORT).show();
+return;
+}
+ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+if (cm != null) {
+cm.setPrimaryClip(ClipData.newPlainText("影片名", name));
+Toast.makeText(this, "已复制片名", Toast.LENGTH_SHORT).show();
+}
 }
 
 private void shareVod() {
@@ -490,16 +731,6 @@ send.putExtra(Intent.EXTRA_SUBJECT, name);
 send.putExtra(Intent.EXTRA_TEXT, "" + name
 + "\n来源：" + sourceKey + "\n影片ID：" + vodId);
 startActivity(Intent.createChooser(send, "分享影片"));
-}
-
-private static String join(String sep, String... parts) {
-StringBuilder sb = new StringBuilder();
-for (String p: parts) {
-if (TextUtils.isEmpty(p)) continue;
-if (sb.length() > 0) sb.append(sep);
-sb.append(p);
-}
-return sb.toString();
 }
 
 /** 相关推荐横排卡片：复用 item_grid_movie，定宽 120dp 横向滑动。 */
