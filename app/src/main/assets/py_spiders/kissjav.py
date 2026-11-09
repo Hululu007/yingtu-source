@@ -58,6 +58,7 @@ RE_LD_DATE = re.compile(r'"uploadDate":\s*"([^"]+)"')
 RE_FLASHVARS = re.compile(r"video_url:\s*'([A-Za-z0-9+/=]+)'")
 RE_CATS = re.compile(r"video_categories:\s*'([^']*)'")
 RE_STILL = re.compile(r'//assets6\.cdnhop\.com/contents/videos_screenshots/\d+/\d+/(?:preview\.jpg|preview\.mp4\.jpg|preview_preview\.mp4\.jpg|320x180/1\.jpg)')
+RE_VID = re.compile(r'video/(\d+)')
 
 
 def _now():
@@ -117,6 +118,32 @@ def _abs_pic(p):
     if p.startswith('/'):
         return BASE + p
     return p
+
+
+def _vid_num(vod_id):
+    m = RE_VID.search(vod_id or '')
+    return m.group(1) if m else ''
+
+
+def _check_still(url):
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': UA})
+        with urllib.request.urlopen(req, timeout=15, context=CTX) as resp:
+            if resp.status != 200:
+                return False
+            try:
+                b = resp.read(16)
+            except http.client.IncompleteRead as e:
+                b = e.partial
+            if not b:
+                return False
+            if b[:2] == b'\xff\xd8':
+                return True
+            if b[:8] == b'\x89PNG\r\n\x1a\n':
+                return True
+            return False
+    except Exception:
+        return False
 
 
 def _page(url):
@@ -232,11 +259,19 @@ def _detail(vod_id):
     if parts:
         d['vod_content'] = ' | '.join(parts)
     seen = set()
+    vidnum = _vid_num(vod_id)
     for s in RE_STILL.findall(body):
         u = _abs_pic(s)
-        if u and u not in seen:
-            seen.add(u)
-            d['stills'].append(u)
+        if not u or u in seen:
+            continue
+        seen.add(u)
+        if vidnum and ('/%s/' % vidnum) not in u:
+            continue
+        if u == d['vod_pic']:
+            continue
+        if not _check_still(u):
+            continue
+        d['stills'].append(u)
     fm = RE_FLASHVARS.search(body)
     if fm:
         try:
@@ -310,6 +345,7 @@ class Spider(BaseSpider):
             'vod_area': '',
             'vod_content': d['vod_content'],
             'type_name': d['type_name'],
+            'stills': d['stills'],
             'vod_play_from': 'KissJAV',
             'vod_play_url': play_url,
         }]}
@@ -334,11 +370,11 @@ class Spider(BaseSpider):
             d = _detail(vid)
             stream = d.get('stream', '')
             if stream:
-                return {'parse': 0, 'playUrl': stream, 'url': stream,
+                return {'parse': 0, 'playUrl': '', 'url': stream,
                         'header': {'User-Agent': UA, 'Referer': d['detail_url']}}
             return {'parse': 0, 'playUrl': '', 'url': '', 'header': {}}
         if url.startswith('http'):
-            return {'parse': 0, 'playUrl': url, 'url': url,
+            return {'parse': 0, 'playUrl': '', 'url': url,
                     'header': {'User-Agent': UA, 'Referer': BASE + '/'}}
         return {'parse': 0, 'playUrl': '', 'url': '', 'header': {}}
 

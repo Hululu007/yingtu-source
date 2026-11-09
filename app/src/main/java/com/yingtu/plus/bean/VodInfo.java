@@ -20,6 +20,7 @@ public class VodInfo implements Serializable {
     public String director;
     public String des;
     public String sourceKey;
+    public List<String> stills = new ArrayList<>();
 
     /** 当前选中的线路下标 */
     public int playFlag = 0;

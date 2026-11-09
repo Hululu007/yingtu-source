@@ -68,6 +68,8 @@ public class Vod implements Parcelable, Diffable<Vod> {
     private String vodPlayUrl;
     @SerializedName("vod_tag")
     private String vodTag;
+    @SerializedName("stills")
+    private List<String> vodStills;
     @SerializedName("action")
     private String action;
     @SerializedName("cate")
@@ -102,6 +104,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
         this.vodPlayFrom = in.readString();
         this.vodPlayUrl = in.readString();
         this.vodTag = in.readString();
+        this.vodStills = in.createStringArrayList();
         this.action = in.readString();
         this.land = (Integer) in.readValue(Integer.class.getClassLoader());
         this.circle = (Integer) in.readValue(Integer.class.getClassLoader());
@@ -201,6 +204,10 @@ public class Vod implements Parcelable, Diffable<Vod> {
 
     public String getTag() {
         return TextUtils.isEmpty(vodTag) ? "" : vodTag;
+    }
+
+    public List<String> getStills() {
+        return vodStills == null ? new ArrayList<>() : vodStills;
     }
 
     public String getAction() {
@@ -349,6 +356,7 @@ public class Vod implements Parcelable, Diffable<Vod> {
         dest.writeString(this.vodPlayFrom);
         dest.writeString(this.vodPlayUrl);
         dest.writeString(this.vodTag);
+        dest.writeStringList(this.vodStills);
         dest.writeString(this.action);
         dest.writeValue(this.land);
         dest.writeValue(this.circle);

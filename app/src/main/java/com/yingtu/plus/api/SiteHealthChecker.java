@@ -591,6 +591,21 @@ public final class SiteHealthChecker {
                             platforms.size() + " 个平台 · 首平台 " + channels.size() + " 个频道",
                             System.currentTimeMillis() - t0));
                 }
+            } else if (source.protocol == BuiltinLiveSources.Protocol.SPIDER) {
+                List<BuiltinLiveSources.Platform> platforms = loadSpiderCategoriesSync(source, 20000);
+                if (platforms == null) {
+                    items.add(new SiteHealthResults.Item("频道拉取", SiteHealthResults.TIMEOUT,
+                            "分类表超时", System.currentTimeMillis() - t0));
+                } else if (platforms.isEmpty()) {
+                    items.add(new SiteHealthResults.Item("频道拉取", SiteHealthResults.EMPTY,
+                            "分类表为空", System.currentTimeMillis() - t0));
+                } else {
+                    channels = loadSpiderChannelsSync(source, platforms.get(0), 20000);
+                    items.add(new SiteHealthResults.Item("频道拉取",
+                            channels.isEmpty() ? SiteHealthResults.EMPTY : SiteHealthResults.OK,
+                            platforms.size() + " 个分类 · 首分类 " + channels.size() + " 个频道",
+                            System.currentTimeMillis() - t0));
+                }
             } else {
                 String text = BuiltinLiveSources.readAsset(appContext, source.assetPath);
                 List<LiveGroup> groups = BuiltinLiveSources.parseListText(source.assetPath, text);
@@ -1082,6 +1097,56 @@ public final class SiteHealthChecker {
         AtomicReference<List<LiveChannel>> result = new AtomicReference<>();
         AtomicReference<String> error = new AtomicReference<>();
         BuiltinLiveSources.loadPingtaiChannels(source, platform, new BuiltinLiveSources.OnChannels() {
+            @Override
+            public void onResult(List<LiveChannel> channels) {
+                result.set(channels);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(String msg) {
+                error.set(msg);
+                latch.countDown();
+            }
+        });
+        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+            throw new java.net.SocketTimeoutException("频道表超时");
+        }
+        if (result.get() != null) return result.get();
+        throw new IOException(error.get() == null ? "频道表拉取失败" : error.get());
+    }
+
+    /** 把蜘蛛型直播的回调式拉分类表转成同步等（latch + 超时）。 */
+    private List<BuiltinLiveSources.Platform> loadSpiderCategoriesSync(
+            BuiltinLiveSources.Source source, long timeoutMs) throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<List<BuiltinLiveSources.Platform>> result = new AtomicReference<>();
+        AtomicReference<String> error = new AtomicReference<>();
+        BuiltinLiveSources.loadSpiderCategories(source, new BuiltinLiveSources.OnPlatforms() {
+            @Override
+            public void onResult(List<BuiltinLiveSources.Platform> platforms) {
+                result.set(platforms);
+                latch.countDown();
+            }
+
+            @Override
+            public void onError(String msg) {
+                error.set(msg);
+                latch.countDown();
+            }
+        });
+        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) return null;
+        if (result.get() != null) return result.get();
+        throw new IOException(error.get() == null ? "分类表拉取失败" : error.get());
+    }
+
+    private List<LiveChannel> loadSpiderChannelsSync(BuiltinLiveSources.Source source,
+                                                     BuiltinLiveSources.Platform platform,
+                                                     long timeoutMs) throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<List<LiveChannel>> result = new AtomicReference<>();
+        AtomicReference<String> error = new AtomicReference<>();
+        BuiltinLiveSources.loadSpiderChannels(source, platform, new BuiltinLiveSources.OnChannels() {
             @Override
             public void onResult(List<LiveChannel> channels) {
                 result.set(channels);

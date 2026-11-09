@@ -87,7 +87,14 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
         h.tvBadge.setVisibility(m.douban ? View.VISIBLE : View.GONE);
 
         Context ctx = h.itemView.getContext();
-        Object url = ImgUtil.getUrl(m.pic);
+        Object url;
+        try {
+            url = ImgUtil.getUrl(m.pic);
+        } catch (Throwable e) {
+            // 封面带畸形 @Headers= JSON 时 ImgUtil.getUrl 会抛错：一行封面不许崩整页，回退原图。
+            e.printStackTrace();
+            url = m.pic;
+        }
         h.boundUrl = url;
         h.retried = false;
         Glide.with(ctx)

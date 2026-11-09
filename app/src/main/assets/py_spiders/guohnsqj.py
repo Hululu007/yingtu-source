@@ -573,7 +573,7 @@ class Spider(BaseSpider):
                     stream = _fix_url(info.get('videoUrlTwo') or '')
                 else:
                     stream = _fix_url(info.get('videoUrlOne') or '')
-        return {'parse': 0, 'playUrl': stream, 'url': stream, 'header': header}
+        return {'parse': 0, 'playUrl': '', 'url': stream, 'header': header}
 
     def localProxy(self, param):
         return [404, 'text/plain', '']

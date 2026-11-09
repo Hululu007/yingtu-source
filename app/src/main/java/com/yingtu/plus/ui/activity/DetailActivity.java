@@ -36,6 +36,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
+import com.github.catvod.crawler.SpiderDebug;
 import com.yingtu.plus.App;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.SiteApi;
@@ -51,6 +52,7 @@ import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
 import com.yingtu.plus.player.NonVideoRouter;
+import com.yingtu.plus.player.PlaybackPreload;
 import com.yingtu.plus.player.exo.ExoHttpPolicy;
 import com.yingtu.plus.player.exo.ExoUtil;
 import com.yingtu.plus.ui.dialog.CastDialog;
@@ -132,6 +134,16 @@ private ExoPlayer detailPlayer;
 private boolean detailFullscreen;
 private boolean detailFallbackDone;
 private int detailPlayerHeight;
+// 预加载的播放器：详情页打开后就把第一集解析好、播放器 prepare 好（暂停着，
+// 只预缓冲、不出声不出画面），点播放直接 setPlayWhenReady(true) 立刻出画面。
+// detailPrebuilt=true 表示 detailPlayer 是预加载建的、还没正式开播；
+// 开播后（或切了集/线路）就不是预加载态了。preloadGeneration 用于丢弃
+// 详情已换（切线路/退页）后才回来的过期预加载结果。
+private boolean detailPrebuilt;
+private String preloadFlagName;
+private String preloadSeriesUrl;
+private String preloadPendingKey;
+private int preloadGeneration;
 private VodInfo.VodSeriesFlag playingFlag;
 private VodInfo.VodSeries playingSeries;
 private int playingIndex;
@@ -244,19 +256,22 @@ Glide.with(this).load(ImgUtil.getUrl(info.pic))
 .into(ivBg);
 }
 
-// 本片剧照：详情数据里无剧照字段，不编图，本节保持隐藏。
-bindStills(null);
+// 本片剧照：滚动区最下面一节（选集网格之后）。
+bindStills(info.stills);
 
 flagAdapter.submit(info.seriesFlags);
 updateQualityRow();
 if (!info.seriesFlags.isEmpty()) {
 onFlagSelected(0);
 }
+// 详情一打开就开始预加载第一集：后台解析取流地址、播放器 prepare 预缓冲，
+// 点播放直接出画面；同时解析结果进共享缓存，跳播放页兜底也不用重取。
+preloadDetailPlayback();
 
 loadRelated();
 }
 
-/** 剧照接线口：有朝一日 Vod/VodInfo 给出剧照地址列表时，传进来即显示；目前无数据，传空保持隐藏。 */
+/** 剧照：滚动区最下面一节（选集网格之后）；无剧照时本节隐藏。 */
 private void bindStills(List<String> stills) {
 View section = find(R.id.stillsSection);
 if (stills == null || stills.isEmpty()) {
@@ -264,6 +279,56 @@ section.setVisibility(View.GONE);
 return;
 }
 section.setVisibility(View.VISIBLE);
+RecyclerView rvStills = find(R.id.rvStills);
+if (rvStills.getAdapter() == null) {
+rvStills.setAdapter(new StillsAdapter());
+}
+((StillsAdapter) rvStills.getAdapter()).submit(stills);
+}
+
+/** 剧照横向列表：只放图。 */
+private static class StillsAdapter extends RecyclerView.Adapter<StillsAdapter.VH> {
+
+private final List<String> data = new ArrayList<>();
+
+void submit(List<String> list) {
+data.clear();
+if (list != null) data.addAll(list);
+notifyDataSetChanged();
+}
+
+@NonNull
+@Override
+public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+View v = LayoutInflater.from(parent.getContext())
+.inflate(R.layout.item_still, parent, false);
+return new VH(v);
+}
+
+@Override
+public void onBindViewHolder(@NonNull VH h, int position) {
+String url = data.get(position);
+Glide.with(h.itemView.getContext())
+.load(ImgUtil.getUrl(url))
+.placeholder(R.drawable.bg_poster_placeholder)
+.error(R.drawable.bg_poster_placeholder)
+.centerCrop()
+.into(h.ivStill);
+}
+
+@Override
+public int getItemCount() {
+return data.size();
+}
+
+static class VH extends RecyclerView.ViewHolder {
+ImageView ivStill;
+
+VH(@NonNull View itemView) {
+super(itemView);
+ivStill = itemView.findViewById(R.id.ivStill);
+}
+}
 }
 
 /** 相关推荐：第一步同站同分类，第二步同站首页推荐兜底。 */
@@ -365,6 +430,10 @@ playingIndex = -1;
 int total = vodInfo.seriesFlags.get(index).list.size();
 if (tvEpisodeCount != null) tvEpisodeCount.setText("共 " + total + " 集");
 updateReview();
+// 切了线路：旧的预加载播放器（如果有）作废，新线路第一集重新预加载；
+// 正在播的播放器不动，不打断播放。
+if (detailPlayer != null && detailPrebuilt) releaseDetailPlayer();
+preloadDetailPlayback();
 }
 
 private void updateQualityRow() {
@@ -467,12 +536,21 @@ resume = h.position;
 // 为了 playFirstEpisode 这种程序触发的播放同样高亮）。
 seriesAdapter.setPlaying(seriesIndex);
 if (tvEpisodeCount != null) tvEpisodeCount.setText((seriesIndex + 1) + " / " + flag.list.size());
+// 预加载好的播放器正好是这一集：直接开播，不用现取；同时把下一集的解析
+// 也在后台排上，点“下一集”同样立刻出画面。
+if (tryStartPrebuilt(flag, series, seriesIndex, resume)) {
+preloadNextEpisode(flag, seriesIndex);
+return;
+}
 playInline(flag, series, seriesIndex, resume);
+preloadNextEpisode(flag, seriesIndex);
 }
 
-/** 点海报播第一集：没取到详情（选集为空）先提示“正在加载…”，不空播。 */
+/** 点海报播第一集：没取到详情（选集为空）先提示“正在加载…”，不空播。
+ * 已有播放器在播时点按由 PlayerView 自己接；只有预加载建的（还没开播的）
+ * 播放器才允许在这里直接开播。 */
 private void playFirstEpisode() {
-if (detailPlayer != null) return;
+if (detailPlayer != null && !detailPrebuilt) return;
 if (vodInfo == null || vodInfo.seriesFlags == null || vodInfo.seriesFlags.isEmpty()) {
 Toast.makeText(this, "正在加载…", Toast.LENGTH_SHORT).show();
 return;
@@ -485,7 +563,9 @@ return;
 playSeries(0);
 }
 
-/** 详情页顶上播放器内联播放：走现成的 playerContent 取流 + 建面，不跳走。 */
+/** 详情页顶上播放器内联播放：走现成的 playerContent 取流 + 建面，不跳走。
+ * 点播时先看预加载缓存：详情打开时已解析好第一集、上一集播时已解析好下一集，
+ * 命中就直接开播，不用现取现等；没命中才按原流程现取。 */
 private void playInline(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
 playingFlag = flag;
 playingSeries = series;
@@ -493,23 +573,38 @@ playingIndex = seriesIndex;
 playingResume = resume;
 detailFallbackDone = false;
 setLoading(true);
+Result preloaded = PlaybackPreload.take(sourceKey, flag.name, series.url);
+if (preloaded != null && !TextUtils.isEmpty(preloaded.getRealUrl())) {
+onPlayerResult(preloaded, flag, series, seriesIndex, resume);
+return;
+}
 OkGo.io(() -> {
 try {
 Result result = SiteApi.playerContent(sourceKey, flag.name, series.url);
 String url = result.getRealUrl();
 if (TextUtils.isEmpty(url)) throw new IllegalStateException("取流地址为空");
-if (NonVideoRouter.isNonVideo(url)) {
-OkGo.main(() -> setLoading(false));
-NonVideoRouter.tryShow(url, vodInfo.name);
-return;
-}
-Map<String, String> headers = result.getHeader();
-OkGo.main(() -> startDetailPlayer(url, headers));
+OkGo.main(() -> onPlayerResult(result, flag, series, seriesIndex, resume));
 } catch (Exception e) {
 App.logCaught(e);
 OkGo.main(() -> fallbackToVideoPlayer(e.getMessage(), flag, series, seriesIndex, resume));
 }
 });
+}
+
+/** 取流成功后的统一处理（预加载命中与现取两条路共用）：非视频走小说/图片
+ * 分流，否则进顶上播放器开播；失败由调用方走 fallbackToVideoPlayer。 */
+private void onPlayerResult(Result result, VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+String url = result.getRealUrl();
+if (TextUtils.isEmpty(url)) {
+fallbackToVideoPlayer("取流地址为空", flag, series, seriesIndex, resume);
+return;
+}
+if (NonVideoRouter.isNonVideo(url)) {
+setLoading(false);
+NonVideoRouter.tryShow(url, vodInfo.name);
+return;
+}
+startDetailPlayer(url, result.getHeader());
 }
 
 /** 内联播失败的统一出口：退全屏、放掉死播放器、toast 带真实原因、跳播放页兜底。
@@ -524,9 +619,12 @@ Toast.makeText(DetailActivity.this, "详情页播放失败（" + reason + "）�
 openVideoActivity(flag, series, seriesIndex, resume);
 }
 
-/** 顶上播放器切到播放态：PlayerView 露出来，播放钮藏起来（别压在画面上），转圈关掉。 */
+/** 顶上播放器切到播放态：PlayerView 露出来，播放钮藏起来（别压在画面上），转圈关掉。
+ * 海报也藏掉：横屏下屏幕比 16:9 更宽时视频两侧会留黑边，海报会从黑边处漏出来
+ * 造成分屏；海报只是播出前的占位，播出后不需要，收起时 showPosterWall 会恢复。 */
 private void showPlayerWall() {
 if (pvDetail != null) pvDetail.setVisibility(View.VISIBLE);
+if (ivPoster != null) ivPoster.setVisibility(View.GONE);
 setLoading(false);
 }
 
@@ -540,6 +638,15 @@ setLoading(false);
 
 private void startDetailPlayer(String url, Map<String, String> headers) {
 releaseDetailPlayer();
+buildDetailPlayer(url, headers);
+detailPlayer.setPlayWhenReady(true);
+showPlayerWall();
+}
+
+/** 建播放器 + 挂监听 + prepare（只预缓冲，不自动播、不露画面）：现播与
+ * 预加载共用。预加载调它时播放器暂停着，海报墙还盖在上面；点播放时只
+ * 要 setPlayWhenReady(true) + 露出画面，立刻出画面。 */
+private void buildDetailPlayer(String url, Map<String, String> headers) {
 // 记下播出流的地址与头：推送（投屏）用这条真地址。
 currentPlayUrl = url;
 currentPlayHeaders = headers;
@@ -569,6 +676,12 @@ detailFallbackDone = true;
 // 之前这条路没记日志：取流成功但播不起来时 crash.log 里什么都没有，
 // 下次用户报障就定不了是哪一步断的；现在把播放器原错记下来。
 App.logCaught(error);
+// 预加载阶段（还没点播放）就报错：只静默放掉这个预建的播放器，不跳播放页、
+// 不弹错——用户点播放时按原流程现取现播，不被一次预加载失败带偏。
+if (detailPrebuilt) {
+releaseDetailPlayer();
+return;
+}
 String reason = error.getMessage();
 if (TextUtils.isEmpty(reason)) reason = error.getErrorCodeName();
 if (TextUtils.isEmpty(reason)) reason = error.toString();
@@ -576,8 +689,90 @@ fallbackToVideoPlayer(reason, playingFlag, playingSeries, playingIndex, playingR
 }
 });
 detailPlayer.prepare();
+}
+
+/** 详情页预加载：打开详情（或切线路）后，后台解析第一集的播放地址，
+ * 解析结果进共享缓存（跳播放页兜底也能复用），再把播放器 prepare 好暂停着。
+ * 磁力集不建 Exo 播放器（播不了），只暖 TorrServer，点播时播放页管线直接用。
+ * 失败全静默：解析失败、地址为空、详情已换页，都不弹错、不阻塞点播。 */
+private void preloadDetailPlayback() {
+if (vodInfo == null || vodInfo.seriesFlags == null || vodInfo.seriesFlags.isEmpty()) return;
+if (detailPlayer != null) return;
+VodInfo.VodSeriesFlag flag = vodInfo.seriesFlags.get(vodInfo.playFlag);
+if (flag == null || flag.list == null || flag.list.isEmpty()) return;
+final VodInfo.VodSeries series = flag.list.get(0);
+final String flagName = flag.name;
+final String seriesUrl = series.url;
+if (TextUtils.isEmpty(seriesUrl)) return;
+// 同一集正在预加载就别重复排队。
+final String pendingKey = flagName + "\n" + seriesUrl;
+if (pendingKey.equals(preloadPendingKey)) return;
+preloadPendingKey = pendingKey;
+final int generation = ++preloadGeneration;
+if (PlaybackPreload.isMagnet(seriesUrl)) {
+PlaybackPreload.preloadMagnet(seriesUrl);
+preloadPendingKey = null;
+return;
+}
+OkGo.io(() -> {
+try {
+Result result = SiteApi.playerContent(sourceKey, flagName, seriesUrl);
+String url = result == null ? "" : result.getRealUrl();
+if (TextUtils.isEmpty(url)) return;
+// 解析结果进共享缓存：点播放时 playInline 先取缓存，不用重取；
+// 播不了跳播放页兜底，VideoActivity 那边同样先取缓存。
+PlaybackPreload.put(sourceKey, flagName, seriesUrl, result);
+if (PlaybackPreload.isMagnet(url) || NonVideoRouter.isNonVideo(url)) {
+// 磁力只暖 TorrServer（播放页管线用），小说/图片走分流，都不建播放器。
+if (PlaybackPreload.isMagnet(url)) PlaybackPreload.preloadMagnet(url);
+return;
+}
+final Map<String, String> headers = result.getHeader();
+final String playUrl = url;
+OkGo.main(() -> {
+if (generation != preloadGeneration || detailPlayer != null || isFinishing() || isDestroyed()) return;
+preloadPendingKey = null;
+buildDetailPlayer(playUrl, headers);
+detailPrebuilt = true;
+preloadFlagName = flagName;
+preloadSeriesUrl = seriesUrl;
+});
+} catch (Exception e) {
+// 预加载失败静默：点播时按原流程现取。
+SpiderDebug.log("preload", "detail preload failed key=%s err=%s", sourceKey, e.getMessage());
+} finally {
+if (pendingKey.equals(preloadPendingKey)) preloadPendingKey = null;
+}
+});
+}
+
+/** 预加载的播放器正好是要点播的这一集：直接开播（续播位置照常接上）。 */
+private boolean tryStartPrebuilt(VodInfo.VodSeriesFlag flag, VodInfo.VodSeries series, int seriesIndex, long resume) {
+if (detailPlayer == null || !detailPrebuilt) return false;
+if (flag == null || series == null) return false;
+if (!TextUtils.equals(preloadFlagName, flag.name) || !TextUtils.equals(preloadSeriesUrl, series.url)) return false;
+playingFlag = flag;
+playingSeries = series;
+playingIndex = seriesIndex;
+playingResume = resume;
+detailFallbackDone = false;
+detailPrebuilt = false;
+if (resume > 0) detailPlayer.seekTo(resume);
+setLoading(false);
 detailPlayer.setPlayWhenReady(true);
 showPlayerWall();
+return true;
+}
+
+/** 播完当前集（或点开某集）后，把下一集的解析在后台排上，点“下一集”不用现等。
+ * 只预加载紧邻的下一集，不整季扫，避免把站打爆、把流量撑爆。 */
+private void preloadNextEpisode(VodInfo.VodSeriesFlag flag, int seriesIndex) {
+if (flag == null || flag.list == null) return;
+int next = seriesIndex + 1;
+if (next < 0 || next >= flag.list.size()) return;
+VodInfo.VodSeries nextSeries = flag.list.get(next);
+if (nextSeries == null || TextUtils.isEmpty(nextSeries.url)) return;
+PlaybackPreload.preload(sourceKey, flag.name, nextSeries.url);
 }
 
 private void releaseDetailPlayer() {
@@ -586,6 +781,12 @@ if (pvDetail != null) pvDetail.setPlayer(null);
 detailPlayer.release();
 detailPlayer = null;
 }
+// 预加载态一起清掉：换集/切线路/退页后，之前排队的预加载结果一律作废。
+detailPrebuilt = false;
+preloadFlagName = null;
+preloadSeriesUrl = null;
+preloadPendingKey = null;
+preloadGeneration++;
 showPosterWall();
 }
 
@@ -598,8 +799,12 @@ hideDetailSystemBars();
 if (fixedInfo != null) fixedInfo.setVisibility(View.GONE);
 if (scrollDetail != null) scrollDetail.setVisibility(View.GONE);
 if (playerBox != null) {
+// 横屏高度取屏幕短边：setRequestedOrientation 是异步的，此时读到的
+// heightPixels 还是竖屏的长边；直接用它会让播放器框比横屏高出一截，
+// 16:9 视频在框里居中留出上下黑边、海报从上面漏出来，造成上下分屏。
+android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
 ViewGroup.LayoutParams lp = playerBox.getLayoutParams();
-lp.height = getResources().getDisplayMetrics().heightPixels;
+lp.height = Math.min(dm.widthPixels, dm.heightPixels);
 playerBox.setLayoutParams(lp);
 }
 if (ivPlayOverlay != null) ivPlayOverlay.setVisibility(View.GONE);

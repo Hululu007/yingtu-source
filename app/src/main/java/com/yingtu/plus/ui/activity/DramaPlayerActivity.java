@@ -199,6 +199,8 @@ public class DramaPlayerActivity extends AppCompatActivity {
         DramaStream currentStream;
         boolean detailLoading;
         boolean streamLoading;
+        /** 下一部的第一集正在后台解析（只在选集已加载好时触发一次，防重复）。 */
+        boolean nextPrefetching;
         /** Preloaded streams by episode index: resolved addresses only, no bytes. */
         final Map<Integer, DramaStream> preloaded = new HashMap<>();
     }
@@ -368,7 +370,10 @@ public class DramaPlayerActivity extends AppCompatActivity {
             });
         }
 
-        /** Next-episodes URL resolve only (no byte download): up to 5 ahead. */
+        /** Next-episodes URL resolve only (no byte download): up to 5 ahead.
+         * 本剧播到最后一集时，顺带把下一部的第一集地址也先解析好（只解析地址，
+         * 不下字节），切到下一部不用现等；只在下一部的选集已加载好时做——
+         * 没加载好就不碰，等它自己的 bind 去取详情 + 解析，不抢、不重复。 */
         private void preloadNextEpisodes(int position) {
             if (!Hawk.get(HawkConfig.DRAMA_PRELOAD, true)) return;
             PageState st = stateFor(position);
@@ -390,6 +395,30 @@ public class DramaPlayerActivity extends AppCompatActivity {
                         // Preload failure is silent: the episode resolves on demand.
                     }
                 });
+            }
+            // 本剧最后一集：预解析下一部的第一集（只一集，不整部扫）。
+            if (st.episodeIndex >= st.detail.episodes.size() - 1 && position + 1 < data.size()) {
+                final int nextPos = position + 1;
+                PageState nextState = states.get(nextPos);
+                if (nextState != null && nextState.detail != null && !nextState.detail.episodes.isEmpty()
+                        && !nextState.preloaded.containsKey(0) && !nextState.nextPrefetching) {
+                    nextState.nextPrefetching = true;
+                    final DramaEpisode first = nextState.detail.episodes.get(0);
+                    io.execute(() -> {
+                        try {
+                            FanqieDramaClient client = new FanqieDramaClient(DramaPlayerActivity.this);
+                            DramaStream stream = client.videoModel(first.vid, first.seriesId);
+                            if (destroyed) return;
+                            if (stream != null && stream.url != null && !stream.url.isEmpty()) {
+                                stateFor(nextPos).preloaded.put(0, stream);
+                            }
+                        } catch (Exception ignored) {
+                            // Preload failure is silent: the episode resolves on demand.
+                        } finally {
+                            stateFor(nextPos).nextPrefetching = false;
+                        }
+                    });
+                }
             }
         }
 

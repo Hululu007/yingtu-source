@@ -172,6 +172,7 @@ public class SourceViewModel extends ViewModel {
         info.actor = vod.getActor();
         info.director = vod.getDirector();
         info.des = vod.getContent();
+        info.stills = vod.getStills();
         info.sourceKey = sourceKey;
         for (Flag flag : vod.getFlags()) {
             VodInfo.VodSeriesFlag seriesFlag = new VodInfo.VodSeriesFlag(flag.getFlag());

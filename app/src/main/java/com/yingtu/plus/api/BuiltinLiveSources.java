@@ -15,10 +15,17 @@ import com.yingtu.plus.bean.LiveChannel;
 import com.yingtu.plus.bean.LiveGroup;
 import com.yingtu.plus.util.OkGo;
 
+import com.github.catvod.crawler.Spider;
+import com.yingtu.plus.api.BuiltinConfigs;
+import com.yingtu.plus.api.loader.BaseLoader;
+import com.yingtu.plus.bean.Class;
+import com.yingtu.plus.bean.Result;
+import com.yingtu.plus.bean.Vod;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,15 +43,27 @@ import okhttp3.Response;
  *   再按平台现取频道（{endpoint}/{address} 的 zhubo/list/data 数组），频道不写死；
  * - 1 个列表源：assets/live/user_m3u.m3u（用户提供的 m3u），走 LiveParser 解析。
  *
- * 回退规则：订阅配置里有 lives 地址时以外加载的为准（每个地址成一个列表源），
- * 没有时用内置 4 源。ApiConfig.java 不动，回退逻辑全在这里。
+ * 合并规则：内置可见 4 源 + 订阅配置 lives 并存、互不顶掉。
+ * 远程用配置里的真名；type=0（m3u 列表）进；type=3（蜘蛛型、无 url）只有
+ * 树里有对应蜘蛛类的才进（SPIDER_APIS 白名单，目前只有咖啡体育 csp_KafLiveAmns），
+ * 其余 type=3 仍跳过；同名或同地址去重；
+ * 覆盖清单（隐藏/删除/改名）对内置与远程都生效。
  */
 public class BuiltinLiveSources {
 
     public enum Protocol {
         PINGTAI,
-        LIST
+        LIST,
+        SPIDER
     }
+
+    /** 有对应蜘蛛类的 type=3 直播 api 白名单（只认这几个，别的 type=3 仍跳过）。 */
+    private static final java.util.Set<String> SPIDER_APIS = new java.util.HashSet<String>(java.util.Arrays.asList(
+            "csp_KafLiveAmns"
+    ));
+
+    /** 蜘蛛型直播的频道标记前缀：点频道时按此前缀拦截、现解析真流。 */
+    public static final String SPIDER_MARK_PREFIX = "kaflive://room/";
 
     public static class Source {
         public final String id;
@@ -52,17 +71,23 @@ public class BuiltinLiveSources {
         public final Protocol protocol;
         public final List<String> endpoints;
         public final String assetPath;
+        public final String spiderApi;
 
         public Source(String id, String name, Protocol protocol, List<String> endpoints, String assetPath) {
-            this.id = id;
-            this.name = name;
-            this.protocol = protocol;
-            this.endpoints = endpoints;
-            this.assetPath = assetPath;
+            this(id, name, protocol, endpoints, assetPath, null);
         }
 
         public Source(String id, String name, Protocol protocol, List<String> endpoints) {
-            this(id, name, protocol, endpoints, null);
+            this(id, name, protocol, endpoints, null, null);
+        }
+
+        public Source(String id, String name, Protocol protocol, List<String> endpoints, String assetPath, String spiderApi) {
+            this.id = id;
+            this.name = name;
+            this.protocol = protocol;
+            this.endpoints = endpoints == null ? new ArrayList<String>() : endpoints;
+            this.assetPath = assetPath;
+            this.spiderApi = spiderApi;
         }
     }
 
@@ -93,6 +118,11 @@ public class BuiltinLiveSources {
         void onError(String msg);
     }
 
+    public interface OnUrl {
+        void onResult(String url);
+        void onError(String msg);
+    }
+
     private static List<String> urls(String... items) {
         List<String> list = new ArrayList<>();
         for (String item : items) list.add(item);
@@ -116,21 +146,67 @@ public class BuiltinLiveSources {
     }
 
     /**
-     * 生效的直播源：订阅配置有 lives 地址就用订阅的（一个地址一个列表源），
-     * 没有就用内置 4 源。内置源走覆盖清单：隐藏/删掉的不出列表，改过名的显示新名。
+     * 生效的直播源：内置可见源 + 订阅配置 lives 合并，两者并存、互不顶掉。
+     * 顺序：内置可见源在前，远程 lives 在后（注入地址插在远程最前）。
+     * 远程用配置里的真名；type=0（m3u 列表）进；type=3（蜘蛛型、无 url）只有
+     * 白名单里的 api 才进（目前只有咖啡体育 csp_KafLiveAmns），其余跳过；
+     * 同名或同地址去重；覆盖清单对内置与远程都生效。
      */
     public static List<Source> getEffectiveSources() {
-        List<String> configured = ApiConfig.get().getLiveUrls();
-        if (configured != null && !configured.isEmpty()) {
-            List<Source> sources = new ArrayList<>();
-            for (int i = 0; i < configured.size(); i++) {
-                String url = configured.get(i);
-                String name = configured.size() == 1 ? "订阅直播" : "订阅直播" + (i + 1);
-                sources.add(new Source("config_" + i, name, Protocol.LIST, urls(url)));
-            }
-            return sources;
+        List<Source> result = new ArrayList<>();
+        // 1. 内置可见源（覆盖清单：隐藏/删掉的不出，改过名的显示新名）
+        result.addAll(visibleBuiltinSources());
+        // 2. 远程 lives（配置里的真名 + url + type）与注入地址
+        addRemoteSources(result);
+        return result;
+    }
+
+    /** 把订阅配置的 lives 与注入地址合并进列表（内置已在前，远程追加，去重，覆盖清单生效）。 */
+    private static void addRemoteSources(List<Source> result) {
+        // 注入地址：用户自定义的 m3u，当作一条远程源（名叫“注入直播”），插在远程最前
+        String inject = ApiConfig.get().getInjectLiveUrl();
+        if (!TextUtils.isEmpty(inject)) {
+            addRemoteSource(result, "inject_live", "注入直播", inject);
         }
-        return visibleBuiltinSources();
+        // 配置 lives：type=0（m3u 列表）进；type=3（蜘蛛型、无 url）只有白名单
+        // 里的 api 才进（目前只有咖啡体育 csp_KafLiveAmns），其余 type=3 跳过
+        for (ApiConfig.LiveEntry e : ApiConfig.get().getLiveEntries()) {
+            if (e.type == 3) {
+                if (e.api != null && SPIDER_APIS.contains(e.api)) {
+                    String name = TextUtils.isEmpty(e.name) ? e.api : e.name;
+                    addRemoteSpiderSource(result, "config_" + name, name, e.api);
+                }
+                continue;
+            }
+            if (TextUtils.isEmpty(e.url)) {
+                continue;
+            }
+            String name = TextUtils.isEmpty(e.name) ? e.url : e.name;
+            addRemoteSource(result, "config_" + name, name, e.url);
+        }
+    }
+
+    /** 远程 type=3 蜘蛛型直播源（按名去重；同名再出现就跳过，不重复加）。 */
+    private static void addRemoteSpiderSource(List<Source> result, String id, String name, String spiderApi) {
+        for (Source s : result) {
+            if (s.name != null && s.name.equals(name)) {
+                return;
+            }
+        }
+        result.add(new Source(id, name, Protocol.SPIDER, new ArrayList<String>(), null, spiderApi));
+    }
+
+    /** 追加一条远程源：先过覆盖清单（隐藏/删掉的不出，改过名的显示新名），再按名/地址去重。 */
+    private static void addRemoteSource(List<Source> result, String id, String name, String url) {
+        if (!com.yingtu.plus.api.BuiltinOverrides.isVisible(
+                com.yingtu.plus.api.BuiltinOverrides.ZONE_LIVE, id)) return;
+        String display = com.yingtu.plus.api.BuiltinOverrides.displayName(
+                com.yingtu.plus.api.BuiltinOverrides.ZONE_LIVE, id, name);
+        for (Source s : result) {
+            if (s.name.equals(display)) return;
+            if (s.protocol == Protocol.LIST && s.endpoints.contains(url)) return;
+        }
+        result.add(new Source(id, display, Protocol.LIST, urls(url)));
     }
 
     /** 可见的内置直播源（隐藏/删掉的排除，改过名的显示新名），供直播页用。 */
@@ -349,5 +425,158 @@ public class BuiltinLiveSources {
         } catch (Throwable ignored) {
             return "";
         }
+    }
+
+    // ============ 蜘蛛型直播（type=3，如咖啡体育） ============
+
+    /** 从内置 jar 里拿蜘蛛实例（与内置 jar 站同一条路：jar 规格走 BuiltinConfigs.JAR_SPEC）。 */
+    private static Spider getSpider(Source source) {
+        if (source == null || TextUtils.isEmpty(source.spiderApi)) return null;
+        try {
+            return BaseLoader.get().getSpider("kaflive", source.spiderApi, "", BuiltinConfigs.JAR_SPEC);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    /** 蜘蛛型直播：取分类（蜘蛛 homeContent 的 class 列表）作直播区分组。 */
+    public static void loadSpiderCategories(final Source source, final OnPlatforms cb) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Spider spider = getSpider(source);
+                    if (spider == null) {
+                        OkGo.main(new Runnable() {
+                            @Override
+                            public void run() {
+                                cb.onError("蜘蛛加载失败");
+                            }
+                        });
+                        return;
+                    }
+                    Result result = Result.fromJson(spider.homeContent(true));
+                    List<Class> types = result.getTypes();
+                    final List<Platform> platforms = new ArrayList<>();
+                    if (types != null) {
+                        for (Class t : types) {
+                            if (t == null || TextUtils.isEmpty(t.getTypeId())) continue;
+                            platforms.add(new Platform(t.getTypeId(), t.getTypeName(), "", 0, ""));
+                        }
+                    }
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (platforms.isEmpty()) cb.onError("分类为空");
+                            else cb.onResult(platforms);
+                        }
+                    });
+                } catch (final Throwable e) {
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            cb.onError(e.getMessage());
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    /** 蜘蛛型直播：取某分类下的频道（蜘蛛 categoryContent 的 Vod 列表转频道）。 */
+    public static void loadSpiderChannels(final Source source, final Platform platform, final OnChannels cb) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Spider spider = getSpider(source);
+                    if (spider == null) {
+                        OkGo.main(new Runnable() {
+                            @Override
+                            public void run() {
+                                cb.onError("蜘蛛加载失败");
+                            }
+                        });
+                        return;
+                    }
+                    Result result = Result.fromJson(spider.categoryContent(platform.id, "1", false, new HashMap<String, String>()));
+                    List<Vod> vods = result.getList();
+                    final List<LiveChannel> channels = new ArrayList<>();
+                    if (vods != null) {
+                        for (Vod v : vods) {
+                            if (v == null || TextUtils.isEmpty(v.getId())) continue;
+                            LiveChannel c = new LiveChannel(v.getName());
+                            c.logo = v.getPic();
+                            c.urls.add(SPIDER_MARK_PREFIX + v.getId());
+                            channels.add(c);
+                        }
+                    }
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (channels.isEmpty()) cb.onError("频道为空");
+                            else cb.onResult(channels);
+                        }
+                    });
+                } catch (final Throwable e) {
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            cb.onError(e.getMessage());
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    /** 蜘蛛型直播：把频道标记（kaflive://room/<roomId>）现解析成真播放地址。 */
+    public static void resolveSpiderPlay(final Source source, final String mark, final OnUrl cb) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String roomId = mark == null ? "" : mark;
+                    if (roomId.startsWith(SPIDER_MARK_PREFIX)) {
+                        roomId = roomId.substring(SPIDER_MARK_PREFIX.length());
+                    }
+                    if (TextUtils.isEmpty(roomId)) {
+                        OkGo.main(new Runnable() {
+                            @Override
+                            public void run() {
+                                cb.onError("房间号为空");
+                            }
+                        });
+                        return;
+                    }
+                    Spider spider = getSpider(source);
+                    if (spider == null) {
+                        OkGo.main(new Runnable() {
+                            @Override
+                            public void run() {
+                                cb.onError("蜘蛛加载失败");
+                            }
+                        });
+                        return;
+                    }
+                    Result result = Result.fromJson(spider.playerContent("在线播放", roomId, new ArrayList<String>()));
+                    final String url = result == null ? "" : result.getRealUrl();
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (TextUtils.isEmpty(url)) cb.onError("取流地址为空");
+                            else cb.onResult(url);
+                        }
+                    });
+                } catch (final Throwable e) {
+                    OkGo.main(new Runnable() {
+                        @Override
+                        public void run() {
+                            cb.onError(e.getMessage());
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 }

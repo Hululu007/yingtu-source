@@ -78,6 +78,9 @@ public class LiveActivity extends BaseActivity {
     private int currentGroupIndex = -1;
     private int currentChannelIndex = -1;
     private boolean sourceSpinnerReady = false;
+    /** 下一频道列表轻探的节流：同一地址 60 秒内不重复探。 */
+    private String lastWarmedUrl;
+    private long lastWarmedAt;
     /** 节目单带过来的待找频道别名：频道列表一加载好就按别名找台，找到就播，找不到如实提示。 */
     private final List<String> pendingAliases = new ArrayList<>();
     private boolean pendingToastShown = false;
@@ -210,6 +213,10 @@ public class LiveActivity extends BaseActivity {
         return currentSource != null && currentSource.protocol == BuiltinLiveSources.Protocol.PINGTAI;
     }
 
+    private boolean isSpider() {
+        return currentSource != null && currentSource.protocol == BuiltinLiveSources.Protocol.SPIDER;
+    }
+
     private void loadSource(BuiltinLiveSources.Source source) {
         currentSource = source;
         stopPlayback();
@@ -226,6 +233,26 @@ public class LiveActivity extends BaseActivity {
         tvEmpty.setVisibility(View.GONE);
         if (source.protocol == BuiltinLiveSources.Protocol.PINGTAI) {
             BuiltinLiveSources.loadPlatforms(source, new BuiltinLiveSources.OnPlatforms() {
+                @Override
+                public void onResult(List<BuiltinLiveSources.Platform> list) {
+                    if (currentSource != source) return;
+                    platforms = list;
+                    List<LiveGroup> shells = new ArrayList<>();
+                    for (BuiltinLiveSources.Platform p : list) {
+                        shells.add(new LiveGroup(p.name));
+                        groupLoaded.add(false);
+                    }
+                    bind(shells);
+                }
+
+                @Override
+                public void onError(String msg) {
+                    if (currentSource != source) return;
+                    showEmpty(msg);
+                }
+            });
+        } else if (source.protocol == BuiltinLiveSources.Protocol.SPIDER) {
+            BuiltinLiveSources.loadSpiderCategories(source, new BuiltinLiveSources.OnPlatforms() {
                 @Override
                 public void onResult(List<BuiltinLiveSources.Platform> list) {
                     if (currentSource != source) return;
@@ -312,7 +339,7 @@ public class LiveActivity extends BaseActivity {
     /**
      * 节目单带过来的待找频道：按别名在已加载的分组里找。
      * 先精确匹配（别名 == 频道名），再包含匹配。找到就切分组播它；
-     * pingtai 源的分组是懒加载（点分组才拉频道），目标分组还没拉到就先切过去触发加载，
+     * pingtai / 蜘蛛源的分组是懒加载（点分组才拉频道），目标分组还没拉到就先切过去触发加载，
      * 等 onResult 回来再找一次；全加载完还找不到就如实提示并清掉待找。
      */
     private void tryPlayPendingChannel() {
@@ -337,7 +364,7 @@ public class LiveActivity extends BaseActivity {
                 }
             }
         }
-        if (isPingtai()) {
+        if (isPingtai() || isSpider()) {
             for (int i = 0; i < groupLoaded.size(); i++) {
                 if (!groupLoaded.get(i)) {
                     if (!pendingToastShown) {
@@ -362,8 +389,9 @@ public class LiveActivity extends BaseActivity {
         if (index < 0 || index >= groups.size()) return;
         currentGroupIndex = index;
         groupAdapter.setSelected(index);
-        if (isPingtai() && !groupLoaded.get(index)) {
-            loadPingtaiGroup(index);
+        if (!groupLoaded.get(index) && (isPingtai() || isSpider())) {
+            if (isSpider()) loadSpiderGroup(index);
+            else loadPingtaiGroup(index);
             return;
         }
         channelAdapter.submit(groups.get(index).channels);
@@ -372,6 +400,8 @@ public class LiveActivity extends BaseActivity {
         if (currentChannel == null && !groups.get(index).channels.isEmpty()) {
             playChannel(groups.get(index).channels.get(0));
         }
+        // 分组已加载好：把后面 2 个蜘蛛频道先解析成真地址，点台不用现等。
+        preloadSpiderChannels(groups.get(index).channels);
     }
 
     private void loadPingtaiGroup(int index) {
@@ -391,6 +421,8 @@ public class LiveActivity extends BaseActivity {
                 channelAdapter.submit(groups.get(index).channels);
                 channelAdapter.setSelected(groups.get(index).channels.indexOf(currentChannel));
                 if (currentChannel == null && !channels.isEmpty()) playChannel(channels.get(0));
+                // 分组刚拉好：把后面 2 个蜘蛛频道先解析成真地址，点台不用现等。
+                preloadSpiderChannels(channels);
                 tryPlayPendingChannel();
             }
 
@@ -403,8 +435,79 @@ public class LiveActivity extends BaseActivity {
         });
     }
 
+    private void loadSpiderGroup(int index) {
+        progress.setVisibility(View.VISIBLE);
+        channelAdapter.submit(new ArrayList<>());
+        BuiltinLiveSources.Platform platform = platforms.get(index);
+        BuiltinLiveSources.Source src = currentSource;
+        BuiltinLiveSources.loadSpiderChannels(src, platform, new BuiltinLiveSources.OnChannels() {
+            @Override
+            public void onResult(List<LiveChannel> channels) {
+                if (currentSource != src || index >= groups.size() || index >= groupLoaded.size()) return;
+                progress.setVisibility(View.GONE);
+                groupLoaded.set(index, true);
+                groups.get(index).channels.clear();
+                groups.get(index).channels.addAll(channels);
+                if (currentGroupIndex != index) return;
+                channelAdapter.submit(groups.get(index).channels);
+                channelAdapter.setSelected(groups.get(index).channels.indexOf(currentChannel));
+                if (currentChannel == null && !channels.isEmpty()) playChannel(channels.get(0));
+                // 蜘蛛分组刚拉好：把后面 2 个蜘蛛频道先解析成真地址，点台不用现等。
+                preloadSpiderChannels(channels);
+                tryPlayPendingChannel();
+            }
+
+            @Override
+            public void onError(String msg) {
+                if (currentSource != src) return;
+                progress.setVisibility(View.GONE);
+                Toast.makeText(LiveActivity.this, msg, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /** 蜘蛛频道预解析：分组加载好后，把后面 2 个还是 kaflive:// 标记的频道
+     * 先解析成真地址存回频道（点台时 playChannel 直接走真地址，不用现等蜘蛛）。
+     * 只做 2 个、不整组扫；已在播/正在解析的跳过；失败静默（点台时按原流程现解析）。 */
+    private void preloadSpiderChannels(List<LiveChannel> channels) {
+        if (channels == null || channels.isEmpty()) return;
+        final BuiltinLiveSources.Source src = currentSource;
+        if (src == null) return;
+        int done = 0;
+        for (final LiveChannel ch : channels) {
+            if (done >= 2) break;
+            if (ch == null || ch == currentChannel) continue;
+            String mark = ch.currentUrl();
+            if (TextUtils.isEmpty(mark) || !mark.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) continue;
+            done++;
+            BuiltinLiveSources.resolveSpiderPlay(src, mark, new BuiltinLiveSources.OnUrl() {
+                @Override
+                public void onResult(String url) {
+                    if (currentSource != src) return;
+                    // 还没被人点过（还是标记）才替换；已解析过的不要反复写。
+                    String now = ch.currentUrl();
+                    if (!TextUtils.isEmpty(now) && now.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) {
+                        ch.urls.clear();
+                        ch.urls.add(url);
+                        ch.lineIndex = 0;
+                    }
+                }
+
+                @Override
+                public void onError(String msg) {
+                    // 预解析失败静默：点台时按原流程现解析。
+                }
+            });
+        }
+    }
+
     private void playChannel(LiveChannel channel) {
         if (channel.urls.isEmpty()) return;
+        String first = channel.currentUrl();
+        if (first != null && first.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) {
+            resolveSpiderChannel(channel);
+            return;
+        }
         currentChannel = channel;
         if (currentGroupIndex >= 0 && currentGroupIndex < groups.size()) {
             currentChannelIndex = groups.get(currentGroupIndex).channels.indexOf(channel);
@@ -413,6 +516,38 @@ public class LiveActivity extends BaseActivity {
         tvCurrent.setText(channel.name);
         tvPlayerTip.setVisibility(View.GONE);
         playCurrentUrl();
+    }
+
+    /** 蜘蛛型直播：频道地址是标记（kaflive://room/<roomId>），先现解析成真流再播。 */
+    private void resolveSpiderChannel(final LiveChannel channel) {
+        currentChannel = channel;
+        if (currentGroupIndex >= 0 && currentGroupIndex < groups.size()) {
+            currentChannelIndex = groups.get(currentGroupIndex).channels.indexOf(channel);
+        }
+        channelAdapter.setSelected(currentChannelIndex);
+        tvCurrent.setText(channel.name);
+        tvPlayerTip.setVisibility(View.GONE);
+        progress.setVisibility(View.VISIBLE);
+        final BuiltinLiveSources.Source src = currentSource;
+        BuiltinLiveSources.resolveSpiderPlay(src, channel.currentUrl(), new BuiltinLiveSources.OnUrl() {
+            @Override
+            public void onResult(String url) {
+                if (currentSource != src || currentChannel != channel) return;
+                progress.setVisibility(View.GONE);
+                channel.urls.clear();
+                channel.urls.add(url);
+                channel.lineIndex = 0;
+                playCurrentUrl();
+            }
+
+            @Override
+            public void onError(String msg) {
+                if (currentSource != src || currentChannel != channel) return;
+                progress.setVisibility(View.GONE);
+                tvPlayerTip.setVisibility(View.VISIBLE);
+                tvPlayerTip.setText("解析失败：" + msg);
+            }
+        });
     }
 
     private void playCurrentUrl() {
@@ -427,6 +562,43 @@ public class LiveActivity extends BaseActivity {
         player.setMediaSource(mediaSource);
         player.prepare();
         player.play();
+        // 本台开播后，顺带轻探下一台的播放列表（只取头段、只 1 个台、60 秒内不重复探），
+        // 把 DNS/握手先热起来，切台时少等一截；失败静默。
+        warmNextChannelPlaylist();
+    }
+
+    /** 下一频道列表轻探：后台 GET 一下 m3u8/直链的头段就关掉，不下整段。 */
+    private void warmNextChannelPlaylist() {
+        try {
+            if (currentGroupIndex < 0 || currentGroupIndex >= groups.size()) return;
+            List<LiveChannel> list = groups.get(currentGroupIndex).channels;
+            int next = currentChannelIndex + 1;
+            if (next < 0 || next >= list.size()) return;
+            LiveChannel ch = list.get(next);
+            if (ch == null) return;
+            final String url = ch.currentUrl();
+            if (TextUtils.isEmpty(url) || url.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) return;
+            long now = System.currentTimeMillis();
+            if (TextUtils.equals(url, lastWarmedUrl) && now - lastWarmedAt < 60 * 1000L) return;
+            lastWarmedUrl = url;
+            lastWarmedAt = now;
+            Request request = new Request.Builder().url(url).header("Range", "bytes=0-0").build();
+            OkGo.client().newCall(request).enqueue(new okhttp3.Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    // 轻探失败静默：切台时按原流程现取。
+                }
+
+                @Override
+                public void onResponse(Call call, Response response) {
+                    try {
+                        if (response.body() != null) response.body().close();
+                    } catch (Exception ignored) {
+                    }
+                }
+            });
+        } catch (Exception ignored) {
+        }
     }
 
     /** 播放失败时先试下一条线路，返回是否还有线路可试。 */
@@ -451,6 +623,10 @@ public class LiveActivity extends BaseActivity {
 
     private void openFullscreen() {
         if (currentChannel == null || TextUtils.isEmpty(currentChannel.currentUrl())) return;
+        if (currentChannel.currentUrl().startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) {
+            Toast.makeText(this, "正在解析线路，稍后再试", Toast.LENGTH_SHORT).show();
+            return;
+        }
         VideoActivity.start(this, SiteApi.PUSH, currentChannel.currentUrl(), currentChannel.name);
     }
 

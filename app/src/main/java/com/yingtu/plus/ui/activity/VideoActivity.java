@@ -96,6 +96,7 @@ import com.yingtu.plus.impl.CustomTarget;
 import com.yingtu.plus.model.SiteViewModel;
 import com.yingtu.plus.playback.PlaybackEventCollector;
 import com.yingtu.plus.playback.PlaybackOrientation;
+import com.yingtu.plus.player.PlaybackPreload;
 import com.yingtu.plus.player.PlayerHelper;
 import com.yingtu.plus.player.PlayerManager;
 import com.yingtu.plus.player.engine.PlayerEngine;
@@ -1407,7 +1408,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         clearLyrics();
         clearKaraokeState();
         if (shouldUseImmersiveAudio()) setAudioStageVisible(true);
-        mViewModel.playerContent(getKey(), playFlag, episode.getUrl());
+        // 预加载命中就直接开播：详情页打开时已解析好第一集、上一集播时已解析好
+        // 下一集，命中不用现取；没命中才按原流程走 ViewModel 现取。
+        Result preloaded = PlaybackPreload.take(getKey(), playFlag, episode.getUrl());
+        if (preloaded != null && !TextUtils.isEmpty(preloaded.getRealUrl())) {
+            setPlayer(preloaded);
+        } else {
+            mViewModel.playerContent(getKey(), playFlag, episode.getUrl());
+        }
         mBinding.control.title.setSelected(true);
         updateHistory(episode);
         showProgress();
@@ -1436,7 +1444,26 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.parse.setVisibility(isUseParse() ? View.VISIBLE : View.GONE);
         List<Danmaku> siteDanmakus = result.getDanmaku();
         startPlayer(getHistoryKey(), result, isUseParse(), getSite().getTimeout(), buildMetadata());
+        // 本集开播后，把下一集的解析在后台排上，点“下一集”/自动连播不用现等。
+        // 只预加载紧邻的下一集，不整季扫，避免把站打爆。
+        preloadNextEpisode();
         if (DanmakuApi.canAutoSearch(siteDanmakus)) DanmakuApi.search(mHistory.getVodName(), getEpisode().getName(), player()::setDanmaku);
+    }
+
+    /** 下一集预加载：解析地址进共享缓存，下一集开播时 getPlayer 先取缓存。 */
+    private void preloadNextEpisode() {
+        try {
+            Flag flag = getFlag();
+            Episode current = getEpisode();
+            if (flag == null || current == null) return;
+            Episode next = getAdjacentEpisode(1);
+            if (next == null || TextUtils.isEmpty(next.getUrl())) return;
+            // 已是最后一集时 getAdjacentEpisode 会返回当前集本身，跳过不重复预加载。
+            if (TextUtils.equals(next.getUrl(), current.getUrl())) return;
+            PlaybackPreload.preload(getKey(), flag.getFlag(), next.getUrl());
+        } catch (Exception ignored) {
+            // 预加载失败静默，不影响当前播放。
+        }
     }
 
     private boolean consumePendingPlaybackResult() {

@@ -337,7 +337,7 @@ class Spider(BaseSpider):
                 if m:
                     stream = m.group(1).strip()
                     header['Referer'] = stream
-        return {'parse': 0, 'playUrl': stream, 'url': stream, 'header': header}
+        return {'parse': 0, 'playUrl': '', 'url': stream, 'header': header}
 
     def localProxy(self, param):
         return [404, 'text/plain', '']

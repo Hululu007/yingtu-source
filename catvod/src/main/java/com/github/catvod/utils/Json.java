@@ -20,7 +20,12 @@ public class Json {
         try {
             return JsonParser.parseString(json);
         } catch (Throwable e) {
-            return new JsonParser().parse(json);
+            try {
+                return new JsonParser().parse(json);
+            } catch (Throwable e2) {
+                // 两次解析都失败：畸形 JSON 不许再抛 RuntimeException，返回空对象。
+                return new JsonObject();
+            }
         }
     }
 

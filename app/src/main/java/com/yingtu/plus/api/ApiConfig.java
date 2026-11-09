@@ -35,6 +35,25 @@ public class ApiConfig {
     private final List<ParseBean> parseBeanList = new ArrayList<>();
     private final List<SnifferRule> snifferRules = new ArrayList<>();
     private final List<String> liveUrls = new ArrayList<>();
+
+    /** 订阅配置 lives 里的一条（带真名与类型，供直播区“内置 + 远程合并”用）。 */
+    public static class LiveEntry {
+        public final String name;
+        public final int type;
+        public final String url;
+        public final String api;
+
+        public LiveEntry(String name, int type, String url, String api) {
+            this.name = name == null ? "" : name;
+            this.type = type;
+            this.url = url == null ? "" : url;
+            this.api = api == null ? "" : api;
+        }
+    }
+
+    /** 订阅配置 lives 的结构化条目（name + type + url + api），与 liveUrls 同步更新。 */
+    private final List<LiveEntry> liveEntries = new ArrayList<>();
+
     private Context appContext;
     private ParseBean mDefaultParse;
     private SourceBean mHomeSource;
@@ -73,6 +92,7 @@ public class ApiConfig {
         parseBeanList.clear();
         snifferRules.clear();
         liveUrls.clear();
+        liveEntries.clear();
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 
         if (root.has("spider")) {
@@ -141,21 +161,24 @@ public class ApiConfig {
             }
         }
 
-        // 解析 lives（直播源地址）
+        // 解析 lives（直播源地址）：结构化条目进 liveEntries（供直播区合并用），
+        // 真实地址才进 liveUrls。type=3（蜘蛛型、无 url，只有 api 名）不进 liveUrls，
+        // 避免把 api 名（比如 csp_KafLiveAmns）当成地址。
         if (root.has("lives")) {
             try {
                 for (JsonElement e : root.getAsJsonArray("lives")) {
                     if (e.isJsonObject()) {
                         JsonObject obj = e.getAsJsonObject();
-                        // 兼容 url 直接给 / channels 内嵌等，这里取顶层 url
+                        String name = optString(obj, "name");
+                        int type = optInt(obj, "type");
                         String url = optString(obj, "url");
-                        if (TextUtils.isEmpty(url)) {
-                            // group 内嵌 channels：收集每个 channel 的第一条 url 不现实，优先取可直接解析的 url 字段
-                            url = optString(obj, "api");
-                        }
+                        String api = optString(obj, "api");
+                        liveEntries.add(new LiveEntry(name, type, url, api));
                         if (!TextUtils.isEmpty(url)) liveUrls.add(url);
                     } else if (e.isJsonPrimitive()) {
-                        liveUrls.add(e.getAsString());
+                        String url = e.getAsString();
+                        liveUrls.add(url);
+                        liveEntries.add(new LiveEntry("", 0, url, ""));
                     }
                 }
             } catch (Throwable ignored) {
@@ -253,6 +276,17 @@ public class ApiConfig {
 
     public List<SnifferRule> getSnifferRules() {
         return snifferRules;
+    }
+
+    /** 订阅配置 lives 的结构化条目（name + type + url + api），供直播区合并用。 */
+    public List<LiveEntry> getLiveEntries() {
+        return new ArrayList<>(liveEntries);
+    }
+
+    /** 用户注入的自定义直播地址（未设置返回空串），供直播区合并用。 */
+    public String getInjectLiveUrl() {
+        String inject = com.yingtu.plus.util.InjectHelper.getUrl(appContext);
+        return inject == null ? "" : inject.trim();
     }
 
     public List<String> getLiveUrls() {

@@ -5,6 +5,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import com.yingtu.plus.App;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.BuiltinConfigs;
@@ -49,47 +50,56 @@ public class MidnightFragment extends BaseLazyFragment {
     @Override
     protected void onVisible() {
         if (getContext() == null) return;
-        // 订阅加载会清空内置站，缺失时在这里补回（幂等，已在就不动）。
-        BuiltinConfigs.ensureLoaded(getContext());
-        // J 批：内置站是合并进 ApiConfig 的，补回后也要同步进 VodConfig，
-        // 否则午夜站走 VodConfig.getSite(key) 读不到（replaceSites 整体替换，不叠加）
-        VodConfigSync.sync();
-        List<SourceBean> sites = BuiltinConfigs.getMidnightSites();
-        tvMidnightTitle.setText("午夜 · " + sites.size() + " 个站");
-        // 选站优先级：内置区列表点进来的站 > 本区上次选的站（或启动站）
-        // > 全局当前源（若正好是午夜站，老数据认领）> 首次打开默认首站。
-        String pickKey = null;
-        if (getActivity() != null && getActivity().getIntent() != null) {
-            String extra = getActivity().getIntent()
-                    .getStringExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
-            if (extra != null && BuiltinConfigs.isMidnightSite(extra)) {
-                pickKey = extra;
-                getActivity().getIntent()
-                        .removeExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
-            }
-        }
-        if (pickKey == null) {
-            String zoneKey = ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_MIDNIGHT);
-            if (!TextUtils.isEmpty(zoneKey) && BuiltinConfigs.isMidnightSite(zoneKey)) {
-                pickKey = zoneKey;
-            }
-        }
-        if (pickKey == null) {
-            SourceBean home = ApiConfig.get().getHomeSource();
-            if (home != null && BuiltinConfigs.isMidnightSite(home.getKey())) {
-                pickKey = home.getKey();
-            }
-        }
-        if (pickKey == null && !autoPicked && !sites.isEmpty()) {
-            pickKey = sites.get(0).getKey();
-        }
-        if (pickKey != null) {
-            for (SourceBean s : sites) {
-                if (s.getKey().equals(pickKey)) {
-                    autoPicked = true;
-                    pickSite(s);
-                    break;
+        try {
+            // 订阅加载会清空内置站，缺失时在这里补回（幂等，已在就不动）。
+            BuiltinConfigs.ensureLoaded(getContext());
+            // J 批：内置站是合并进 ApiConfig 的，补回后也要同步进 VodConfig，
+            // 否则午夜站走 VodConfig.getSite(key) 读不到（replaceSites 整体替换，不叠加）
+            VodConfigSync.sync();
+            List<SourceBean> sites = BuiltinConfigs.getMidnightSites();
+            tvMidnightTitle.setText("午夜 · " + sites.size() + " 个站");
+            // 选站优先级：内置区列表点进来的站 > 本区上次选的站（或启动站）
+            // > 全局当前源（若正好是午夜站，老数据认领）> 首次打开默认首站。
+            String pickKey = null;
+            if (getActivity() != null && getActivity().getIntent() != null) {
+                String extra = getActivity().getIntent()
+                        .getStringExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
+                if (extra != null && BuiltinConfigs.isMidnightSite(extra)) {
+                    pickKey = extra;
+                    getActivity().getIntent()
+                            .removeExtra(com.yingtu.plus.ui.activity.HomeActivity.EXTRA_SITE_KEY);
                 }
+            }
+            if (pickKey == null) {
+                String zoneKey = ZoneSites.getCurrentSiteKey(ZoneSites.ZONE_MIDNIGHT);
+                if (!TextUtils.isEmpty(zoneKey) && BuiltinConfigs.isMidnightSite(zoneKey)) {
+                    pickKey = zoneKey;
+                }
+            }
+            if (pickKey == null) {
+                SourceBean home = ApiConfig.get().getHomeSource();
+                if (home != null && BuiltinConfigs.isMidnightSite(home.getKey())) {
+                    pickKey = home.getKey();
+                }
+            }
+            if (pickKey == null && !autoPicked && !sites.isEmpty()) {
+                pickKey = sites.get(0).getKey();
+            }
+            if (pickKey != null) {
+                for (SourceBean s : sites) {
+                    if (s.getKey().equals(pickKey)) {
+                        autoPicked = true;
+                        pickSite(s);
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            // 可见时初始化失败不许杀进程：记 crash.log，界面显示加载失败。
+            App.logCaught(e);
+            if (tvMidnightHint != null) {
+                tvMidnightHint.setText("加载失败");
+                tvMidnightHint.setVisibility(View.VISIBLE);
             }
         }
     }
