@@ -452,6 +452,7 @@ public class AdvancedConfigActivity extends BaseActivity {
             apiUrl = Hawk.get(HawkConfig.API_URL, "");
         } catch (Throwable ignored) {
         }
+        final String apiUrlFinal = apiUrl;
         names.add("当前接口缓存" + (TextUtils.isEmpty(apiUrl) ? "（未设置订阅地址）" : "（" + apiUrl + "）"));
         for (File f : files) names.add(f.getName() + "（" + (f.length() / 1024) + " KB）");
         ListView list = view.findViewById(R.id.listItems);
@@ -468,7 +469,7 @@ public class AdvancedConfigActivity extends BaseActivity {
                 }
                 new AlertDialog.Builder(this)
                         .setTitle("当前接口缓存")
-                        .setMessage("订阅地址：" + (TextUtils.isEmpty(apiUrl) ? "未设置" : apiUrl)
+                        .setMessage("订阅地址：" + (TextUtils.isEmpty(apiUrlFinal) ? "未设置" : apiUrlFinal)
                                 + "\n当前站源：" + count + " 个\n（已在使用的配置，无需重复加载）")
                         .setPositiveButton("知道了", null)
                         .show();
