@@ -158,7 +158,11 @@ dependencies {
     implementation 'org.simpleframework:simple-xml:2.7.1'
     implementation 'com.orhanobut:hawk:2.0.1'
     implementation 'com.google.guava:guava:33.3.1-android'
-    implementation 'org.jupnp:org.jupnp:2.6.1'
+    // jupnp 三件套（2026-11-09 第九批构建失败修法：2.6.1 的 core 包里没有 org.jupnp.android 与
+    // org.jupnp.support，android 构件从 3.0.0 才有，support 须单独声明；三件统一升到 3.0.3）
+    implementation 'org.jupnp:org.jupnp:3.0.3'
+    implementation 'org.jupnp:org.jupnp.support:3.0.3'
+    implementation 'org.jupnp:org.jupnp.android:3.0.3'
     // 以下为 2026-11-08 全树清点出的其他缺失依赖（原 build.gradle 未声明，见 L 批回报）
     implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
     implementation 'androidx.palette:palette:1.0.0'

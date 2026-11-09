@@ -34,7 +34,7 @@ import com.yingtu.plus.ui.fragment.FavVodFragment;
 import com.yingtu.plus.ui.fragment.HomeMainFragment;
 import com.yingtu.plus.ui.fragment.MidnightFragment;
 import com.yingtu.plus.util.OkGo;
-import com.yingtu.plus.util.ResUtil;
+import com.yingtu.plus.utils.ResUtil;
 import com.yingtu.plus.util.ZoneSites;
 import com.google.android.material.chip.Chip;
 
