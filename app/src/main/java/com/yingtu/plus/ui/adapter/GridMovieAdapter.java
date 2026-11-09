@@ -97,6 +97,7 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
         }
         h.boundUrl = url;
         h.retried = false;
+        final Object coverUrl = url;
         Glide.with(ctx)
                 .load(url)
                 .placeholder(R.drawable.bg_poster_placeholder)
@@ -105,10 +106,10 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
                 .listener(new RequestListener<Drawable>() {
                     @Override
                     public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
-                        if (!h.retried && url != null && url.equals(h.boundUrl)) {
+                        if (!h.retried && coverUrl != null && coverUrl.equals(h.boundUrl)) {
                             h.retried = true;
                             Glide.with(ctx)
-                                    .load(url)
+                                    .load(coverUrl)
                                     .placeholder(R.drawable.bg_poster_placeholder)
                                     .error(R.drawable.bg_poster_placeholder)
                                     .centerCrop()
