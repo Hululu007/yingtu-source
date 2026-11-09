@@ -122,6 +122,14 @@ public class Thunder implements Source.Extractor {
         return !url.startsWith("magnet") && url.split(";")[0].toLowerCase(Locale.US).endsWith(".torrent");
     }
 
+    // 等迅雷任务出元数据：最多等 10 秒（100 次 × 100 毫秒），任务状态变为 2 即返回。
+    private static void waitDone(GetTaskId taskId) {
+        for (int i = 0; i < 100; i++) {
+            if (XLTaskHelper.get().getTaskInfo(taskId).getTaskStatus() == 2) return;
+            SystemClock.sleep(100);
+        }
+    }
+
     // 优先最大的视频文件；没有视频文件就取最大的文件；没有文件返回 null。
     private static TorrentFileInfo pickBest(List<TorrentFileInfo> medias) {
         if (medias == null || medias.isEmpty()) return null;
