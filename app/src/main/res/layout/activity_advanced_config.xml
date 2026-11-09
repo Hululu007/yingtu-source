@@ -44,7 +44,7 @@
             android:id="@+id/listMenu"
             android:layout_width="140dp"
             android:layout_height="match_parent"
-            android:background="@color/bg_card" />
+            android:background="@color/card_bg" />
 
         <FrameLayout
             android:id="@+id/contentFrame"
