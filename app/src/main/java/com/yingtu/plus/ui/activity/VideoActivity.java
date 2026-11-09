@@ -1270,7 +1270,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void checkLand() {
-        if (isPort() && ResUtil.isLand(this)) enterFullscreen();
+        if (isPort() && ResUtil.isLand(this)) enterFullscreen(true);
     }
 
     private void getDetail() {
@@ -1305,7 +1305,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         SpiderDebug.log("video-flow", "detail finish cost=%dms empty=%s msg=%s", cost, result.getList().isEmpty(), result.getMsg());
         recordDetailHealth(result, cost);
         mBinding.swipeLayout.setRefreshing(false);
-        if (result.getList().isEmpty()) setEmpty(result.hasMsg());
+        if (result.getList().isEmpty()) setEmpty(false);
         else setDetail(result.getVod());
         Notify.show(result.getMsg());
     }
@@ -4099,11 +4099,15 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private boolean shouldEnterFullscreen(Episode item) {
         boolean enter = !isFullscreen() && item.isSelected();
-        if (enter) enterFullscreen();
+        if (enter) enterFullscreen(true);
         return enter;
     }
 
     private void enterFullscreen() {
+        enterFullscreen(false);
+    }
+
+    private void enterFullscreen(boolean applyDefaultOrientation) {
         if (isFullscreen()) return;
         if (service() == null) {
             SpiderDebug.log("video-flow", "fullscreen enter deferred reason=player-not-ready");
@@ -4114,7 +4118,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         setFullscreen(true);
         if (isLand() && !player().isPortrait()) setTransition();
         mBinding.video.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
-        setRequestedOrientation(PlaybackOrientation.getEnterFullscreenOrientation(player().isPortrait()));
+        if (applyDefaultOrientation) setRequestedOrientation(PlaybackOrientation.getDefaultEnterFullscreenOrientation(player().isPortrait(), PlayerSetting.isLandscapeOrientation()));
+        else setRequestedOrientation(PlaybackOrientation.getEnterFullscreenOrientation(player().isPortrait()));
         mBinding.control.title.setVisibility(View.VISIBLE);
         setSizeText();
         setRotate(player().isPortrait());

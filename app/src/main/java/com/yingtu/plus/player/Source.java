@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -44,6 +43,9 @@ public class Source {
         extractors.add(new JianPian());
         extractors.add(new Push());
         extractors.add(new Strm());
+        // 磁力取流先走 TorrServer（本地子进程边下边播）；TorrServer 只认 magnet，
+        // ed2k/thunder 仍由后面的 Thunder 处理，所以放 Thunder 前面不影响别的协议。
+        extractors.add(new TorrServerExtractor());
         extractors.add(new Thunder());
         extractors.add(new TVBus());
         extractors.add(new Video());
@@ -58,27 +60,45 @@ public class Source {
         return extractors.stream().filter(extractor -> extractor.match(uri)).findFirst().orElse(null);
     }
 
-    private void addCallable(Iterator<Episode> iterator, List<Callable<List<Episode>>> items) {
+    private void addCallable(Iterator<Episode> iterator, List<Callable<List<Episode>>> items, List<String> originals) {
         String url = iterator.next().getUrl();
         if (Thunder.Parser.match(url)) {
             items.add(Thunder.Parser.get(url));
+            originals.add(url);
             iterator.remove();
         } else if (Youtube.Parser.match(url)) {
             items.add(Youtube.Parser.get(url));
+            originals.add(url);
             iterator.remove();
         }
+    }
+
+    private static String displayName(String url) {
+        try {
+            String dn = Uri.parse(url).getQueryParameter("dn");
+            if (dn != null && !dn.isEmpty()) return dn;
+        } catch (Exception ignored) {
+        }
+        return url;
     }
 
     public void parse(Vod vod) throws Exception {
         try (ExecutorService executor = Executors.newCachedThreadPool()) {
             for (Flag flag : vod.getFlags()) {
                 List<Callable<List<Episode>>> items = new ArrayList<>();
+                List<String> originals = new ArrayList<>();
                 Iterator<Episode> iterator = flag.getEpisodes().iterator();
-                while (iterator.hasNext()) addCallable(iterator, items);
+                while (iterator.hasNext()) addCallable(iterator, items, originals);
+                int index = 0;
                 for (Future<List<Episode>> future : executor.invokeAll(items, 30, TimeUnit.SECONDS)) {
+                    String original = originals.get(index++);
                     try {
                         flag.getEpisodes().addAll(future.get());
-                    } catch (CancellationException ignored) {
+                    } catch (Exception e) {
+                        // 展开失败或 30 秒超时：以前这集直接丢掉（还只 catch 了 CancellationException，
+                        // 展开抛异常时整个 parse 都中断）。现在保留原始链接，
+                        // 点播时取流链再走 TorrServer/迅雷兜底；TorrServer 启动 + 连种子超过 30 秒也不丢集。
+                        flag.getEpisodes().add(Episode.create(displayName(original), original));
                     }
                 }
             }

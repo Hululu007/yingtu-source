@@ -59,7 +59,9 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
     public void onBindViewHolder(@NonNull VH h, int position) {
         VodInfo.VodSeries s = data.get(position);
         h.tv.setText(s.name);
-        h.tv.setSelected(position == playing);
+        boolean isPlaying = position == playing;
+        h.tv.setSelected(isPlaying);
+        h.tv.setTextColor(isPlaying ? 0xFF22C55E : h.defaultTextColor);
         h.itemView.setOnClickListener(v -> {
             setPlaying(h.getAdapterPosition());
             if (listener != null) listener.onClick(h.getAdapterPosition());
@@ -73,9 +75,11 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
 
     static class VH extends RecyclerView.ViewHolder {
         TextView tv;
+        int defaultTextColor;
         VH(@NonNull View itemView) {
             super(itemView);
             tv = itemView.findViewById(R.id.tvSeries);
+            defaultTextColor = tv.getTextColors().getDefaultColor();
         }
     }
 }

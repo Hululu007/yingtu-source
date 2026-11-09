@@ -8,6 +8,8 @@ import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
 import com.yingtu.plus.bean.Class;
+import com.yingtu.plus.bean.Filter;
+import com.yingtu.plus.bean.Value;
 import com.yingtu.plus.bean.Flag;
 import com.yingtu.plus.bean.Episode;
 import com.yingtu.plus.bean.Movie;
@@ -64,7 +66,17 @@ public class SourceViewModel extends ViewModel {
                 List<MovieSort> sorts = new ArrayList<>();
                 if (result.getTypes() != null) {
                     for (Class type : result.getTypes()) {
-                        sorts.add(new MovieSort(type.getTypeId(), type.getTypeName()));
+                        MovieSort sort = new MovieSort(type.getTypeId(), type.getTypeName());
+                        for (Filter filter : type.getFilters()) {
+                            if (filter == null) continue;
+                            MovieSort.Filter group = new MovieSort.Filter(filter.getKey(), filter.getName());
+                            for (Value value : filter.getValue()) {
+                                if (value == null) continue;
+                                group.values.add(new MovieSort.Value(value.getN(), value.getV()));
+                            }
+                            sort.filters.add(group);
+                        }
+                        sorts.add(sort);
                     }
                 }
                 sortResult.postValue(sorts);

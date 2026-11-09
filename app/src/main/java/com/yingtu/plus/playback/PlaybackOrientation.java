@@ -19,6 +19,11 @@ public final class PlaybackOrientation {
         return ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
     }
 
+    public static int getDefaultEnterFullscreenOrientation(boolean portraitVideo, boolean preferLandscape) {
+        if (preferLandscape) return getEnterFullscreenOrientation(portraitVideo);
+        return ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
+    }
+
     public static int getExitFullscreenOrientation(boolean portMode) {
         if (portMode) return ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT;
         return ActivityInfo.SCREEN_ORIENTATION_FULL_USER;

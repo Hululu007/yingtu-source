@@ -88,7 +88,7 @@ tasks.matching { it.name == 'checkDebugAarMetadata' || it.name == 'checkReleaseA
 }
 
 // 全部 androidx.media3 依赖强制解析到 FongMi 分叉版（webhtv 同款做法）：
-// nextlib-media3ext AAR 是按官方 1.10.0 编的，传递依赖会把 media3 拉回 1.10.0，不强制就混版。
+// nextlib-media3ext AAR 是 1.10.0-0.12.1-fongmi-softload-av3a-avs3-ffmpeg901-r5 版（FFmpeg 9.0.1，带 AVS3 解码），传递依赖会把 media3 拉回 1.10.0，不强制就混版。
 configurations.all {
     // 2026-11-08 云构建第八轮失败修法：某传递依赖带了 com.android.support:support-compat:24.2.1，
     // 它与 androidx.core:1.18.0 都含有 android.support.v4.app.INotificationSideChannel 等
@@ -112,7 +112,7 @@ dependencies {
     implementation 'androidx.room:room-runtime:2.6.1'
     annotationProcessor 'androidx.room:room-compiler:2.6.1'
     implementation 'org.greenrobot:eventbus:3.3.1'
-    implementation files('libs/nextlib-media3ext-1.10.0-0.12.1-fongmi-softload.aar')
+    implementation files('libs/nextlib-media3ext-ffmpeg901-r5.aar')
     // TVCore 选 A（2026-11-08 用户拍板）：渔老 webhtv 的 tvbus + hook 两个 AAR 拷进 app/libs。
     // tvbus-release.aar 提供 com.tvbus.engine.TVCore/Listener（TVBus.java 用）；hook-release.aar
     // 提供 com.fongmi.hook.Hook（Core.getHook() 构造，App.setHook 接收）。树里原先的手写 Hook 桩

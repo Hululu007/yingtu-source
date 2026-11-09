@@ -21,6 +21,7 @@ import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
 import com.yingtu.plus.base.BaseActivity;
 import com.yingtu.plus.setting.BackgroundPlaybackPolicy;
+import com.yingtu.plus.setting.PlayerSetting;
 import com.yingtu.plus.bean.ParseBean;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.util.HawkConfig;
@@ -271,6 +272,7 @@ public class SettingActivity extends BaseActivity {
     private void bindSystemSection() {
         tvOrientation = find(R.id.tvOrientation);
         tvGridColumns = find(R.id.tvGridColumns);
+        refreshOrientation();
         refreshGridColumns();
 
         SwitchCompat swDark = find(R.id.swDark);
@@ -282,7 +284,7 @@ public class SettingActivity extends BaseActivity {
                     : AppCompatDelegate.MODE_NIGHT_NO);
         });
 
-        find(R.id.rowOrientation).setOnClickListener(v -> toast("屏幕方向：竖屏"));
+        find(R.id.rowOrientation).setOnClickListener(v -> pickOrientation());
         find(R.id.rowStartPage).setOnClickListener(v -> toast("默认启动：首页"));
         find(R.id.rowGridColumns).setOnClickListener(v -> pickGridColumns());
 
@@ -309,6 +311,24 @@ public class SettingActivity extends BaseActivity {
         });
 
         bindWallpaperSection();
+    }
+
+    private void refreshOrientation() {
+        tvOrientation.setText(PlayerSetting.isLandscapeOrientation() ? getString(R.string.val_landscape) : getString(R.string.val_portrait));
+    }
+
+    private void pickOrientation() {
+        String[] opts = {getString(R.string.val_portrait), getString(R.string.val_landscape)};
+        int checked = PlayerSetting.isLandscapeOrientation() ? 1 : 0;
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.row_orientation)
+                .setSingleChoiceItems(opts, checked, (d, which) -> {
+                    PlayerSetting.putOrientation(which);
+                    refreshOrientation();
+                    d.dismiss();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void refreshGridColumns() {

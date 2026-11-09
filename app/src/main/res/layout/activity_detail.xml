@@ -49,8 +49,7 @@
         <FrameLayout
             android:id="@+id/playerBox"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#000000">
+            android:layout_height="wrap_content">
 
             <ImageView
                 android:id="@+id/ivPoster"
@@ -107,11 +106,13 @@
 
             <ImageView
                 android:id="@+id/ivPlayOverlay"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_play_circle"
-                app:tint="@color/text_primary" />
+                android:background="@drawable/bg_play_button"
+                android:contentDescription="播放"
+                android:padding="12dp"
+                android:src="@drawable/ic_play" />
 
             <ImageView
                 android:id="@+id/ivBack"
@@ -292,12 +293,24 @@
             <!-- 清晰度/线路行：线路 chip（有几档出几档，如 mjv011 的 480P/720P/1080P）
                  + 右边当前集/总集数（如 18 / 254，没播时显示“共 N 集”） -->
             <LinearLayout
+                android:id="@+id/qualityRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tvQualityLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="清晰度："
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rvFlag"

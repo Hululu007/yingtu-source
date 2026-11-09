@@ -49,7 +49,7 @@ public final class BuiltinDramaConfigs {
     /** Jar name as used for the JarLoader cache key (MD5 of this string). */
     public static final String JAR_NAME = "assets/jars/zakatv.jar";
     /** File MD5 of the zakatv.jar in assets (same as BuiltinConfigs). */
-    public static final String JAR_MD5 = "44c139f76ca17a4ffcfe89df5bb19910";
+    public static final String JAR_MD5 = "5ddb3ef9f442c7375b3070577cb8558c";
     /** Full jar spec used in the config's jar field. */
     public static final String JAR_SPEC = JAR_NAME + ";md5;" + JAR_MD5;
 

@@ -45,7 +45,7 @@ public class BuiltinConfigs {
     /** 配置里登记的 jar 名（JarLoader 缓存键用这个字符串算 MD5）。 */
     public static final String JAR_NAME = "assets/jars/zakatv.jar";
     /** 火蚁TV树 zakatv.jar 的文件 MD5（与 lib/zakatv_builtin.dart 的 zakatvJarMd5 一致）。 */
-    public static final String JAR_MD5 = "44c139f76ca17a4ffcfe89df5bb19910";
+    public static final String JAR_MD5 = "5ddb3ef9f442c7375b3070577cb8558c";
     /** 配置里 spider / 各 jar 站 jar 字段用的完整写法。 */
     public static final String JAR_SPEC = JAR_NAME + ";md5;" + JAR_MD5;
 

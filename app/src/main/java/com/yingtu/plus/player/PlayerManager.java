@@ -5141,6 +5141,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     public void start(PlaySpec spec, long timeout, boolean playWhenReady, long positionMs) {
+        if (tryShowNonVideo(spec)) return;
         endPlaybackTelemetrySession("replace-start");
         prepareIjkRuntimeForUserPlayback();
         clearPendingSwitchRestore();
@@ -5156,6 +5157,32 @@ public class PlayerManager implements ParseCallback {
         setMediaItem(timeout);
     }
 
+    /**
+     * 非视频伪协议分流：最终播放地址是 novel:// 或 pics:// 时不启动视频引擎，
+     * 改走分流查看器（小说文本 / 图片浏览）。返回 true 表示已接管（或已报错），
+     * 调用方直接 return，不要再往下走视频链路。视频地址永远返回 false，零影响。
+     */
+    private boolean tryShowNonVideo(PlaySpec target) {
+        if (target == null) return false;
+        return tryShowNonVideo(target.getUrl(), titleOf(target));
+    }
+
+    private boolean tryShowNonVideo(String url, String title) {
+        if (!NonVideoRouter.isNonVideo(url)) return false;
+        if (!NonVideoRouter.tryShow(url, title)) callback.onError("当前页面打不开非视频内容");
+        return true;
+    }
+
+    private static String titleOf(PlaySpec target) {
+        if (target == null || target.getMetadata() == null || target.getMetadata().title == null) return null;
+        return target.getMetadata().title.toString();
+    }
+
+    private static String titleOf(MediaMetadata metadata) {
+        if (metadata == null || metadata.title == null) return null;
+        return metadata.title.toString();
+    }
+
     public void parse(String key, Result result, boolean useParse, MediaMetadata metadata) {
         parse(key, result, useParse, metadata, true);
     }
@@ -5166,6 +5193,7 @@ public class PlayerManager implements ParseCallback {
 
     public void parse(String key, Result result, boolean useParse, MediaMetadata metadata,
                       boolean playWhenReady, long positionMs) {
+        if (result != null && tryShowNonVideo(result.getRealUrl(), titleOf(metadata))) return;
         endPlaybackTelemetrySession("replace-parse");
         prepareIjkRuntimeForUserPlayback();
         stopParse();
@@ -5269,6 +5297,7 @@ public class PlayerManager implements ParseCallback {
 
     private void setMediaItem(long timeout) {
         if (spec == null || spec.getUrl() == null) return;
+        if (tryShowNonVideo(spec)) return;
         int seq = ++prepareSeq;
         if (rejectMpvDrmMedia()) return;
         if (LocalProxyDebug.shouldAwaitReady(spec.getUrl())) {
@@ -6154,6 +6183,7 @@ public class PlayerManager implements ParseCallback {
 
     @Override
     public void onParseSuccess(Map<String, String> headers, String url, String from) {
+        if (tryShowNonVideo(url, titleOf(spec))) return;
         if (!TextUtils.isEmpty(from)) Notify.show(ResUtil.getString(R.string.parse_from, from));
         playbackTrace.mark(PlaybackTrace.Stage.PARSE_COMPLETE, "headers=" + (headers == null ? 0 : headers.size()));
         PlaybackTrace.log("player", playbackTrace.current(), "parseSuccess from=%s url=%s headers=%s", from, summarizeUrl(url), headers == null ? 0 : headers.size());

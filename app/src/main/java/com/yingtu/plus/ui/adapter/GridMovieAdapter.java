@@ -1,6 +1,7 @@
 package com.yingtu.plus.ui.adapter;
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,9 +9,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource;
+import com.bumptech.glide.load.engine.GlideException;
+import com.bumptech.glide.request.RequestListener;
+import com.bumptech.glide.request.target.Target;
 import com.yingtu.plus.R;
 import com.yingtu.plus.bean.Movie;
 import com.yingtu.plus.utils.ImgUtil;
@@ -81,11 +87,34 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
         h.tvBadge.setVisibility(m.douban ? View.VISIBLE : View.GONE);
 
         Context ctx = h.itemView.getContext();
+        Object url = ImgUtil.getUrl(m.pic);
+        h.boundUrl = url;
+        h.retried = false;
         Glide.with(ctx)
-                .load(ImgUtil.getUrl(m.pic))
+                .load(url)
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()
+                .listener(new RequestListener<Drawable>() {
+                    @Override
+                    public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
+                        if (!h.retried && url != null && url.equals(h.boundUrl)) {
+                            h.retried = true;
+                            Glide.with(ctx)
+                                    .load(url)
+                                    .placeholder(R.drawable.bg_poster_placeholder)
+                                    .error(R.drawable.bg_poster_placeholder)
+                                    .centerCrop()
+                                    .into(h.ivPoster);
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, @NonNull Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
+                        return false;
+                    }
+                })
                 .into(h.ivPoster);
 
         h.itemView.setOnClickListener(v -> {
@@ -104,6 +133,8 @@ public class GridMovieAdapter extends RecyclerView.Adapter<GridMovieAdapter.VH> 
         TextView tvNote;
         TextView tvRating;
         TextView tvBadge;
+        Object boundUrl;
+        boolean retried;
 
         VH(@NonNull View itemView) {
             super(itemView);

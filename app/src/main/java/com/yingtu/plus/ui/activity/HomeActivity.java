@@ -1,9 +1,8 @@
 package com.yingtu.plus.ui.activity;
 
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -12,6 +11,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
@@ -22,6 +22,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 
+import com.yingtu.plus.BuildConfig;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
@@ -42,10 +43,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 首页外壳。顶栏：Logo + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
- * 下方是内容区（全屏，底部导航已删）。十一个去向（影视 / 短剧 / 直播 / 午夜 / 文件 /
- * 快搜 / 收藏 / 应用 / 网盘 / 推送 / 节目单）收进右侧边栏（第八版，华为手机侧边栏式）：平时右边缘只留一条细把手，从边缘
- * 向左划或点把手滑出面板，点选或 5 秒不动自动收回；边缘划入只认最右 16dp。
+ * 首页外壳。顶栏：头像 + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
+ * 顶栏下方是常驻区域 Tab 行（影视 / 短剧 / 直播 / 午夜 / 文件，点 Tab 切区），
+ * 再下方是内容区（全屏，底部导航已删）。六个工具行（快搜 / 收藏 / 应用 / 网盘 /
+ * 推送 / 节目单）收进左侧边栏（第十批，标准模态抽屉）：顶栏左端头像开栏、左缘向右
+ * 划入，点遮罩或左滑收起，不自动收回；点行先关栏再动作。
+ * 点击标题弹出站源选择小窗（带搜索 + 分类筛选）。
  * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
  * 影视区只列用户自己导入的站：内置站（午夜区、短剧区的内置配置站）由
  * ApiConfig.isBuiltinSite(key) 判定后过滤，该方法是 H 批（午夜区）在 ApiConfig 里加的。
@@ -81,25 +84,26 @@ public class HomeActivity extends BaseActivity {
     private PopupWindow sourcePopup;
     private EditText etSearch;
     private LinearLayout chipContainer;
-    // 右侧边栏（第八版）：面板 / 遮罩 / 把手 / 边缘划入区 + 十一个去向的文字行。
+    // 左侧边栏（第十批）：面板 / 遮罩 / 左缘划入区 + 六个工具行；区域 Tab 行在顶栏下方常驻。
     private View sidebarPanel;
     private View sidebarScrim;
-    private TextView tvSbMovie, tvSbDrama, tvSbLive, tvSbMidnight, tvSbFile;
+    private TextView tvSbVersion;
     private TextView tvSbFastSearch, tvSbCollect, tvSbApps;
     private TextView tvSbDrive, tvSbPush, tvSbEpg;
-    private View sbMovieRow, sbDramaRow, sbLiveRow, sbMidnightRow, sbFileRow;
     private View sbFastSearchRow, sbCollectRow, sbAppsRow;
     private View sbDriveRow, sbPushRow, sbEpgRow;
+    private View tabMovieRow, tabDramaRow, tabLiveRow, tabMidnightRow, tabFileRow;
+    private TextView tvTabMovie, tvTabDrama, tvTabLive, tvTabMidnight, tvTabFile;
+    private ImageView ivTabMovie, ivTabDrama, ivTabLive, ivTabMidnight, ivTabFile;
     private boolean sidebarOpen = false;
-    // 面板打开后 5 秒不动自动收回；面板里点按一次就重新计时。
-    private static final long SIDEBAR_IDLE_MS = 5000;
-    private static final int SIDEBAR_WIDTH_DP = 200;
+    private static final int SIDEBAR_WIDTH_DP = 304;
     private static final int EDGE_SWIPE_MIN_DX_DP = 40;
-    private final Handler sidebarHandler = new Handler(Looper.getMainLooper());
-    private final Runnable sidebarAutoClose = this::closeSidebar;
     private float edgeDownX;
     private float edgeDownY;
     private boolean edgeSwiping;
+    private float sidebarDownX;
+    private float sidebarDownY;
+    private boolean sidebarSwiping;
     // 站源弹窗里的标题 / 网格 / 空态视图：每次打开按当前区重填（标题、站数、空态提示）。
     private TextView tvPopupTitle;
     private View rvSourceView;
@@ -124,9 +128,9 @@ public class HomeActivity extends BaseActivity {
             applyCustomWallpaper();
             tvTitle = find(R.id.tvTitle);
 
-            // 顶栏：标题/Logo 点开站源弹窗；搜索框进搜索页；右上角五个图标入口
+            // 顶栏：标题点开站源弹窗，左端头像点开左侧栏；搜索框进搜索页；右上角五个图标入口
             tvTitle.setOnClickListener(v -> openSourcePopup());
-            find(R.id.ivLogo).setOnClickListener(v -> openSourcePopup());
+            find(R.id.ivLogo).setOnClickListener(v -> openSidebar());
             find(R.id.tvSearchBox).setOnClickListener(v ->
                     startActivity(new Intent(this, SearchActivity.class)));
             find(R.id.ivHistory).setOnClickListener(v ->
@@ -182,66 +186,81 @@ public class HomeActivity extends BaseActivity {
         handleTabExtra(intent);
     }
 
-    /** 右侧边栏接线（第八版，华为手机侧边栏式）：把手点按 + 边缘左划滑出面板，
-     * 面板里十一个去向带图标带字，点选切区/开页后自动收回，5 秒不动也自动收回。
-     * 边缘划入只认最右 16dp（顶栏 56dp 不占），不抢内容区分类 chips 的横滑。
-     * 底部导航随此一起消失：BottomNavigationView 的 5 项硬上限那段旧代码
-     * （第四轮根治过的 addInternal 抛错）也一并没了，不留死代码。 */
+    /** 左侧边栏接线（第十批，标准模态抽屉）：顶栏左端头像 + 左缘向右划滑出面板，
+     * 面板里六个工具行，点行先关栏再动作；点遮罩或面板左滑收回，不自动收回。
+     * 区域 Tab 行在顶栏下方常驻，点 Tab 切区（与侧栏无关）。
+     * 边缘划入只认最左 16dp（顶栏 56dp 不占），不抢内容区分类 chips 的横滑。 */
     private void setupSidebar() {
         sidebarPanel = find(R.id.sidebarPanel);
         sidebarScrim = find(R.id.sidebarScrim);
-        sbMovieRow = find(R.id.sbMovie);
-        sbDramaRow = find(R.id.sbDrama);
-        sbLiveRow = find(R.id.sbLive);
-        sbMidnightRow = find(R.id.sbMidnight);
-        sbFileRow = find(R.id.sbFile);
         sbFastSearchRow = find(R.id.sbFastSearch);
         sbCollectRow = find(R.id.sbCollect);
         sbAppsRow = find(R.id.sbApps);
         sbDriveRow = find(R.id.sbDrive);
         sbPushRow = find(R.id.sbPush);
         sbEpgRow = find(R.id.sbEpg);
-        tvSbMovie = find(R.id.tvSbMovie);
-        tvSbDrama = find(R.id.tvSbDrama);
-        tvSbLive = find(R.id.tvSbLive);
-        tvSbMidnight = find(R.id.tvSbMidnight);
-        tvSbFile = find(R.id.tvSbFile);
         tvSbFastSearch = find(R.id.tvSbFastSearch);
         tvSbCollect = find(R.id.tvSbCollect);
         tvSbApps = find(R.id.tvSbApps);
         tvSbDrive = find(R.id.tvSbDrive);
         tvSbPush = find(R.id.tvSbPush);
         tvSbEpg = find(R.id.tvSbEpg);
+        tvSbVersion = find(R.id.tvSbVersion);
+        if (tvSbVersion != null) tvSbVersion.setText("v" + BuildConfig.VERSION_NAME);
+        tabMovieRow = find(R.id.tabMovie);
+        tabDramaRow = find(R.id.tabDrama);
+        tabLiveRow = find(R.id.tabLive);
+        tabMidnightRow = find(R.id.tabMidnight);
+        tabFileRow = find(R.id.tabFile);
+        tvTabMovie = find(R.id.tvTabMovie);
+        tvTabDrama = find(R.id.tvTabDrama);
+        tvTabLive = find(R.id.tvTabLive);
+        tvTabMidnight = find(R.id.tvTabMidnight);
+        tvTabFile = find(R.id.tvTabFile);
+        ivTabMovie = find(R.id.ivTabMovie);
+        ivTabDrama = find(R.id.ivTabDrama);
+        ivTabLive = find(R.id.ivTabLive);
+        ivTabMidnight = find(R.id.ivTabMidnight);
+        ivTabFile = find(R.id.ivTabFile);
 
-        // 点小把手滑出面板
-        find(R.id.sidebarHandle).setOnClickListener(v -> openSidebar());
-        // 点遮罩收回面板
         if (sidebarScrim != null) sidebarScrim.setOnClickListener(v -> closeSidebar());
-        // 面板里点按一次就重新计时（5 秒不动才收回）
         if (sidebarPanel != null) {
             sidebarPanel.setOnTouchListener((v, e) -> {
-                if (e.getActionMasked() == MotionEvent.ACTION_DOWN) scheduleSidebarAutoClose();
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        sidebarDownX = e.getX();
+                        sidebarDownY = e.getY();
+                        sidebarSwiping = false;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        if (!sidebarSwiping) {
+                            float dx = e.getX() - sidebarDownX;
+                            float dy = e.getY() - sidebarDownY;
+                            if (dx < -ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP)
+                                    && Math.abs(dx) > Math.abs(dy) * 2) {
+                                sidebarSwiping = true;
+                                closeSidebar();
+                            }
+                        }
+                        break;
+                    default:
+                        break;
+                }
                 return false;
             });
         }
-        // 原有五个去向
-        if (sbMovieRow != null) sbMovieRow.setOnClickListener(v -> onSidebarNav(NAV_MOVIE));
-        if (sbDramaRow != null) sbDramaRow.setOnClickListener(v -> onSidebarNav(NAV_DRAMA));
-        if (sbLiveRow != null) sbLiveRow.setOnClickListener(v -> onSidebarNav(NAV_LIVE));
-        if (sbMidnightRow != null) sbMidnightRow.setOnClickListener(v -> onSidebarNav(NAV_MIDNIGHT));
-        if (sbFileRow != null) sbFileRow.setOnClickListener(v -> onSidebarNav(NAV_FILE));
-        // 第九批第二路：三个独立页直达
-        if (sbFastSearchRow != null) sbFastSearchRow.setOnClickListener(v -> onSidebarNav(NAV_FASTSEARCH));
-        if (sbCollectRow != null) sbCollectRow.setOnClickListener(v -> onSidebarNav(NAV_COLLECT));
-        if (sbAppsRow != null) sbAppsRow.setOnClickListener(v -> onSidebarNav(NAV_APPS));
-        // 第九批第三路：三个独立页直达
-        if (sbDriveRow != null) sbDriveRow.setOnClickListener(v -> onSidebarNav(NAV_DRIVE));
-        if (sbPushRow != null) sbPushRow.setOnClickListener(v -> onSidebarNav(NAV_PUSH));
-        if (sbEpgRow != null) sbEpgRow.setOnClickListener(v -> onSidebarNav(NAV_EPG));
+        if (sbFastSearchRow != null) sbFastSearchRow.setOnClickListener(v -> onNavGo(NAV_FASTSEARCH));
+        if (sbCollectRow != null) sbCollectRow.setOnClickListener(v -> onNavGo(NAV_COLLECT));
+        if (sbAppsRow != null) sbAppsRow.setOnClickListener(v -> onNavGo(NAV_APPS));
+        if (sbDriveRow != null) sbDriveRow.setOnClickListener(v -> onNavGo(NAV_DRIVE));
+        if (sbPushRow != null) sbPushRow.setOnClickListener(v -> onNavGo(NAV_PUSH));
+        if (sbEpgRow != null) sbEpgRow.setOnClickListener(v -> onNavGo(NAV_EPG));
+        if (tabMovieRow != null) tabMovieRow.setOnClickListener(v -> onNavGo(NAV_MOVIE));
+        if (tabDramaRow != null) tabDramaRow.setOnClickListener(v -> onNavGo(NAV_DRAMA));
+        if (tabLiveRow != null) tabLiveRow.setOnClickListener(v -> onNavGo(NAV_LIVE));
+        if (tabMidnightRow != null) tabMidnightRow.setOnClickListener(v -> onNavGo(NAV_MIDNIGHT));
+        if (tabFileRow != null) tabFileRow.setOnClickListener(v -> onNavGo(NAV_FILE));
 
-        // 边缘划入：只认最右 16dp 那一小段；左划 40dp 以上且以横向为主才打开，
-        // 内容区分类 chips 的横滑从中间起手，不会误触；顶栏 56dp 不占，
-        // 右上角五个图标的点按不受影响。
         View edgeZone = find(R.id.edgeSwipeZone);
         if (edgeZone != null) {
             final int minDx = ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP);
@@ -256,7 +275,7 @@ public class HomeActivity extends BaseActivity {
                         if (!edgeSwiping) {
                             float dx = e.getX() - edgeDownX;
                             float dy = e.getY() - edgeDownY;
-                            if (dx < -minDx && Math.abs(dx) > Math.abs(dy) * 2) {
+                            if (dx > minDx && Math.abs(dx) > Math.abs(dy) * 2) {
                                 edgeSwiping = true;
                                 openSidebar();
                             }
@@ -272,41 +291,33 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    /** 侧边栏滑出：遮罩露出来，面板从右边缘滑进来，当前区高亮，开始 5 秒倒计时。 */
+    /** 侧边栏滑出：遮罩露出来，面板从左边缘滑进来。 */
     private void openSidebar() {
         if (sidebarOpen) return;
         if (sidebarPanel == null || sidebarScrim == null) return;
         sidebarOpen = true;
-        setSidebarSelected(currentNav);
         sidebarScrim.setVisibility(View.VISIBLE);
         sidebarPanel.setVisibility(View.VISIBLE);
-        sidebarPanel.setTranslationX(ResUtil.dp2px(SIDEBAR_WIDTH_DP));
+        sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));
         sidebarPanel.animate().translationX(0).setDuration(250).start();
-        scheduleSidebarAutoClose();
     }
 
-    /** 侧边栏收回：面板滑回屏幕外再藏掉，遮罩藏掉，倒计时取消；把手一直留着。 */
+    /** 侧边栏收回：面板滑回屏幕外再藏掉，遮罩藏掉。 */
     private void closeSidebar() {
         if (!sidebarOpen) return;
         sidebarOpen = false;
-        sidebarHandler.removeCallbacks(sidebarAutoClose);
         if (sidebarPanel == null || sidebarScrim == null) return;
-        sidebarPanel.animate().translationX(ResUtil.dp2px(SIDEBAR_WIDTH_DP)).setDuration(250)
+        sidebarPanel.animate().translationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP)).setDuration(250)
                 .withEndAction(() -> {
                     if (sidebarPanel != null) sidebarPanel.setVisibility(View.GONE);
                 }).start();
         sidebarScrim.setVisibility(View.GONE);
     }
 
-    private void scheduleSidebarAutoClose() {
-        sidebarHandler.removeCallbacks(sidebarAutoClose);
-        sidebarHandler.postDelayed(sidebarAutoClose, SIDEBAR_IDLE_MS);
-    }
-
-    /** 面板里点一个去向：先收回面板；直播/文件/快搜/收藏/应用是独立页直接打开，其余切内容区。
+    /** 点一个去向：先收回面板；直播/文件/快搜/收藏/应用是独立页直接打开，其余切内容区。
      * 切区逻辑与原来底部导航那路一致（showFragment），顶栏站名与各区站点弹窗
      * 仍按当前选中去向所在区来。 */
-    private void onSidebarNav(int navId) {
+    private void onNavGo(int navId) {
         closeSidebar();
         if (navId == NAV_LIVE) {
             startActivity(new Intent(this, LiveActivity.class));
@@ -343,36 +354,32 @@ public class HomeActivity extends BaseActivity {
         showFragment(navId);
     }
 
-    /** 面板里当前区高亮：文字变主题色 + 加粗，行底加一层浅底；直播/文件/快搜/收藏/应用是独立页，
-     * 不在面板里标当前（切走后面板已收回，下次打开仍按内容区当前区标）。 */
-    private void setSidebarSelected(int navId) {
-        if (tvSbMovie == null) return;
-        setSidebarRow(sbMovieRow, tvSbMovie, navId == NAV_MOVIE);
-        setSidebarRow(sbDramaRow, tvSbDrama, navId == NAV_DRAMA);
-        setSidebarRow(sbLiveRow, tvSbLive, false);
-        setSidebarRow(sbMidnightRow, tvSbMidnight, navId == NAV_MIDNIGHT);
-        setSidebarRow(sbFileRow, tvSbFile, false);
-        setSidebarRow(sbFastSearchRow, tvSbFastSearch, false);
-        setSidebarRow(sbCollectRow, tvSbCollect, false);
-        setSidebarRow(sbAppsRow, tvSbApps, false);
-        setSidebarRow(sbDriveRow, tvSbDrive, false);
-        setSidebarRow(sbPushRow, tvSbPush, false);
-        setSidebarRow(sbEpgRow, tvSbEpg, false);
+    /** 区域 Tab 行当前区高亮：选中 Tab 用胶囊底 + 白字白图标，其余常规色；
+     * 直播/文件是独立页，点后不在 Tab 行标当前（切走后 Tab 行仍按内容区当前区标）。 */
+    private void updateTabSelected(int navId) {
+        if (tvTabMovie == null) return;
+        setTabRow(tabMovieRow, tvTabMovie, ivTabMovie, navId == NAV_MOVIE);
+        setTabRow(tabDramaRow, tvTabDrama, ivTabDrama, navId == NAV_DRAMA);
+        setTabRow(tabLiveRow, tvTabLive, ivTabLive, false);
+        setTabRow(tabMidnightRow, tvTabMidnight, ivTabMidnight, navId == NAV_MIDNIGHT);
+        setTabRow(tabFileRow, tvTabFile, ivTabFile, false);
     }
 
-    private void setSidebarRow(View row, TextView tv, boolean selected) {
-        if (row == null || tv == null) return;
-        tv.setTextColor(getColor(selected ? R.color.colorPrimary : R.color.text_primary));
+    private void setTabRow(View row, TextView tv, ImageView iv, boolean selected) {
+        if (row == null || tv == null || iv == null) return;
+        row.setSelected(selected);
+        int color = getColor(selected ? android.R.color.white : R.color.text_primary);
+        tv.setTextColor(color);
         tv.setTypeface(null, selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
-        row.setBackgroundColor(selected ? 0x33FFFFFF : 0x00000000);
+        iv.setImageTintList(ColorStateList.valueOf(color));
     }
 
     private void showFragment(int navId) {
         try {
             currentNav = navId;
             showingFav = false;
-            // 侧边栏面板里当前区高亮跟着切（从内置区列表、返回键等路子切过来也一样）。
-            setSidebarSelected(navId);
+            // 区域 Tab 行当前区高亮跟着切（从内置区列表、返回键等路子切过来也一样）。
+            updateTabSelected(navId);
             // 切 tab 就按新区刷新顶栏站名（之前顶栏一直显示全局当前源，
             // 在午夜区会错显示短剧站名）。
             refreshTitle();
@@ -659,7 +666,6 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        sidebarHandler.removeCallbacks(sidebarAutoClose);
         if (sourcePopup != null && sourcePopup.isShowing()) sourcePopup.dismiss();
     }
 

@@ -50,6 +50,7 @@ import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
+import com.yingtu.plus.player.NonVideoRouter;
 import com.yingtu.plus.player.exo.ExoHttpPolicy;
 import com.yingtu.plus.player.exo.ExoUtil;
 import com.yingtu.plus.ui.dialog.CastDialog;
@@ -67,6 +68,7 @@ import android.widget.ImageView;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -94,6 +96,8 @@ public static final String KEY_VOD_ID = "vodId";
 
 private static final int RELATED_MAX = 12;
 private static final int BLUR_RADIUS = 18;
+private static final Pattern QUALITY_FLAG = Pattern.compile(
+"(?i)^\\s*(\\d{3,4}p|[24]k|原画|蓝光|超清|高清|标清|流畅)\\s*$");
 
 private SourceViewModel viewModel;
 private SeriesFlagAdapter flagAdapter;
@@ -111,6 +115,7 @@ private boolean descExpanded = false;
 // 播放器与信息块固定在顶部，只有选集以下在 ScrollView 里滚动。
 private FrameLayout playerBox;
 private PlayerView pvDetail;
+private ImageView ivPoster;
 private ImageView ivPlayOverlay;
 private View loadingOverlay;
 private TextView tvResolution;
@@ -118,6 +123,8 @@ private View fixedInfo;
 private ScrollView scrollDetail;
 private TextView btnFav;
 private TextView tvEpisodeCount;
+private TextView tvQualityLabel;
+private View qualityRow;
 private TextView tvReview;
 private TextView tvTags;
 private View tagsRow;
@@ -153,6 +160,8 @@ find(R.id.btnDesc).setOnClickListener(v -> toggleDesc());
 find(R.id.btnMenu).setOnClickListener(v -> showDetailMenu(v));
 btnFav = find(R.id.btnFav);
 tvEpisodeCount = find(R.id.tvEpisodeCount);
+tvQualityLabel = find(R.id.tvQualityLabel);
+qualityRow = find(R.id.qualityRow);
 tvReview = find(R.id.tvReview);
 tvTags = find(R.id.tvTags);
 tagsRow = find(R.id.tagsRow);
@@ -218,10 +227,10 @@ updateReview();
 setText(R.id.tvDesc, TextUtils.isEmpty(info.des)? "暂无简介": info.des);
 bindTags(info.type);
 
-ImageView iv = find(R.id.ivPoster);
+ivPoster = find(R.id.ivPoster);
 Glide.with(this).load(ImgUtil.getUrl(info.pic))
 .placeholder(R.drawable.bg_poster_placeholder)
-.centerCrop().into(iv);
+.centerCrop().into(ivPoster);
 
 // 毛玻璃背景：本片海报缩小模糊后做底，上层半透明遮罩提可读性。
 ImageView ivBg = find(R.id.ivBg);
@@ -239,6 +248,7 @@ Glide.with(this).load(ImgUtil.getUrl(info.pic))
 bindStills(null);
 
 flagAdapter.submit(info.seriesFlags);
+updateQualityRow();
 if (!info.seriesFlags.isEmpty()) {
 onFlagSelected(0);
 }
@@ -357,6 +367,23 @@ if (tvEpisodeCount != null) tvEpisodeCount.setText("共 " + total + " 集");
 updateReview();
 }
 
+private void updateQualityRow() {
+if (qualityRow == null) return;
+if (vodInfo == null || vodInfo.seriesFlags == null || vodInfo.seriesFlags.isEmpty()) {
+qualityRow.setVisibility(View.GONE);
+return;
+}
+qualityRow.setVisibility(View.VISIBLE);
+boolean quality = true;
+for (VodInfo.VodSeriesFlag flag : vodInfo.seriesFlags) {
+if (flag == null || TextUtils.isEmpty(flag.name) || !QUALITY_FLAG.matcher(flag.name).matches()) {
+quality = false;
+break;
+}
+}
+if (tvQualityLabel != null) tvQualityLabel.setVisibility(quality ? View.VISIBLE : View.GONE);
+}
+
 /** 评述行：详情自带 note（如“全254集”/“更新至254集”）就用它；没有就按当前线路
  * 的总集数写“全 N 集”；连集数都没有（无线路）就藏起这一行。 */
 private void updateReview() {
@@ -471,6 +498,11 @@ try {
 Result result = SiteApi.playerContent(sourceKey, flag.name, series.url);
 String url = result.getRealUrl();
 if (TextUtils.isEmpty(url)) throw new IllegalStateException("取流地址为空");
+if (NonVideoRouter.isNonVideo(url)) {
+OkGo.main(() -> setLoading(false));
+NonVideoRouter.tryShow(url, vodInfo.name);
+return;
+}
 Map<String, String> headers = result.getHeader();
 OkGo.main(() -> startDetailPlayer(url, headers));
 } catch (Exception e) {
@@ -501,6 +533,7 @@ setLoading(false);
 /** 顶上播放器回到海报态：PlayerView 藏起来，海报 + 播放钮露出来，分辨率角标藏掉。 */
 private void showPosterWall() {
 if (pvDetail != null) pvDetail.setVisibility(View.GONE);
+if (ivPoster != null) ivPoster.setVisibility(View.VISIBLE);
 if (tvResolution != null) tvResolution.setVisibility(View.GONE);
 setLoading(false);
 }

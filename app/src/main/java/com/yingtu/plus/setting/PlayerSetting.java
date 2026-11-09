@@ -8,6 +8,21 @@ public class PlayerSetting {
     public static final int MPV = 2;
     public static final int RENDER_SURFACE = 0;
     public static final int RENDER_TEXTURE = 1;
+    public static final int ORIENTATION_PORTRAIT = 0;
+    public static final int ORIENTATION_LANDSCAPE = 1;
+
+    public static int getOrientation() {
+        int o = Prefers.getInt("orientation", ORIENTATION_PORTRAIT);
+        return o == ORIENTATION_LANDSCAPE ? ORIENTATION_LANDSCAPE : ORIENTATION_PORTRAIT;
+    }
+
+    public static void putOrientation(int o) {
+        Prefers.put("orientation", o == ORIENTATION_LANDSCAPE ? ORIENTATION_LANDSCAPE : ORIENTATION_PORTRAIT);
+    }
+
+    public static boolean isLandscapeOrientation() {
+        return getOrientation() == ORIENTATION_LANDSCAPE;
+    }
     // mpv 渲染后端：字符串域，与 getMpvRender() 的 "gpu" 默认值一致。
     // 参考仓同名方法是 int 域（0=opengl / 1=vulkan），树里本方法是 String，不可直接照搬 int 常量。
     public static final String MPV_RENDER_OPENGL = "gpu";
