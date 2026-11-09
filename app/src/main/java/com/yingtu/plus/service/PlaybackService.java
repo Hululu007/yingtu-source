@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
-import android.media.AudioManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
@@ -285,7 +284,7 @@ public class PlaybackService extends Service {
         mediaButtonReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (intent == null || !AudioManager.ACTION_MEDIA_BUTTON.equals(intent.getAction())) return;
+                if (intent == null || !Intent.ACTION_MEDIA_BUTTON.equals(intent.getAction())) return;
                 KeyEvent event = intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                 if (event == null || event.getAction() != KeyEvent.ACTION_DOWN) return;
                 if (navigationCallback == null) return;
@@ -325,7 +324,7 @@ public class PlaybackService extends Service {
             }
         };
         try {
-            registerReceiver(mediaButtonReceiver, new IntentFilter(AudioManager.ACTION_MEDIA_BUTTON));
+            registerReceiver(mediaButtonReceiver, new IntentFilter(Intent.ACTION_MEDIA_BUTTON));
         } catch (Exception e) {
             mediaButtonReceiver = null;
         }

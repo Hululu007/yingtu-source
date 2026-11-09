@@ -25,6 +25,7 @@ import org.jupnp.support.avtransport.callback.Play;
 import org.jupnp.support.avtransport.callback.Seek;
 import org.jupnp.support.avtransport.callback.SetAVTransportURI;
 import org.jupnp.support.avtransport.callback.Stop;
+import org.jupnp.support.model.SeekMode;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -154,7 +155,7 @@ public class DlnaManager {
                 @Override
                 public void onServiceConnected(ComponentName name, IBinder binder) {
                     try {
-                        upnpService = ((AndroidUpnpServiceImpl.LocalBinder) binder).getService();
+                        upnpService = (AndroidUpnpService) binder;
                         upnpService.getRegistry().addListener(registryListener);
                         search();
                     } catch (Exception e) {
@@ -222,7 +223,7 @@ public class DlnaManager {
                             castingDevice = device;
                             castingUrl = url;
                             if (position > 1000) {
-                                upnpService.getControlPoint().execute(new Seek(avTransport, "REL_TIME", formatTime(position)) {
+                                upnpService.getControlPoint().execute(new Seek(avTransport, SeekMode.REL_TIME, formatTime(position)) {
                                     @Override
                                     public void success(ActionInvocation invocation) {
                                         postResult(callback, true, device.getName());

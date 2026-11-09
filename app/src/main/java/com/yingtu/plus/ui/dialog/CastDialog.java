@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.yingtu.plus.R;
 import com.yingtu.plus.bean.CastVideo;
 import com.yingtu.plus.bean.Config;
 import com.yingtu.plus.bean.Device;
