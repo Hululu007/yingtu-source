@@ -44,7 +44,8 @@ import java.util.List;
 
 /**
  * 首页外壳。顶栏：头像 + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
- * 顶栏下方是常驻区域 Tab 行（影视 / 短剧 / 直播 / 午夜 / 文件，点 Tab 切区），
+ * 顶栏下方不再常驻区域 Tab 行；区域导航（影视 / 短剧 / 直播 / 午夜 / 文件，横向
+ * 胶囊 Tab，图标在上文字在下，点 Tab 切区并收起抽屉）挪进左侧边栏抽屉头部，
  * 再下方是内容区（全屏，底部导航已删）。六个工具行（快搜 / 收藏 / 应用 / 网盘 /
  * 推送 / 节目单）收进左侧边栏（第十批，标准模态抽屉）：顶栏左端头像开栏、左缘向右
  * 划入，点遮罩或左滑收起，不自动收回；点行先关栏再动作。
@@ -84,7 +85,7 @@ public class HomeActivity extends BaseActivity {
     private PopupWindow sourcePopup;
     private EditText etSearch;
     private LinearLayout chipContainer;
-    // 左侧边栏（第十批）：面板 / 遮罩 / 左缘划入区 + 六个工具行；区域 Tab 行在顶栏下方常驻。
+    // 左侧边栏（第十批）：面板 / 遮罩 / 左缘划入区 + 六个工具行；区域 Tab 行在侧栏头部。
     private View sidebarPanel;
     private View sidebarScrim;
     private TextView tvSbVersion;
@@ -187,8 +188,8 @@ public class HomeActivity extends BaseActivity {
     }
 
     /** 左侧边栏接线（第十批，标准模态抽屉）：顶栏左端头像 + 左缘向右划滑出面板，
-     * 面板里六个工具行，点行先关栏再动作；点遮罩或面板左滑收回，不自动收回。
-     * 区域 Tab 行在顶栏下方常驻，点 Tab 切区（与侧栏无关）。
+     * 面板头部是区域导航 Tab 行（影视 / 短剧 / 直播 / 午夜 / 文件，点 Tab 切区并收栏），
+     * 其下是六个工具行，点行先关栏再动作；点遮罩或面板左滑收回，不自动收回。
      * 边缘划入只认最左 16dp（顶栏 56dp 不占），不抢内容区分类 chips 的横滑。 */
     private void setupSidebar() {
         sidebarPanel = find(R.id.sidebarPanel);
@@ -291,11 +292,13 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    /** 侧边栏滑出：遮罩露出来，面板从左边缘滑进来。 */
+    /** 侧边栏滑出：遮罩露出来，面板从左边缘滑进来；开栏时把抽屉头部 Tab 行的高亮
+     * 刷成当前区（从直播/文件独立页返回后，高亮仍是回来前所在的区）。 */
     private void openSidebar() {
         if (sidebarOpen) return;
         if (sidebarPanel == null || sidebarScrim == null) return;
         sidebarOpen = true;
+        updateTabSelected(currentNav);
         sidebarScrim.setVisibility(View.VISIBLE);
         sidebarPanel.setVisibility(View.VISIBLE);
         sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));

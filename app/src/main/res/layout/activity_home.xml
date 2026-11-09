@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 首页外壳（第十批）：顶栏 + 常驻区域 Tab 行 + 内容区全屏；侧栏在左（标准模态抽屉，
+<!-- 首页外壳：顶栏 + 内容区全屏；侧栏在左（标准模态抽屉，
      304dp），顶栏左端头像开栏、左缘向右划入，点遮罩或左滑收起，不自动收回；
-     侧栏正文只剩“应用工具”分组卡片（快搜 / 收藏 / 应用 / 网盘 / 推送 / 节目单）。 -->
+     侧栏头部是区域导航 Tab 行（影视 / 短剧 / 直播 / 午夜 / 文件，横向胶囊，
+     图标在上文字在下），其下是“应用工具”分组卡片（快搜 / 收藏 / 应用 / 网盘 / 推送 / 节目单）。
+     顶栏下方不再常驻 Tab 行。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-    <!-- 内容区：顶栏 + 区域 Tab 行 + 影视/短剧/午夜/收藏页（底部导航腾出的位置归内容，全屏显示） -->
+    <!-- 内容区：顶栏 + 影视/短剧/午夜/收藏页（底部导航腾出的位置归内容，全屏显示） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -116,8 +118,6 @@
                 app:tint="@color/text_primary" />
         </LinearLayout>
 
-        <!-- 区域 Tab 行：影视 / 短剧 / 直播 / 午夜 / 文件，常驻顶栏下方一直可见，点 Tab 切区 -->
-        <include layout="@layout/layout_home_zone_tabs" />
 
         <!-- 内容区：影视主页 / 短剧占位 / 午夜占位 / 收藏页 -->
         <FrameLayout
@@ -146,7 +146,7 @@
         android:background="#80000000"
         android:visibility="gone" />
 
-    <!-- 左侧栏面板：头部（圆形 logo + 影图+ + 版本号）+“应用工具”分组卡片；默认藏在屏幕外 -->
+    <!-- 左侧栏面板：头部（圆形 logo + 影图+ + 版本号）+ 区域导航 Tab 行 +“应用工具”分组卡片；默认藏在屏幕外 -->
     <LinearLayout
         android:id="@+id/sidebarPanel"
         android:layout_width="304dp"
@@ -206,6 +206,17 @@
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
             android:background="#26FFFFFF" />
+
+        <!-- 区域导航 Tab 行（抽屉头部，照蚂蚁影视抽屉头部横向胶囊 Tab）：
+             影视 / 短剧 / 直播 / 午夜 / 文件，图标在上文字在下，点区名切区并收起抽屉；
+             复用 layout_home_zone_tabs（与原来顶栏下那排同一份布局、同一套 id 与选中样式）。 -->
+        <include
+            layout="@layout/layout_home_zone_tabs"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="4dp" />
 
         <!-- 应用工具分组卡片：六个工具行，每行图标 + 标题 + 副标题 + 右箭头 -->
         <LinearLayout
