@@ -88,7 +88,7 @@
     <!-- 系统设置 -->
     <string name="row_orientation">屏幕方向</string>
     <string name="row_start_page">默认启动</string>
-    <string name="row_grid_columns">分类视图列数</string>
+    <string name="row_grid_columns">首页网格列数</string>
     <string name="row_auto_clear">自清播放缓存</string>
 
     <!-- 底部按钮 -->

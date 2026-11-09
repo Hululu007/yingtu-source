@@ -40,5 +40,6 @@ public class IjkPerformanceSetting {
     
     public static int getSoftTuneMode() { return Prefers.getInt("perf_ijk_soft_tune", 0); }
     public static int getRtspTransport() { return Prefers.getInt("perf_ijk_rtsp_transport", 0); }
-    public static boolean isReconnect() { return Prefers.getBoolean("perf_ijk_reconnect", false); }
+    // 慢网默认开：断网/停滞后 ijk 自己重连，不用等用户手动点；设置里仍可关。
+    public static boolean isReconnect() { return Prefers.getBoolean("perf_ijk_reconnect", true); }
 }

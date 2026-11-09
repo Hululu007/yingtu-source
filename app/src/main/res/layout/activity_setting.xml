@@ -48,6 +48,7 @@
             <TextView style="@style/SettingSectionTitle" android:text="@string/sec_data" />
             <TextView android:id="@+id/btnApiSetting" style="@style/SettingHeaderBtn" android:text="@string/act_api_setting" />
             <TextView android:id="@+id/btnApiAdvanced" style="@style/SettingHeaderBtn" android:text="@string/act_api_advanced" />
+            <TextView android:id="@+id/btnApiMore" style="@style/SettingHeaderBtn" android:text="更多设置" />
         </LinearLayout>
 
         <LinearLayout style="@style/SettingCard">
@@ -77,7 +78,31 @@
 
             <LinearLayout android:id="@+id/rowApiCache" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="@string/row_api_cache" />
-                <TextView android:id="@+id/tvApiCache" style="@style/SettingValue" android:text="@string/val_off" />
+                <TextView android:id="@+id/tvApiCache" style="@style/SettingValue" android:text="@string/val_on" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowApiDownload" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="接口下载" />
+                <TextView android:id="@+id/tvApiDownload" style="@style/SettingValue" android:text="下载当前接口配置到本地" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowInjectDownload" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="注入下载" />
+                <TextView android:id="@+id/tvInjectDownload" style="@style/SettingValue" android:text="下载注入地址的内容到本地" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowSyncData" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="同步数据" />
+                <TextView android:id="@+id/tvSyncData" style="@style/SettingValue" android:text="影图间同步数据" />
                 <ImageView style="@style/SettingArrow" />
             </LinearLayout>
 
@@ -101,6 +126,7 @@
         <!-- ========== 首页和搜索 ========== -->
         <LinearLayout style="@style/SettingSectionHeader">
             <TextView style="@style/SettingSectionTitle" android:text="@string/sec_home" />
+            <TextView android:id="@+id/btnSiteSource" style="@style/SettingHeaderBtn" android:text="站点来源" />
             <TextView android:id="@+id/btnSourcePin" style="@style/SettingHeaderBtn" android:text="@string/act_source_pin" />
             <TextView android:id="@+id/btnSourceDisable" style="@style/SettingHeaderBtn" android:text="@string/act_source_disable" />
         </LinearLayout>
@@ -125,6 +151,30 @@
             <LinearLayout android:id="@+id/rowSearchShow" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="@string/row_search_show" />
                 <TextView android:id="@+id/tvSearchShow" style="@style/SettingValue" android:text="@string/val_pic_text" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowHomeLayout" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页布局" />
+                <TextView android:id="@+id/tvHomeLayout" style="@style/SettingValue" android:text="侧边栏" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowHomeSourceCols" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页选源列数" />
+                <TextView android:id="@+id/tvHomeSourceCols" style="@style/SettingValue" android:text="2 列" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowSearchSite" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="搜索站点" />
+                <TextView android:id="@+id/tvSearchSite" style="@style/SettingValue" android:text="全部" />
                 <ImageView style="@style/SettingArrow" />
             </LinearLayout>
         </LinearLayout>
@@ -191,9 +241,49 @@
 
             <View style="@style/SettingSep" />
 
+            <LinearLayout android:id="@+id/rowSnifferView" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="嗅探View" />
+                <TextView android:id="@+id/tvSnifferView" style="@style/SettingValue" android:text="系统自带" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
             <LinearLayout android:id="@+id/rowAutoFloat" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="@string/row_auto_float" />
                 <TextView android:id="@+id/tvAutoFloat" style="@style/SettingValue" android:text="@string/val_off" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowBufferTimeout" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="缓冲超时时间" />
+                <TextView android:id="@+id/tvBufferTimeout" style="@style/SettingValue" android:text="@string/val_off" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowIjkBuffer" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="IJK边播边存" />
+                <TextView android:id="@+id/tvIjkBuffer" style="@style/SettingValue" android:text="@string/val_off" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowIjkDecode" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="IJK解码" />
+                <TextView android:id="@+id/tvIjkDecode" style="@style/SettingValue" android:text="硬解码" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowCacheLocation" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="缓存位置" />
+                <TextView android:id="@+id/tvCacheLocation" style="@style/SettingValue" android:text="默认" />
                 <ImageView style="@style/SettingArrow" />
             </LinearLayout>
         </LinearLayout>
@@ -230,6 +320,48 @@
 
             <View style="@style/SettingSep" />
 
+            <LinearLayout android:id="@+id/rowSecureDns" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="安全DNS" />
+                <TextView android:id="@+id/tvSecureDns" style="@style/SettingValue" android:text="@string/val_off" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowWallpaperFx" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="壁纸虚化|亮度" />
+                <TextView android:id="@+id/tvWallpaperFx" style="@style/SettingValue" android:text="0 | 0" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowCateViewType" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="分类视图类型" />
+                <TextView android:id="@+id/tvCateViewType" style="@style/SettingValue" android:text="普通视图1" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowCateViewCols" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="分类视图列数" />
+                <TextView android:id="@+id/tvCateViewCols" style="@style/SettingValue" android:text="方案2" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowAutoClear" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="自清播放缓存" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swAutoClear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
             <LinearLayout android:id="@+id/rowGridColumns" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="@string/row_grid_columns" />
                 <TextView android:id="@+id/tvGridColumns" style="@style/SettingValue" android:text="@string/val_columns3" />
@@ -239,7 +371,7 @@
             <View style="@style/SettingSep" />
 
             <LinearLayout android:id="@+id/rowClearCache" style="@style/SettingRow">
-                <TextView style="@style/SettingLabel" android:text="@string/row_auto_clear" />
+                <TextView style="@style/SettingLabel" android:text="清除缓存" />
                 <TextView android:id="@+id/tvCacheHint" style="@style/SettingValue" android:text="@string/val_on" />
                 <ImageView style="@style/SettingArrow" />
             </LinearLayout>

@@ -2,26 +2,37 @@ package com.yingtu.plus.ui.fragment;
 
 import android.content.Intent;
 import android.util.TypedValue;
+import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.base.BaseLazyFragment;
+import com.yingtu.plus.bean.FavVod;
+import com.yingtu.plus.bean.Movie;
 import com.yingtu.plus.bean.MovieSort;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.ui.activity.DetailActivity;
+import com.yingtu.plus.ui.activity.HomeActivity;
+import com.yingtu.plus.ui.activity.VideoActivity;
 import com.yingtu.plus.ui.adapter.CategoryTabAdapter;
 import com.yingtu.plus.ui.adapter.FilterChipAdapter;
 import com.yingtu.plus.ui.adapter.GridMovieAdapter;
+import com.yingtu.plus.util.FavHelper;
+import com.yingtu.plus.util.HawkConfig;
+import com.yingtu.plus.util.MixRules;
 import com.yingtu.plus.util.ZoneSites;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 
@@ -61,6 +72,8 @@ public class HomeMainFragment extends BaseLazyFragment {
     private boolean loading = false;
     private boolean noMore = false;
     private final HashMap<String, String> curExtend = new HashMap<>();
+    /** 混合首页模式：分类 Tab 隐藏，只显合并的推荐列表 */
+    private boolean mixedMode = false;
 
     @Override
     protected int getLayoutId() {
@@ -87,19 +100,95 @@ public class HomeMainFragment extends BaseLazyFragment {
             rvContent.setLayoutManager(glm);
             adapter = new GridMovieAdapter();
             adapter.setOnItemClick(movie -> {
+                // 列表单片自动播放（设置 → 更多设置）：开时点一下直接播，关时进详情
+                boolean autoPlay = false;
+                try {
+                    autoPlay = Hawk.get(HawkConfig.LIST_AUTO_PLAY, false);
+                } catch (Throwable ignored) {
+                }
+                if (autoPlay) {
+                    Intent i = new Intent(getActivity(), VideoActivity.class);
+                    i.putExtra("key", movie.sourceKey);
+                    i.putExtra("id", movie.vodId);
+                    i.putExtra("name", movie.name);
+                    i.putExtra("pic", movie.pic);
+                    startActivity(i);
+                    return;
+                }
                 Intent i = new Intent(getActivity(), DetailActivity.class);
                 i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
                 i.putExtra(DetailActivity.KEY_VOD_ID, movie.vodId);
                 startActivity(i);
             });
+            adapter.setOnItemLongClick(movie -> {
+                // 分类列表长按菜单（设置 → 更多设置）：开时长按弹详情/直接播放/收藏
+                boolean on = true;
+                try {
+                    on = Hawk.get(HawkConfig.CATE_LONG_PRESS, true);
+                } catch (Throwable ignored) {
+                }
+                if (!on || getActivity() == null) return false;
+                new AlertDialog.Builder(getActivity())
+                        .setTitle(movie.name)
+                        .setItems(new String[]{"详情", "直接播放", "加入收藏"}, (d, which) -> {
+                            if (which == 0) {
+                                Intent i = new Intent(getActivity(), DetailActivity.class);
+                                i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
+                                i.putExtra(DetailActivity.KEY_VOD_ID, movie.vodId);
+                                startActivity(i);
+                            } else if (which == 1) {
+                                Intent i = new Intent(getActivity(), VideoActivity.class);
+                                i.putExtra("key", movie.sourceKey);
+                                i.putExtra("id", movie.vodId);
+                                i.putExtra("name", movie.name);
+                                i.putExtra("pic", movie.pic);
+                                startActivity(i);
+                            } else {
+                                FavHelper.toggleVod(new FavVod(movie.sourceKey, movie.vodId, movie.name, movie.pic));
+                            }
+                        })
+                        .show();
+                return true;
+            });
             rvContent.setAdapter(adapter);
             rvContent.addOnScrollListener(new RecyclerView.OnScrollListener() {
                 @Override
                 public void onScrolled(RecyclerView rv, int dx, int dy) {
+                    // 首页标题栏一直显示关时：下滑隐藏顶栏，上滑恢复
+                    if (getActivity() instanceof HomeActivity) {
+                        HomeActivity home = (HomeActivity) getActivity();
+                        if (!home.isTopBarAlwaysVisible()) {
+                            if (dy > 8) home.setTopBarVisible(false);
+                            else if (dy < -8) home.setTopBarVisible(true);
+                        }
+                    }
                     if (dy <= 0 || loading || noMore || curTypeId == null) return;
-                    int last = glm.findLastVisibleItemPosition();
+                    RecyclerView.LayoutManager lm = rvContent.getLayoutManager();
+                    int last = -1;
+                    if (lm instanceof GridLayoutManager) last = ((GridLayoutManager) lm).findLastVisibleItemPosition();
+                    else if (lm instanceof LinearLayoutManager) last = ((LinearLayoutManager) lm).findLastVisibleItemPosition();
                     if (last >= adapter.getDataCount() - 3) loadMore();
                 }
+            });
+            // 首页滑动切屏（设置 → 更多设置）：内容区横向快速滑动切区（不消费事件，列表滚动/点击照常）
+            final GestureDetector swipeDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                    if (e1 == null || e2 == null) return false;
+                    float dx = e2.getX() - e1.getX();
+                    float dy = e2.getY() - e1.getY();
+                    if (Math.abs(dx) > 120 && Math.abs(dx) > Math.abs(dy) * 2 && Math.abs(velocityX) > 200) {
+                        if (getActivity() instanceof HomeActivity) {
+                            ((HomeActivity) getActivity()).swipeZone(dx < 0);
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+            rvContent.setOnTouchListener((v, event) -> {
+                swipeDetector.onTouchEvent(event);
+                return false;
             });
 
             viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
@@ -130,10 +219,18 @@ public class HomeMainFragment extends BaseLazyFragment {
                 if (movies == null || movies.isEmpty()) { noMore = true; return; }
                 adapter.append(movies);
             } else {
-                boolean empty = movies == null || movies.isEmpty();
+                // 首页推荐=豆瓣热播时只留带豆瓣热播角标的条目（站源不带角标时列表为空）
+                List<Movie> shown = movies;
+                if (curTypeId == null && isDoubanRec()) {
+                    shown = new ArrayList<>();
+                    if (movies != null) {
+                        for (Movie m : movies) if (m.douban) shown.add(m);
+                    }
+                }
+                boolean empty = shown == null || shown.isEmpty();
                 tvHint.setVisibility(empty ? View.VISIBLE : View.GONE);
                 if (empty) tvHint.setText(homeEmptyHint());
-                adapter.submit(movies);
+                adapter.submit(shown);
                 rvContent.scrollToPosition(0);
             }
         });
@@ -151,13 +248,25 @@ public class HomeMainFragment extends BaseLazyFragment {
         if (curTypeId != null) return "该分类暂无内容";
         String err = viewModel == null ? null : viewModel.sortError.getValue();
         if (err != null && !err.isEmpty()) return "加载失败：" + err;
+        if (isDoubanRec()) return "该源暂无豆瓣热播内容";
         return "该源暂无推荐内容";
+    }
+
+    /** 首页推荐=豆瓣热播（设置 → 首页和搜索）：只显示带豆瓣热播角标的条目。 */
+    private boolean isDoubanRec() {
+        try {
+            return "豆瓣热播".equals(Hawk.get(HawkConfig.HOME_REC, "站点推荐"));
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     @Override
     protected void onVisible() {
         // init 失败过则控件还没建好，这里直接返回，留空首页，不再崩一次
         if (rvCategory == null || filterContainer == null || tvHint == null || adapter == null) return;
+        // 分类视图类型/列数（设置 → 系统设置）：每次回到本页按当前设置重设
+        applyCateView();
         SourceBean home = zoneSource();
         String key = home == null ? "" : home.getKey();
         if (home == null) {
@@ -207,19 +316,74 @@ public class HomeMainFragment extends BaseLazyFragment {
         noMore = false;
         curExtend.clear();
         progress.setVisibility(View.VISIBLE);
+        // 混合规则（高级配置 → 混合规则）：有激活规则时逐站取首页推荐合并，分类 Tab 隐藏
+        MixRules.Rule rule = MixRules.getActiveRule();
+        if (rule != null) {
+            List<SourceBean> members = new ArrayList<>();
+            for (String k : rule.keys) {
+                SourceBean b = ApiConfig.get().getSource(k);
+                if (b != null) members.add(b);
+            }
+            if (members.size() >= 2) {
+                mixedMode = true;
+                viewModel.getSortMixed(members);
+                return;
+            }
+        }
+        mixedMode = false;
         viewModel.getSort();
+    }
+
+    /** 分类视图类型/列数（设置 → 系统设置）：按类型+方案设展示形态与列数。 */
+    private void applyCateView() {
+        if (adapter == null || rvContent == null || getContext() == null) return;
+        int type = 0;
+        int cols = 1;
+        try {
+            type = Hawk.get(HawkConfig.CATE_VIEW_TYPE, 0);
+            cols = Hawk.get(HawkConfig.CATE_VIEW_COLUMNS, 1);
+        } catch (Throwable ignored) {
+        }
+        // 视图类型 → 展示形态：文字视图=文字，其余=图文；横图列本页没有对应视图（回报写明）
+        int mode = type == 1 ? 0 : 2;
+        adapter.setDisplayMode(mode);
+        // 列数方案 [竖图|横图|文字|详情]：本页是竖图卡片取第一档，文字视图用线性列表
+        int[][] schemes = {{2, 1, 1, 1}, {3, 2, 2, 2}, {3, 2, 3, 2}};
+        int[] s = schemes[cols >= 0 && cols < schemes.length ? cols : 1];
+        if (mode == 0) {
+            rvContent.setLayoutManager(new LinearLayoutManager(getContext()));
+        } else {
+            rvContent.setLayoutManager(new GridLayoutManager(getContext(), s[0]));
+        }
     }
 
     private void renderCategories(List<MovieSort> sorts) {
         java.util.List<MovieSort> list = new java.util.ArrayList<>();
-        MovieSort homeTab = new MovieSort(null, "主页"); // typeId=null → 推荐
-        list.add(homeTab);
+        // 分类筛选首页导航（设置 → 更多设置）：关时分类 Tab 不含“主页”项
+        boolean homeNav = true;
+        try {
+            homeNav = Hawk.get(HawkConfig.CATE_HOME_NAV, true);
+        } catch (Throwable ignored) {
+        }
+        // 混合首页没有分类（各站分类 id 会撞），Tab 行直接隐藏
+        if (mixedMode) {
+            rvCategory.setVisibility(View.GONE);
+            filterContainer.setVisibility(View.GONE);
+            return;
+        }
+        if (homeNav) {
+            MovieSort homeTab = new MovieSort(null, "主页"); // typeId=null → 推荐
+            list.add(homeTab);
+        }
         if (sorts != null) list.addAll(sorts);
 
         categoryAdapter.submit(list);
         rvCategory.setVisibility(View.VISIBLE);
-        // 默认选中「主页」：无筛选
+        // 默认选中「主页」：无筛选；没“主页”项时直接进第一个分类
         filterContainer.setVisibility(View.GONE);
+        if (!homeNav && !list.isEmpty() && curTypeId == null) {
+            onCategorySelected(0, list.get(0));
+        }
     }
 
     /** 点击顶部分类标签。 */
@@ -274,7 +438,17 @@ public class HomeMainFragment extends BaseLazyFragment {
             row.addView(label, labelLp);
 
             RecyclerView rv = new RecyclerView(getContext());
-            rv.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
+            // 分类筛选单行视图（设置 → 更多设置）：开时每组 chip 单行横滑，关时 4 列网格多行排布
+            boolean singleRow = false;
+            try {
+                singleRow = Hawk.get(HawkConfig.CATE_FILTER_SINGLE, false);
+            } catch (Throwable ignored) {
+            }
+            if (singleRow) {
+                rv.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
+            } else {
+                rv.setLayoutManager(new GridLayoutManager(getContext(), 4));
+            }
             FilterChipAdapter filterAdapter = new FilterChipAdapter();
             final MovieSort.Filter g = group;
             filterAdapter.setOnValueClick(value -> onFilterSelected(g, value));

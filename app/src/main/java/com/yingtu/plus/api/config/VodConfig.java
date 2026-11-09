@@ -316,11 +316,21 @@ public class VodConfig extends BaseConfig {
      * 避免异步 clear 与紧接着的 parseJar 互相竞态。
      */
     public void replaceSites(List<Site> sites, String spider, String homeKey) {
+        replaceSites(sites, spider, homeKey, true);
+    }
+
+    /**
+     * preloadJar=false 时跳过配置级 spider jar 的预加载（只同步站表）。
+     * 启动同步用 false：jar 预加载要建 DexClassLoader（新 jar 冷启动还要 dex 优化）
+     * 并做 YouTube 探活联网，放主线程拖慢启动；jar 在第一次用蜘蛛时由
+     * JarLoader.getSpider() 按需加载（走后台线程）。站表里的 jar 字段不受影响。
+     */
+    public void replaceSites(List<Site> sites, String spider, String homeKey, boolean preloadJar) {
         if (sites == null || sites.isEmpty()) return;
         try {
             List<Site> items = sites.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
             if (items.isEmpty()) return;
-            if (!TextUtils.isEmpty(spider)) BaseLoader.get().parseJar(spider, true);
+            if (preloadJar && !TextUtils.isEmpty(spider)) BaseLoader.get().parseJar(spider, true);
             Map<String, Site> db = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity(), (a, b) -> a));
             items.forEach(site -> site.sync(db.get(site.getKey())));
             setSites(items);

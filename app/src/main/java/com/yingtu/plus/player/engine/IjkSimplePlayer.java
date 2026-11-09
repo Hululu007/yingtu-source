@@ -3,6 +3,7 @@ package com.yingtu.plus.player.engine;
 import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
@@ -24,10 +25,14 @@ import androidx.media3.common.TrackGroup;
 import androidx.media3.common.Tracks;
 import androidx.media3.common.VideoSize;
 import androidx.media3.common.MimeTypes;
+import androidx.media3.common.text.Cue;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.mpvplayer.MpvHlsProxy;
+import androidx.media3.ui.SubtitleView;
 
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.player.cache.PlaybackDiskBufferStore;
 import com.yingtu.plus.player.exo.ExoUtil;
 import com.yingtu.plus.player.PlaybackResourceClassifier;
@@ -45,6 +50,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -120,6 +126,13 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
     private boolean prepared;
     private boolean newlyRenderedFirstFrame;
     private boolean renderedFirstFrameSeen;
+    /** IJK 内嵌字幕的目标视图（PlaybackActivity 把 PlayerView 的字幕层接进来）。 */
+    @Nullable
+    private SubtitleView subtitleView;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    /** Surface 销毁时是否在播 + 断点位置（IJK-Surface重播开时重建后从断点重播）。 */
+    private boolean surfaceDestroyedWhilePlaying;
+    private long surfaceDestroyedPosition;
     private float volume;
     private final com.yingtu.plus.player.PlaybackDiagnosticCollector diagnostics =
             new com.yingtu.plus.player.PlaybackDiagnosticCollector("ijk", "packaged-IjkMediaPlayer");
@@ -593,6 +606,7 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
         playbackState = Player.STATE_ENDED;
         loading = false;
         stopStateRefresh();
+        clearSubtitleCues();
         invalidateState();
     }
 
@@ -740,6 +754,56 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
 
     @Override
     public void onTimedText(IMediaPlayer mp, IjkTimedText text) {
+        // IJK内置字幕：原来是空实现，内嵌字幕直接丢弃；现在按开关把 timed text
+        // 转成 media3 Cue 发到 PlayerView 的字幕层（与 Exo 字幕同一层显示）。
+        if (!subtitleOn() || subtitleView == null) return;
+        String content = text == null ? null : text.getText();
+        if (content == null || content.isEmpty()) {
+            clearSubtitleCues();
+            return;
+        }
+        List<Cue> cues = Collections.singletonList(new Cue.Builder().setText(content).build());
+        SubtitleView view = subtitleView;
+        mainHandler.post(() -> {
+            try {
+                view.setCues(cues);
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    /** IJK 内嵌字幕的目标视图（PlaybackActivity 把 PlayerView 的字幕层接进来）。 */
+    public void setSubtitleView(@Nullable SubtitleView view) {
+        if (subtitleView == view) return;
+        clearSubtitleCues();
+        subtitleView = view;
+    }
+
+    private void clearSubtitleCues() {
+        SubtitleView view = subtitleView;
+        if (view == null) return;
+        mainHandler.post(() -> {
+            try {
+                view.setCues(Collections.emptyList());
+            } catch (Throwable ignored) {
+            }
+        });
+    }
+
+    private static boolean subtitleOn() {
+        try {
+            return Hawk.get(HawkConfig.IJK_SUBTITLE, true);
+        } catch (Throwable e) {
+            return true;
+        }
+    }
+
+    private static boolean surfaceReplayOn() {
+        try {
+            return Hawk.get(HawkConfig.IJK_SURFACE_REPLAY, false);
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     private void openCurrent() {
@@ -1064,6 +1128,11 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
         configureSoftDecodeOptions(appliedDecodeControlConfig.tuneMode());
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "dns_cache_clear", 1);
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "dns_cache_timeout", -1);
+        // 慢网防挂死：建连/读数停滞超过 30 秒就报错返回，不无限等（与 Exo/OkHttp 的 30 秒读超时看齐）；
+        // 只要还在慢慢出数据就不触发，几 K/s 的细流不会被误杀；报错后走 reconnect/播放器重试。
+        // 单位是微秒（FFmpeg 约定）：timeout 管协议层建连+读停滞，rw_timeout 管读写停滞。
+        ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "timeout", 30_000_000);
+        ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "rw_timeout", 30_000_000);
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "fflags", "fastseek");
         // SegmentBase MP4 relies on HTTP byte-range seeks for sidx/moof access.
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT, "http-detect-range-support", dash ? 1 : 0);
@@ -1182,6 +1251,16 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
         public void surfaceCreated(SurfaceHolder holder) {
             surface = holder.getSurface();
             bindVideoOutput();
+            // IJK-Surface重播（默认关）：Surface 重建后只重绑画面，不动播放状态；
+            // 开时若销毁时在播，从断点续播（seek + 恢复播放）。
+            if (surfaceDestroyedWhilePlaying && prepared && surfaceReplayOn()) {
+                surfaceDestroyedWhilePlaying = false;
+                long pos = surfaceDestroyedPosition;
+                if (pos > 0) seekTo(pos);
+                setPlayWhenReady(true);
+            } else {
+                surfaceDestroyedWhilePlaying = false;
+            }
         }
 
         @Override
@@ -1192,6 +1271,8 @@ class IjkSimplePlayer extends SimpleBasePlayer implements IMediaPlayer.OnPrepare
 
         @Override
         public void surfaceDestroyed(SurfaceHolder holder) {
+            surfaceDestroyedWhilePlaying = playWhenReady && prepared;
+            surfaceDestroyedPosition = surfaceDestroyedWhilePlaying ? position() : 0;
             surface = null;
             try {
                 ijk.setDisplay(null);

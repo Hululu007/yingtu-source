@@ -200,6 +200,8 @@ public class ExoUtil {
             @Nullable ExoCompressedAudioDirectPolicy compressedAudioDirectPolicy,
             @Nullable ExoAssSession assSession,
             @Nullable ExoSubtitleSession subtitleSession) {
+        // EXO播放器解码设置：硬件优先→强制硬解，软件优先→强制软解，自动→跟随调用方传进来的 decode。
+        decode = PlayerSetting.resolveExoDecode(decode);
         ExoFrameSchedulingPlayerSettings schedulingSettings =
                 frameSchedulingSettings == null
                         ? ExoFrameSchedulingPlayerSettings.capture(decode)
@@ -228,6 +230,7 @@ public class ExoUtil {
                         dolbyVisionPlaybackState, assSession))
                 .setVideoChangeFrameRateStrategy(ExoPerformanceSetting.getFrameRateStrategy());
         if (PlaybackPerformanceSetting.isHighBufferEnabled()) builder.setLoadControl(buildEnhancedLoadControl());
+        else if (PlayerSetting.getPlayBufferTimeSec() > 0) builder.setLoadControl(buildPlayBufferLoadControl());
         else ExoPlaybackDiagnostics.logDefaultLoadControl(PlaybackPerformanceSetting.getProfile(PlayerSetting.EXO));
         if (PlaybackPerformanceSetting.isBandwidthMeterEnabled()) {
             builder.setBandwidthMeter(automaticBandwidth
@@ -573,6 +576,21 @@ public class ExoUtil {
     private static EnhancedVideoProfile logEnhancedVideoProfile(EnhancedVideoProfile profile, DisplayProfile display, CodecVideoProfile codec) {
         if (SpiderDebug.isEnabled()) SpiderDebug.log("exo-enhance", "profile=%dx%d@%d networkBitrate=%d trackLimit=%d display=%dx%d codec=%s codecProfile=%s performancePoint=%s", profile.width(), profile.height(), profile.frameRate(), profile.bitrate(), profile.maxVideoBitrate(), display.width(), display.height(), codec.name(), codec.profileText(), codec.performancePoint());
         return profile;
+    }
+
+    /**
+     * 播放缓冲时间：只改“起播前要缓冲多久”（bufferForPlaybackMs 与重缓冲后的
+     * bufferForPlaybackAfterRebufferMs），最小/最大缓冲沿用 media3 默认值，
+     * 不碰增强缓冲那条路（高缓冲开时走 buildEnhancedLoadControl）。
+     */
+    private static LoadControl buildPlayBufferLoadControl() {
+        int ms = PlayerSetting.getPlayBufferTimeSec() * 1000;
+        return new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                        DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                        ms, ms)
+                .build();
     }
 
     private static LoadControl buildEnhancedLoadControl() {

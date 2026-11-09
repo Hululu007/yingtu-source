@@ -38,6 +38,17 @@ public final class ExoHttpPolicy {
     /** 读取超时：单次读不到数据就断，与主路 OkHttp.player() 的 30 秒看齐。 */
     public static final int READ_TIMEOUT_MS = 30 * 1000;
 
+    /** 缓冲超时设置（秒）：0=关闭，用上面两个默认值；1～20=连接与读取超时都取该秒数。 */
+    public static int getConnectTimeoutMs() {
+        int sec = com.yingtu.plus.setting.PlayerSetting.getBufferTimeoutSec();
+        return sec > 0 ? sec * 1000 : CONNECT_TIMEOUT_MS;
+    }
+
+    public static int getReadTimeoutMs() {
+        int sec = com.yingtu.plus.setting.PlayerSetting.getBufferTimeoutSec();
+        return sec > 0 ? sec * 1000 : READ_TIMEOUT_MS;
+    }
+
     /** 可重试加载（清单/密钥/分片 403、超时、5xx 等）最少重试次数：3 次，共 4 次尝试。 */
     public static final int MIN_LOADABLE_RETRY_COUNT = 3;
 
@@ -48,8 +59,8 @@ public final class ExoHttpPolicy {
     public static DefaultHttpDataSource.Factory newHttpDataSourceFactory(
             @Nullable Map<String, String> headers) {
         DefaultHttpDataSource.Factory factory = new DefaultHttpDataSource.Factory()
-                .setConnectTimeoutMs(CONNECT_TIMEOUT_MS)
-                .setReadTimeoutMs(READ_TIMEOUT_MS);
+                .setConnectTimeoutMs(getConnectTimeoutMs())
+                .setReadTimeoutMs(getReadTimeoutMs());
         if (headers == null || headers.isEmpty()) return factory;
         String userAgent = null;
         Map<String, String> extra = new HashMap<>();

@@ -64,8 +64,49 @@ public class PlayerSetting {
     }
 
     public static int getRender() { return Prefers.getInt("render", RENDER_SURFACE); }
-    public static int getScale() { return Prefers.getInt("scale", 1); }
-    public static void putScale(int s) { Prefers.putInt("scale", s); }
+    public static void putRender(int r) { Prefers.put("render", r == RENDER_TEXTURE ? RENDER_TEXTURE : RENDER_SURFACE); }
+    public static void putTunnel(boolean v) { Prefers.put("tunnel", v); }
+
+    // 画面缩放：设置页 6 项（适应/16:9/4:3/填充/原始/裁剪）→ media3 PlayerView 的 5 种
+    // ResizeMode。映射按 VideoActivity.setScale/PlaybackActivity.applyResizeMode 的旧口径：
+    // 旧 select_scale 数组就是 [原始,16:9,4:3,填充,裁剪] 直接当 resizeMode 用（0=FIT，
+    // 1=FIXED_WIDTH，2=FIXED_HEIGHT，3=FILL，4=ZOOM）。新 6 项只在前面加了“适应”，
+    // 与“原始”同为 FIT(0)：media3 没有“原始尺寸 1:1”模式，两者是同一生效逻辑的不同叫法；
+    // 16:9/4:3 对应 FIXED_WIDTH/FIXED_HEIGHT（按视频原始比例定宽/定高，不是强制拉成
+    // 16:9/4:3 画面——强制比例无核心）。默认 0=适应。
+    public static int getScale() { return sanitizeScale(Prefers.getInt("scale", 0)); }
+    public static void putScale(int s) { Prefers.putInt("scale", sanitizeScale(s)); }
+    public static int sanitizeScale(int s) { return s >= 0 && s <= 5 ? s : 0; }
+    public static int scaleToResizeMode(int scale) {
+        switch (sanitizeScale(scale)) {
+            case 1: return 1;
+            case 2: return 2;
+            case 3: return 3;
+            case 5: return 4;
+            default: return 0;
+        }
+    }
+
+    /** IJK解码：0=软解 1=硬解（与 PlayerEngine.SOFT/HARD 一致），默认硬解 */
+    public static int getIjkDecode() { int d = Prefers.getInt("ijk_decode", 1); return d == 0 ? 0 : 1; }
+    public static void putIjkDecode(int d) { Prefers.put("ijk_decode", d == 0 ? 0 : 1); }
+    /** EXO播放器解码：0=硬件优先 1=软件优先 2=自动（跟随当前解码切换值） */
+    public static int getExoDecode() { int d = Prefers.getInt("exo_decode", 0); return d >= 0 && d <= 2 ? d : 0; }
+    public static void putExoDecode(int d) { Prefers.put("exo_decode", d >= 0 && d <= 2 ? d : 0); }
+    public static int resolveExoDecode(int decode) {
+        switch (getExoDecode()) {
+            case 0: return 1;
+            case 1: return 0;
+            default: return decode;
+        }
+    }
+    /** 播放缓冲时间（秒）：0=默认，1/2/3/5/8=起播前缓冲时长 */
+    public static int getPlayBufferTimeSec() { int s = Prefers.getInt("play_buffer_time", 0); return s == 1 || s == 2 || s == 3 || s == 5 || s == 8 ? s : 0; }
+    public static void putPlayBufferTimeSec(int s) { Prefers.put("play_buffer_time", s); }
+    /** 缓冲超时时间（秒）：0=关闭（用默认 15/30 秒），1～20=连接与读取超时都取该秒数 */
+    public static int getBufferTimeoutSec() { int s = Prefers.getInt("buffer_timeout_sec", 0); return s >= 1 && s <= 20 ? s : 0; }
+    public static void putBufferTimeoutSec(int s) { Prefers.put("buffer_timeout_sec", s); }
+    public static void putBuffer(int bytes) { Prefers.put("buffer", Math.max(0, bytes)); }
     
     public static int getBuffer() { return Prefers.getInt("buffer", 1024 * 1024); }
     // 树里没有按内核分的缓冲存储（KernelPerformanceSetting 只有 mode），带参版直接返回全局值。

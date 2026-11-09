@@ -42,6 +42,7 @@ public class App extends Application {
     private static final Gson GSON = new Gson();
 
     /** 前台 Activity 跟踪（生命周期回调）。 */
+    private int startedActivities;
     private Activity currentActivity;
 
     /** TVBus 取流期间临时挂的包名/签名钩子（Core.getHook() 构造，用完即清）。 */
@@ -86,6 +87,11 @@ public class App extends Application {
         } catch (Throwable ignored) {
         }
         try {
+            // 安全DNS：按设置把 OkHttp 的解析换成对应 DoH（关闭时回系统 DNS）
+            com.yingtu.plus.util.SecureDns.apply();
+        } catch (Throwable ignored) {
+        }
+        try {
             // 加载视频源配置
             ApiConfig.get().init(this);
         } catch (Throwable ignored) {
@@ -105,7 +111,9 @@ public class App extends Application {
             // VodConfig.load 要从 Config 表的订阅 URL 联网拉，本树从没往那写过 URL，
             // 且本地 Server 全回 404，所以直接调 load 走不通，改走内存同步。
             // 必须在 BuiltinConfigs.load 之后，内置站才在同步的表里）
-            VodConfigSync.sync();
+            // 启动用 sync(false)：只同步站表，不预加载 jar（DexClassLoader +
+            // dex 优化 + YouTube 探活联网冷启动要几秒，第一次用蜘蛛时按需加载）。
+            VodConfigSync.sync(false);
         } catch (Throwable ignored) {
         }
         try {
@@ -128,11 +136,34 @@ public class App extends Application {
                 }
 
                 @Override public void onActivityCreated(@androidx.annotation.NonNull Activity activity, @Nullable Bundle savedInstanceState) {}
-                @Override public void onActivityStarted(@androidx.annotation.NonNull Activity activity) {}
-                @Override public void onActivityStopped(@androidx.annotation.NonNull Activity activity) {}
+                @Override public void onActivityStarted(@androidx.annotation.NonNull Activity activity) {
+                    startedActivities++;
+                }
+                @Override public void onActivityStopped(@androidx.annotation.NonNull Activity activity) {
+                    if (startedActivities > 0) startedActivities--;
+                    // 切到后台（没有任何 Activity 在前台）且自清播放缓存开时，清播放缓存
+                    if (startedActivities == 0) {
+                        boolean autoClear = true;
+                        try {
+                            autoClear = Hawk.get(HawkConfig.AUTO_CLEAR_PLAY_CACHE, true);
+                        } catch (Throwable ignored) {
+                        }
+                        if (autoClear) {
+                            try {
+                                com.yingtu.plus.util.CacheCleaner.clearPlayCache(App.this);
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                    }
+                }
                 @Override public void onActivitySaveInstanceState(@androidx.annotation.NonNull Activity activity, @Nullable Bundle savedInstanceState) {}
                 @Override public void onActivityDestroyed(@androidx.annotation.NonNull Activity activity) {}
             });
+        } catch (Throwable ignored) {
+        }
+        try {
+            // 源数据缓存后台刷新：按设置的间隔定时重取已缓存的条目
+            com.yingtu.plus.util.VodResultCache.scheduleRefresh();
         } catch (Throwable ignored) {
         }
         crashLogStep("onCreate end");

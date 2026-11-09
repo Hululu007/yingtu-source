@@ -20,6 +20,7 @@ import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.BuiltinLiveSources;
 import com.yingtu.plus.api.SiteApi;
@@ -27,6 +28,8 @@ import com.yingtu.plus.base.BaseActivity;
 import com.yingtu.plus.bean.LiveChannel;
 import com.yingtu.plus.bean.LiveGroup;
 import com.yingtu.plus.ui.adapter.LiveChannelAdapter;
+import com.yingtu.plus.util.HawkConfig;
+import com.yingtu.plus.util.SiteFilter;
 import com.yingtu.plus.ui.adapter.LiveGroupAdapter;
 import com.yingtu.plus.util.OkGo;
 
@@ -146,6 +149,7 @@ public class LiveActivity extends BaseActivity {
         rvChannel.setLayoutManager(new LinearLayoutManager(this));
         channelAdapter = new LiveChannelAdapter();
         channelAdapter.setOnChannelClick(this::playChannel);
+        channelAdapter.setOnChannelLongClick(this::playChannelDirect);
         rvChannel.setAdapter(channelAdapter);
 
         sources = BuiltinLiveSources.getEffectiveSources();
@@ -231,6 +235,14 @@ public class LiveActivity extends BaseActivity {
         channelAdapter.submit(new ArrayList<>());
         progress.setVisibility(View.VISIBLE);
         tvEmpty.setVisibility(View.GONE);
+        // 站源禁用-直播接口（设置 → 首页和搜索）：远程直播源被禁用时不加载
+        if (source.id != null
+                && (source.id.startsWith("inject_live") || source.id.startsWith("config_") || source.id.startsWith("repo_"))
+                && SiteFilter.isDisabled(HawkConfig.DISABLE_LIVE)) {
+            progress.setVisibility(View.GONE);
+            showEmpty("直播接口已在设置里禁用");
+            return;
+        }
         if (source.protocol == BuiltinLiveSources.Protocol.PINGTAI) {
             BuiltinLiveSources.loadPlatforms(source, new BuiltinLiveSources.OnPlatforms() {
                 @Override
@@ -502,6 +514,23 @@ public class LiveActivity extends BaseActivity {
     }
 
     private void playChannel(LiveChannel channel) {
+        // 直播短按转点播（设置 → 更多设置）：开时点频道按台名进搜索页找点播（长按始终直接换台）
+        boolean toVod = false;
+        try {
+            toVod = Hawk.get(HawkConfig.LIVE_TO_VOD, false);
+        } catch (Throwable ignored) {
+        }
+        if (toVod && channel.name != null && !channel.name.isEmpty()) {
+            Intent i = new Intent(this, SearchActivity.class);
+            i.putExtra("keyword", channel.name);
+            startActivity(i);
+            return;
+        }
+        playChannelDirect(channel);
+    }
+
+    /** 直接换台（短按转点播关时走这里，长按始终走这里）。 */
+    private void playChannelDirect(LiveChannel channel) {
         if (channel.urls.isEmpty()) return;
         String first = channel.currentUrl();
         if (first != null && first.startsWith(BuiltinLiveSources.SPIDER_MARK_PREFIX)) {

@@ -152,6 +152,8 @@ import com.yingtu.plus.ui.dialog.SubtitleDialog;
 import com.yingtu.plus.ui.dialog.TitleDialog;
 import com.yingtu.plus.ui.dialog.TrackDialog;
 import com.yingtu.plus.ui.dialog.VideoContentDialog;
+import com.orhanobut.hawk.Hawk;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.utils.Clock;
 import com.yingtu.plus.utils.EpisodeTitleCompact;
 import com.yingtu.plus.utils.FileChooser;
@@ -652,6 +654,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.audioLyrics.setAudioStageMode(true);
         mBinding.audioLyrics.setSeekListener(this::onAudioLyricsSeek);
         mBinding.audioLyrics.setSuppressed(true);
+        // 歌词转换显示模式（设置 → 更多设置）：0=单行 1=双行交替 2=关闭
+        try {
+            int lyricsMode = Hawk.get(HawkConfig.LYRICS_MODE, 1);
+            mBinding.lyrics.setDisplayMode(lyricsMode);
+            mBinding.audioLyrics.setDisplayMode(lyricsMode);
+        } catch (Throwable ignored) {
+        }
         if (PlayerSetting.isImmersiveAudioMode()) ensureImmersiveAudioControllers();
         mR1 = this::hideControl;
         mR2 = this::setTraffic;
@@ -1920,6 +1929,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     private void onCast() {
+        // 允许DLNA投屏（设置 → 更多设置）：关时不打开投屏
+        try {
+            if (!Hawk.get(HawkConfig.DLNA_ALLOW, false)) {
+                Notify.show("投屏已在设置里关闭");
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         if (mHistory == null || TextUtils.isEmpty(mHistory.getVodId()) || service() == null || player().isEmpty() || TextUtils.isEmpty(player().getUrl())) {
             Notify.show(R.string.cast_not_ready);
             return;
@@ -5839,6 +5856,11 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         player().reset();
         player().stop();
         showError(msg);
+        // 播放错误时自动下集（设置 → 更多设置）：开时播下一集，没有下一集时静默停在错误页
+        try {
+            if (Hawk.get(HawkConfig.AUTO_NEXT_ON_ERROR, false)) checkNext(false);
+        } catch (Throwable ignored) {
+        }
         startFlow();
     }
 
@@ -6507,6 +6529,13 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
+        // 自动悬浮（设置 → 播放设置）：关时切后台不自动进画中画（系统手势主动进画中画不受影响）
+        boolean autoFloat = false;
+        try {
+            autoFloat = Hawk.get(HawkConfig.AUTO_FLOAT, false);
+        } catch (Throwable ignored) {
+        }
+        if (!autoFloat) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             preparePiP("userLeaveHint");
         } else {

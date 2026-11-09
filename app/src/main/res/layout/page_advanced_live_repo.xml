@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="直播仓库"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="直播列表链接仓库，格式为“名称,列表链接”，每行一个。点一行可删除。"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <ListView
+        android:id="@+id/listRepo"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp" />
+
+    <EditText
+        android:id="@+id/etRepoLine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:hint="名称,列表链接"
+        android:inputType="textUri"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/btnAddRepo"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="加入仓库"
+        android:textColor="@color/text_primary" />
+</LinearLayout>

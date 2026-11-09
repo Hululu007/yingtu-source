@@ -60,7 +60,16 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         History item = data.get(position);
-        h.tvName.setText(item.vodName == null ? "" : item.vodName);
+        // 进度标识：名称=片名，唯一ID=vod_id（设置里选，默认名称）。
+        boolean byId = false;
+        try {
+            byId = com.orhanobut.hawk.Hawk.get(com.yingtu.plus.util.HawkConfig.PROGRESS_TAG, 0) == 1;
+        } catch (Throwable ignored) {
+        }
+        String title = byId
+                ? (item.vodId == null || item.vodId.isEmpty() ? item.vodName : item.vodId)
+                : item.vodName;
+        h.tvName.setText(title == null ? "" : title);
 
         StringBuilder sub = new StringBuilder();
         if (item.episodeName != null && !item.episodeName.isEmpty()) {

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="设备名称"
+        android:textColor="@color/text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/etDeviceName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="给这台设备起个名，同步时对方能认出来"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_hint"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/btnSaveDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="保存"
+        android:textColor="@color/text_primary" />
+</LinearLayout>

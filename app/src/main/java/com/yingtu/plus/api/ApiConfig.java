@@ -74,6 +74,13 @@ public class ApiConfig {
 
     public void init(Context context) {
         appContext = context.getApplicationContext();
+        // 接口缓存关时启动不读本地已缓存的订阅配置（每次现取，用户去站源管理页加载）。
+        boolean cacheEnabled = true;
+        try {
+            cacheEnabled = Hawk.get(HawkConfig.API_CACHE_ENABLED, true);
+        } catch (Throwable ignored) {
+        }
+        if (!cacheEnabled) return;
         // 启动时若本地已缓存订阅内容则直接解析
         String cached = Hawk.get(HawkConfig.API_CONFIG_CACHE, "");
         if (!TextUtils.isEmpty(cached)) {
@@ -191,6 +198,24 @@ public class ApiConfig {
             mHomeSource = sourceBeanList.get(lastKey);
         } else if (!sourceBeanList.isEmpty()) {
             mHomeSource = sourceBeanList.values().iterator().next();
+        }
+
+        // 自定站源 + 常驻站源：换订阅配置后仍保留（不存在的 key 才追加，不覆盖订阅自带的同名站）
+        applyCustomAndResidentSites();
+    }
+
+    /** 自定站源（用户手填/网址添加）与常驻站源在每次 parseConfig 后重新并入站表。 */
+    public void applyCustomAndResidentSites() {
+        try {
+            for (SourceBean sb : com.yingtu.plus.util.CustomSites.getCustomSites()) {
+                if (sb == null || TextUtils.isEmpty(sb.getKey())) continue;
+                if (!sourceBeanList.containsKey(sb.getKey())) sourceBeanList.put(sb.getKey(), sb);
+            }
+            for (SourceBean sb : com.yingtu.plus.util.CustomSites.getResidentSites()) {
+                if (sb == null || TextUtils.isEmpty(sb.getKey())) continue;
+                if (!sourceBeanList.containsKey(sb.getKey())) sourceBeanList.put(sb.getKey(), sb);
+            }
+        } catch (Throwable ignored) {
         }
     }
 

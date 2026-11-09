@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivBack"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:padding="9dp"
+                android:src="@drawable/ic_back"
+                app:tint="@color/text_primary" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="更多设置"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout style="@style/SettingCard">
+            <LinearLayout android:id="@+id/rowMoreLogo" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页LOGO" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreLogo" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreLogoRound" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页LOGO圆形化" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreLogoRound" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreTitleBar" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页标题栏一直显示" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreTitleBar" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreSwipe" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="首页滑动切屏" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreSwipe" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreAutoPlay" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="列表单片自动播放" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreAutoPlay" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreImmersive" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="沉浸式适配" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreImmersive" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreTapMulti" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="站源短按多仓选" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreTapMulti" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreLogoView" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="站源选择使用LOGO视图" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreLogoView" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreLiveToVod" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="直播短按转点播" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreLiveToVod" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreGlide" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="图片磁盘缓存策略" />
+                <TextView android:id="@+id/tvMoreGlide" style="@style/SettingValue" android:text="关闭" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreDetailTitle" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="详情视图1只显标题" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreDetailTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreDlna" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="允许DLNA投屏" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreDlna" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreCastLink2" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="投屏视频链接2" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreCastLink2" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreP2pExt" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="P2P播放使用外部IP" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreP2pExt" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreSrcErr" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="源错误消息显示" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreSrcErr" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreSrcMsg" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="源消息显示" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreSrcMsg" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMorePlayBuffer" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="播放缓冲时间" />
+                <TextView android:id="@+id/tvMorePlayBuffer" style="@style/SettingValue" android:text="默认" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreExoDecode" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="EXO播放器解码" />
+                <TextView android:id="@+id/tvMoreExoDecode" style="@style/SettingValue" android:text="硬件优先" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreEpisodeCol" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="详情列表最小列数" />
+                <TextView android:id="@+id/tvMoreEpisodeCol" style="@style/SettingValue" android:text="2 列" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreLyrics" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="歌词转换显示模式" />
+                <TextView android:id="@+id/tvMoreLyrics" style="@style/SettingValue" android:text="双行交替显示" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreHistoryLimit" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="观看历史记录数" />
+                <TextView android:id="@+id/tvMoreHistoryLimit" style="@style/SettingValue" android:text="300 | 30" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreTunnel" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="EXO隧道模式传输音频" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreTunnel" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreUa" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="默认UA" />
+                <TextView android:id="@+id/tvMoreUa" style="@style/SettingValue" android:text="未设置" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreStripAd" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="智能去除切片广告" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreStripAd" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+            <View style="@style/SettingSep" />
+            <LinearLayout android:id="@+id/rowMoreAutoNext" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="播放错误时自动下集" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreAutoNext" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreIjkSub" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="IJK内置字幕" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreIjkSub" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreIjkReplay" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="IJK-Surface重播" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreIjkReplay" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreCacheHome" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="源数据缓存-分类和推荐" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreCacheHome" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreCacheCate" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="源数据缓存-分类的列表" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreCacheCate" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreCacheDetail" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="源数据缓存-视频详情页" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreCacheDetail" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreCacheRefresh" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="后台刷新源数据缓存间隔时间" />
+                <TextView android:id="@+id/tvMoreCacheRefresh" style="@style/SettingValue" android:text="关闭" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreLogItems" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="日志输出项目" />
+                <TextView android:id="@+id/tvMoreLogItems" style="@style/SettingValue" android:text="已关闭" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreBoot" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="开机自动启动" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreBoot" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreFilterSingle" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="分类筛选单行视图" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreFilterSingle" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreHomeNav" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="分类筛选首页导航" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreHomeNav" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreLongPress" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="分类列表长按菜单" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreLongPress" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreGlobalSniffer" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="全局嗅探器" />
+                <androidx.appcompat.widget.SwitchCompat android:id="@+id/swMoreGlobalSniffer" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <View style="@style/SettingSep" />
+
+            <LinearLayout android:id="@+id/rowMoreSyncDevice" style="@style/SettingRow">
+                <TextView style="@style/SettingLabel" android:text="设备间同步历史播放信息" />
+                <TextView android:id="@+id/tvMoreSyncDevice" style="@style/SettingValue" android:text="局域网同步" />
+                <ImageView style="@style/SettingArrow" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:text="以下项因需第三方服务/用户自己服务器/几十 MB 第三方组件，未做：\n耳机按键换曲（音频向）、Frp连接方式（需自有 FRP 服务器）、\nWebDav数据中心（需 WebDAV 服务器）、XWalkView（需 Crosswalk 运行时）。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>

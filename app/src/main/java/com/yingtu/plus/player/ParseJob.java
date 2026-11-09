@@ -11,6 +11,7 @@ import com.github.catvod.utils.Json;
 import com.google.common.net.HttpHeaders;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
 import com.yingtu.plus.Constant;
 import com.yingtu.plus.api.config.VodConfig;
@@ -18,6 +19,7 @@ import com.yingtu.plus.api.loader.BaseLoader;
 import com.yingtu.plus.bean.Parse;
 import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.impl.ParseCallback;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.util.Sniffer;
 import com.yingtu.plus.utils.Task;
 import com.yingtu.plus.utils.UrlUtil;
@@ -204,8 +206,29 @@ public class ParseJob implements ParseCallback {
         }
         result.setHeader(parse.getHeader());
         if (result.getUrl().isEmpty()) onParseError();
+        // 解析跳过防盗（默认开）：解析结果不再走二次 WebView 嗅探校验，直接放行直链。
+        // 关时保持原流程：结果仍需解析就再建 WebView 嗅探一次。
+        else if (skipAntiLeech()) onParseSuccess(result.getHeader(), result.getUrl().v(), result.getJxFrom());
         else if (result.needParse()) startWeb(result.getHeader(), UrlUtil.convert(result.getUrl().v()));
         else onParseSuccess(result.getHeader(), result.getUrl().v(), result.getJxFrom());
+    }
+
+    /** 全局嗅探器：关时不建 WebView 嗅探，解析直接失败（不假装嗅探）。 */
+    private static boolean globalSnifferOn() {
+        try {
+            return Hawk.get(HawkConfig.GLOBAL_SNIFFER, true);
+        } catch (Throwable e) {
+            return true;
+        }
+    }
+
+    /** 解析跳过防盗：开时跳过解析结果的二次 WebView 嗅探校验。 */
+    private static boolean skipAntiLeech() {
+        try {
+            return Hawk.get(HawkConfig.SKIP_ANTI_LEECH, true);
+        } catch (Throwable e) {
+            return true;
+        }
     }
 
     private void startWeb(String key, Parse item, String webUrl) {
@@ -217,6 +240,20 @@ public class ParseJob implements ParseCallback {
     }
 
     private void startWeb(String key, String from, Map<String, String> headers, String url, String click) {
+        // 全局嗅探器关了就不建 WebView：直接失败，不假装嗅探。
+        if (!globalSnifferOn()) {
+            onParseError();
+            return;
+        }
+        // 嗅探View：只有系统自带 WebView 可用；XWalkView 需另下几十 MB 的
+        // Crosswalk 运行时，未接入——设置里选不到它，这里只是兜底。
+        try {
+            if (Hawk.get(HawkConfig.SNIFFER_VIEW, 0) != 0) {
+                onParseError();
+                return;
+            }
+        } catch (Throwable ignored) {
+        }
         if (TextUtils.isEmpty(url) || !WebViewUtil.support()) {
             onParseError();
             return;

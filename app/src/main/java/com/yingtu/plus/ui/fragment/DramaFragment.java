@@ -23,6 +23,7 @@ import com.yingtu.plus.drama.DramaSites;
 import com.yingtu.plus.drama.FanqieDramaClient;
 import com.yingtu.plus.ui.activity.DramaPlayerActivity;
 import com.yingtu.plus.ui.adapter.DramaFeedAdapter;
+import com.yingtu.plus.util.SourceMsgGate;
 import com.yingtu.plus.util.ZoneSites;
 
 import java.util.HashSet;
@@ -274,8 +275,7 @@ public class DramaFragment extends BaseLazyFragment {
                 if (first) {
                     tvDramaHint.setVisibility(View.VISIBLE);
                     tvDramaHint.setText("短剧加载失败，点“全部”重试");
-                    Toast.makeText(getContext(), "短剧加载失败：" + error.getMessage(),
-                            Toast.LENGTH_SHORT).show();
+                    SourceMsgGate.errorShort(getContext(), "短剧加载失败：" + error.getMessage());
                 }
                 return;
             }

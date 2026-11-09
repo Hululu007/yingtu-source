@@ -104,6 +104,16 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".ui.activity.MoreSettingsActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.AdvancedConfigActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".ui.activity.SourceActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />
@@ -217,6 +227,15 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 开机自动启动（设置 → 更多设置）：开关开时开机拉起首页；Android 10+ 可能被系统拦截。 -->
+        <receiver
+            android:name=".service.BootStartReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
     </application>

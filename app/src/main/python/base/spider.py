@@ -102,10 +102,10 @@ class BaseSpider:
     def json2str(s):
         return json.dumps(s, ensure_ascii=False)
 
-    def fetch(self, url, params=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects=True):
+    def fetch(self, url, params=None, cookies=None, headers=None, timeout=15, verify=True, stream=False, allow_redirects=True):
         return self._request('GET', url, params, None, None, cookies, headers, timeout, verify, allow_redirects)
 
-    def post(self, url, params=None, data=None, json=None, cookies=None, headers=None, timeout=5, verify=True, stream=False, allow_redirects=True):
+    def post(self, url, params=None, data=None, json=None, cookies=None, headers=None, timeout=15, verify=True, stream=False, allow_redirects=True):
         return self._request('POST', url, params, data, json, cookies, headers, timeout, verify, allow_redirects)
 
     def _request(self, method, url, params, data, payload, cookies, headers, timeout, verify, allow_redirects):
@@ -122,11 +122,17 @@ class BaseSpider:
             heads['Cookie'] = '; '.join(k + '=' + v for k, v in cookies.items())
         req = urllib.request.Request(url, data=body, headers=heads, method=method)
         opener = urllib.request.build_opener(NoRedirectHandler()) if not allow_redirects else urllib.request.build_opener()
-        try:
-            with opener.open(req, timeout=timeout) as rsp:
-                return _Response(rsp.status, dict(rsp.headers), rsp.read())
-        except urllib.error.HTTPError as e:
-            return _Response(e.code, dict(e.headers), e.read())
+        for attempt in range(2):
+            try:
+                with opener.open(req, timeout=timeout) as rsp:
+                    return _Response(rsp.status, dict(rsp.headers), rsp.read())
+            except urllib.error.HTTPError as e:
+                return _Response(e.code, dict(e.headers), e.read())
+            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError):
+                if attempt == 0:
+                    continue
+                return _Response(0, {}, b'')
+        return _Response(0, {}, b'')
 
     def html(self, content):
         return content

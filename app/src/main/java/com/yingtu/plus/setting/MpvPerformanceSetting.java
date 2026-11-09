@@ -45,7 +45,8 @@ public class MpvPerformanceSetting {
     public static int getSoftTuneMode() { return Prefers.getInt("perf_mpv_soft_tune", 0); }
     public static String getSoftTuneOptionText() { return "off"; }
     
-    public static int getRebufferMs() { return Prefers.getInt("perf_mpv_rebuffer_ms", 500); }
+    // 慢网：断流后续播前攒够 2 秒缓存再放（原来 0.5 秒，几 K/s 下 0.5 秒一放就断、反复卡顿）；好网只多等一点。
+    public static int getRebufferMs() { return Prefers.getInt("perf_mpv_rebuffer_ms", 2000); }
     
     public static int getHlsBitrateOption() { return Prefers.getInt("perf_mpv_hls_bitrate", 0); }
     public static String getHlsBitrateOptionText() { return "highest"; }

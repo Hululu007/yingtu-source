@@ -77,9 +77,20 @@ public final class VodConfigSync {
 
     /** 把当前 ApiConfig 的站表 + 五段同步进 VodConfig；五段先行，站表随后。 */
     public static void sync() {
+        sync(true);
+    }
+
+    /**
+     * 启动时调 sync(false)：只同步站表，不预加载 jar。
+     * jar 预加载（DexClassLoader 建类加载器 + Init + YouTube 探活联网）冷启动
+     * 要几秒，放主线程会拖慢启动；跳过后 jar 在第一次用蜘蛛时由
+     * JarLoader.getSpider() 按需加载（那路走后台线程），站表本身不受影响。
+     * 切源等其他调用点沿用 sync()（jar 已在内存里时 parseJar 直接返回，不耗时）。
+     */
+    public static void sync(boolean preloadJar) {
         try {
             syncMeta();
-            syncSites();
+            syncSites(preloadJar);
         } catch (Throwable e) {
             e.printStackTrace();
         }
@@ -152,7 +163,7 @@ public final class VodConfigSync {
     }
 
     /** 站表同步（J 批原样）：表空时什么都不做（不清空已有站表）。 */
-    private static void syncSites() {
+    private static void syncSites(boolean preloadJar) {
         try {
             List<SourceBean> sources = ApiConfig.get().getSourceBeanList();
             if (sources == null || sources.isEmpty()) return;
@@ -174,7 +185,7 @@ public final class VodConfigSync {
             }
             if (sites.isEmpty()) return;
             SourceBean home = ApiConfig.get().getHomeSource();
-            VodConfig.get().replaceSites(sites, spider, home == null ? "" : home.getKey());
+            VodConfig.get().replaceSites(sites, spider, home == null ? "" : home.getKey(), preloadJar);
         } catch (Throwable e) {
             e.printStackTrace();
         }

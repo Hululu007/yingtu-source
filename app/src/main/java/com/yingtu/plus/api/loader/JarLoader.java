@@ -102,18 +102,26 @@ public class JarLoader {
             Class<?> environment = loader.loadClass("com.github.catvod.parser.merge.j0.c");
             environment.getConstructor(okhttp3.OkHttpClient.class).newInstance(client);
             SpiderDebug.log("jar-loader", "network client injected key=%s", key);
-            try {
-                Class<?> provider = loader.loadClass("com.github.catvod.parser.merge.P1.P");
-                Object fetcher = provider.getMethod("b").invoke(null);
-                Object response = clz.getMethod("a", String.class).invoke(fetcher, "https://www.youtube.com/iframe_api");
-                String body = (String) response.getClass().getMethod("a").invoke(response);
-                SpiderDebug.log("youtube-iframe", "probe success chars=%s", body == null ? -1 : body.length());
-            } catch (Throwable e) {
-                Throwable cause = e;
-                while (cause.getCause() != null) cause = cause.getCause();
-                SpiderDebug.log("youtube-iframe", "probe failed error=%s", cause.getClass().getName() + ":" + cause.getMessage());
-                SpiderDebug.log("youtube-iframe", cause);
-            }
+            // YouTube 探活改后台线程：同步探 https://www.youtube.com/iframe_api
+            // 在慢网/无梯子时要等连接超时（数秒），只记日志、结果不用，放主线程
+            // 会拖慢启动与第一次蜘蛛初始化；探活本身不影响取流，只验客户端通不通。
+            final Class<?> probeClz = clz;
+            Thread probe = new Thread(() -> {
+                try {
+                    Class<?> provider = loader.loadClass("com.github.catvod.parser.merge.P1.P");
+                    Object fetcher = provider.getMethod("b").invoke(null);
+                    Object response = probeClz.getMethod("a", String.class).invoke(fetcher, "https://www.youtube.com/iframe_api");
+                    String body = (String) response.getClass().getMethod("a").invoke(response);
+                    SpiderDebug.log("youtube-iframe", "probe success chars=%s", body == null ? -1 : body.length());
+                } catch (Throwable e) {
+                    Throwable cause = e;
+                    while (cause.getCause() != null) cause = cause.getCause();
+                    SpiderDebug.log("youtube-iframe", "probe failed error=%s", cause.getClass().getName() + ":" + cause.getMessage());
+                    SpiderDebug.log("youtube-iframe", cause);
+                }
+            }, "yt-iframe-probe");
+            probe.setDaemon(true);
+            probe.start();
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Optional compatibility hook used only by jars which expose it.
         } catch (Throwable e) {

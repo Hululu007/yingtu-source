@@ -7,7 +7,7 @@
         <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowBackground">@drawable/bg_main_gradient</item>
+        <item name="android:windowBackground">@drawable/bg_beach</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:forceDarkAllowed">false</item>
     </style>

@@ -697,14 +697,14 @@ public final class SiteHealthChecker {
         Request head = new Request.Builder().url(url).head()
                 .header("User-Agent", "Mozilla/5.0").build();
         long t0 = System.currentTimeMillis();
-        try (Response r = OkGo.client().newCall(head).execute()) {
+        try (Response r = OkGo.clientPlain().newCall(head).execute()) {
             if (r.code() < 500) return System.currentTimeMillis() - t0;
         } catch (IOException e) {
             // 有些站禁 HEAD，往下走 GET。
         }
         Request get = new Request.Builder().url(url).header("Range", "bytes=0-0")
                 .header("User-Agent", "Mozilla/5.0").build();
-        try (Response r = OkGo.client().newCall(get).execute()) {
+        try (Response r = OkGo.clientPlain().newCall(get).execute()) {
             if (r.code() >= 500) throw new IOException("HTTP " + r.code());
             return System.currentTimeMillis() - t0;
         }
@@ -715,7 +715,7 @@ public final class SiteHealthChecker {
         try {
             Request req = new Request.Builder().url(base)
                     .header("User-Agent", "Mozilla/5.0").build();
-            try (Response r = OkGo.client().newCall(req).execute()) {
+            try (Response r = OkGo.clientPlain().newCall(req).execute()) {
                 String cfRay = r.header("cf-ray");
                 String server = r.header("server");
                 String body = "";
@@ -825,7 +825,7 @@ public final class SiteHealthChecker {
         Request req = new Request.Builder().url(url)
                 .header("Range", "bytes=0-" + bytes)
                 .header("User-Agent", "Mozilla/5.0").build();
-        try (Response r = OkGo.client().newCall(req).execute()) {
+        try (Response r = OkGo.clientPlain().newCall(req).execute()) {
             if (r.body() == null || r.code() >= 400) return null;
             return r.body().bytes();
         }
@@ -909,7 +909,7 @@ public final class SiteHealthChecker {
     private String fetchText(String url) throws IOException {
         Request req = new Request.Builder().url(url)
                 .header("User-Agent", "Mozilla/5.0").build();
-        try (Response r = OkGo.client().newCall(req).execute()) {
+        try (Response r = OkGo.clientPlain().newCall(req).execute()) {
             if (r.body() == null || r.code() >= 400) return null;
             return r.body().string();
         }

@@ -39,6 +39,8 @@ import com.yingtu.plus.utils.UrlUtil;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Path;
+import com.orhanobut.hawk.Hawk;
+import com.yingtu.plus.util.HawkConfig;
 
 import java.io.File;
 import java.util.Iterator;
@@ -94,7 +96,7 @@ public class MediaSourceFactory implements MediaSource.Factory {
 
     static synchronized Cache getCache() {
         if (cache != null) return cache;
-        File dir = Path.exoCache();
+        File dir = resolveCacheDir();
         DiskCacheCapacityPolicy.Decision decision = resolveCapacity(dir, FileUtil.getDirectorySize(dir));
         long capacityBytes = initialCapacityBytes(decision);
         Cache created = new SimpleCache(dir, new LeastRecentlyUsedCacheEvictor(capacityBytes), getDatabaseProvider());
@@ -114,6 +116,23 @@ public class MediaSourceFactory implements MediaSource.Factory {
         CACHE_CAPACITY_STATE.releaseSession();
         DiskCacheCapacityPolicy.Decision decision = refreshPendingCacheCapacity();
         if (isReliable(decision) && CACHE_CAPACITY_STATE.canReleasePending()) rebuildCacheLocked("last-player-release");
+    }
+
+    /** 播放缓存目录：默认内置存储（Path.exoCache()），选“外部存储”时用外置缓存目录下的 exo。 */
+    public static File resolveCacheDir() {
+        try {
+            if (Hawk.get(HawkConfig.CACHE_LOCATION, 0) == 1) {
+                File ext = App.get().getExternalCacheDir();
+                if (ext != null) return new File(ext, "exo");
+            }
+        } catch (Throwable ignored) {
+        }
+        return Path.exoCache();
+    }
+
+    /** 缓存位置切换后调用：释放旧目录缓存，下次取缓存时在新目录重建（旧目录文件保留）。 */
+    public static synchronized void resetCacheForLocation() {
+        releaseCacheLocked("cache-location-changed");
     }
 
     private static StandaloneDatabaseProvider getDatabaseProvider() {
@@ -276,7 +295,16 @@ public class MediaSourceFactory implements MediaSource.Factory {
 
     private DataSource.Factory getDataSourceFactory() {
         if (dataSourceFactory == null) {
-            DataSource.Factory cacheDataSource = getCacheDataSource(new DefaultDataSource.Factory(App.get(), getHttpDataSourceFactory()));
+            DataSource.Factory http = getHttpDataSourceFactory();
+            // 缓冲超时：主路 OkHttpDataSource 的连接/读取超时也跟设置走（关闭=默认 8/8 秒，
+            // ExoHttpPolicy 那路是 15/30 秒默认值，两路各按各的默认，只在用户选了秒数时统一改）。
+            int timeoutSec = PlayerSetting.getBufferTimeoutSec();
+            if (timeoutSec > 0 && http instanceof OkHttpDataSource.Factory okFactory) {
+                okFactory.setConnectTimeoutMs(timeoutSec * 1000).setReadTimeoutMs(timeoutSec * 1000);
+            }
+            // 智能去除切片广告：开关开时在清单层过滤广告分片（见 HlsAdFilterDataSource）。
+            if (HlsAdFilterDataSource.isEnabled()) http = new HlsAdFilterDataSource.Factory(http);
+            DataSource.Factory cacheDataSource = getCacheDataSource(new DefaultDataSource.Factory(App.get(), http));
             DataSource.Factory trackedDataSource = new PlaybackBytePositionDataSource.Factory(cacheDataSource);
             dataSourceFactory = new PriorityTaskDataSource.Factory(trackedDataSource, PLAYBACK_PRIORITY_MANAGER, C.PRIORITY_PLAYBACK, false);
         }

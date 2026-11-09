@@ -23,12 +23,22 @@ public class LiveChannelAdapter extends RecyclerView.Adapter<LiveChannelAdapter.
         void onClick(LiveChannel channel);
     }
 
+    /** 长按回调：始终直接换台（直播短按转点播开时，短按进搜索、长按换台）。 */
+    public interface OnChannelLongClick {
+        void onLongClick(LiveChannel channel);
+    }
+
     private final List<LiveChannel> data = new ArrayList<>();
     private int selected = -1;
     private OnChannelClick listener;
+    private OnChannelLongClick longListener;
 
     public void setOnChannelClick(OnChannelClick l) {
         this.listener = l;
+    }
+
+    public void setOnChannelLongClick(OnChannelLongClick l) {
+        this.longListener = l;
     }
 
     /** 高亮正在播放的频道（-1 为不亮）。 */
@@ -69,6 +79,13 @@ public class LiveChannelAdapter extends RecyclerView.Adapter<LiveChannelAdapter.
         }
         h.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onClick(c);
+        });
+        h.itemView.setOnLongClickListener(v -> {
+            if (longListener != null) {
+                longListener.onLongClick(c);
+                return true;
+            }
+            return false;
         });
     }
 

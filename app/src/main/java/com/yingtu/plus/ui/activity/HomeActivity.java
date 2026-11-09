@@ -2,6 +2,7 @@ package com.yingtu.plus.ui.activity;
 
 import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.graphics.Outline;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -10,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -21,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.yingtu.plus.BuildConfig;
 import com.yingtu.plus.R;
@@ -34,9 +37,13 @@ import com.yingtu.plus.ui.fragment.DramaFragment;
 import com.yingtu.plus.ui.fragment.FavVodFragment;
 import com.yingtu.plus.ui.fragment.HomeMainFragment;
 import com.yingtu.plus.ui.fragment.MidnightFragment;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.util.OkGo;
+import com.yingtu.plus.util.SiteFilter;
+import com.yingtu.plus.util.SourceMsgGate;
 import com.yingtu.plus.utils.ResUtil;
 import com.yingtu.plus.util.ZoneSites;
+import com.orhanobut.hawk.Hawk;
 import com.google.android.material.chip.Chip;
 
 import java.util.ArrayList;
@@ -44,11 +51,13 @@ import java.util.List;
 
 /**
  * 首页外壳。顶栏：头像 + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
- * 顶栏下方不再常驻区域 Tab 行；区域导航（影视 / 短剧 / 直播 / 午夜 / 文件，横向
- * 胶囊 Tab，图标在上文字在下，点 Tab 切区并收起抽屉）挪进左侧边栏抽屉头部，
- * 再下方是内容区（全屏，底部导航已删）。六个工具行（快搜 / 收藏 / 应用 / 网盘 /
- * 推送 / 节目单）收进左侧边栏（第十批，标准模态抽屉）：顶栏左端头像开栏、左缘向右
- * 划入，点遮罩或左滑收起，不自动收回；点行先关栏再动作。
+ * 两种首页布局可切（设置 → 首页和搜索 → 首页布局，Hawk HOME_LAYOUT，返回即生效不用重启）：
+ * ①侧边栏（默认）：区域导航（影视 / 短剧 / 直播 / 午夜 / 文件，横向胶囊 Tab，
+ * 图标在上文字在下）挪进左侧边栏抽屉头部，其下是六个工具行（快搜 / 收藏 / 应用 /
+ * 网盘 / 推送 / 节目单）；顶栏左端头像开栏、左缘向右划入，点遮罩或左滑收起。
+ * ②原版：顶栏下方常驻区域 Tab 行 + 八个功能按钮（历史 / 直播 / 文件 / 站源 /
+ * 搜索 / 推送 / 放映 / 设置，照旧版“影图 - 本地”首页），抽屉禁用，点头像开站源弹窗。
+ * 两套 Tab 各绑各的点击，都走 onNavGo() 同一切区逻辑；内容区（全屏，底部导航已删）。
  * 点击标题弹出站源选择小窗（带搜索 + 分类筛选）。
  * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
  * 影视区只列用户自己导入的站：内置站（午夜区、短剧区的内置配置站）由
@@ -97,6 +106,13 @@ public class HomeActivity extends BaseActivity {
     private TextView tvTabMovie, tvTabDrama, tvTabLive, tvTabMidnight, tvTabFile;
     private ImageView ivTabMovie, ivTabDrama, ivTabLive, ivTabMidnight, ivTabFile;
     private boolean sidebarOpen = false;
+    // 原版布局（设置 → 首页布局 → 原版）：顶栏下常驻的区域 Tab 行 + 八个功能按钮，
+    // 与侧边栏那套 Tab 各绑各的点击，都走 onNavGo() 同一切区逻辑。
+    private View classicContainer;
+    private View edgeZoneView;
+    private View tabMovieRowC, tabDramaRowC, tabLiveRowC, tabMidnightRowC, tabFileRowC;
+    private TextView tvTabMovieC, tvTabDramaC, tvTabLiveC, tvTabMidnightC, tvTabFileC;
+    private ImageView ivTabMovieC, ivTabDramaC, ivTabLiveC, ivTabMidnightC, ivTabFileC;
     private static final int SIDEBAR_WIDTH_DP = 304;
     private static final int EDGE_SWIPE_MIN_DX_DP = 40;
     private float edgeDownX;
@@ -114,6 +130,7 @@ public class HomeActivity extends BaseActivity {
 
     private int currentNav = NAV_MOVIE;
     private boolean showingFav = false;
+    private RecyclerView rvSourceGrid;
 
     @Override
     protected int getLayoutId() {
@@ -127,18 +144,34 @@ public class HomeActivity extends BaseActivity {
         try {
             // 应用自定义壁纸
             applyCustomWallpaper();
+            applyLogo();
             tvTitle = find(R.id.tvTitle);
 
-            // 顶栏：标题点开站源弹窗，左端头像点开左侧栏；搜索框进搜索页；右上角五个图标入口
+            // 顶栏：标题点开站源弹窗；左端头像在侧边栏模式下开左侧栏，
+            // 原版模式下抽屉禁用，点头像改为开站源弹窗（与标题同路）。
             tvTitle.setOnClickListener(v -> openSourcePopup());
-            find(R.id.ivLogo).setOnClickListener(v -> openSidebar());
+            find(R.id.ivLogo).setOnClickListener(v -> {
+                if (isClassicLayout()) openSourcePopup();
+                else openSidebar();
+            });
             find(R.id.tvSearchBox).setOnClickListener(v ->
                     startActivity(new Intent(this, SearchActivity.class)));
             find(R.id.ivHistory).setOnClickListener(v ->
                     startActivity(new Intent(this, HistoryActivity.class)));
             find(R.id.ivFav).setOnClickListener(v -> showFav());
-            find(R.id.ivCast).setOnClickListener(v ->
-                    CastDialog.create().show(this));
+            find(R.id.ivCast).setOnClickListener(v -> {
+                // 允许DLNA投屏（设置 → 更多设置）：关时不打开投屏
+                boolean allow = false;
+                try {
+                    allow = Hawk.get(HawkConfig.DLNA_ALLOW, false);
+                } catch (Throwable ignored) {
+                }
+                if (!allow) {
+                    Toast.makeText(this, "投屏已在设置里关闭", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                CastDialog.create().show(this);
+            });
             find(R.id.ivWeb).setOnClickListener(v -> {
                 // 网页首页默认进内置示例主页：WebHomeActivity 没带 KEY_URL 会弹
                 // “首页地址为空”并直接 finish，之前这里一个参数都没带。
@@ -152,6 +185,8 @@ public class HomeActivity extends BaseActivity {
                     startActivity(new Intent(this, SettingActivity.class)));
 
             setupSidebar();
+            setupClassic();
+            applyLayout();
             // 各区启动站：设置里按区设好的启动站，冷启动时写进各区当前站。
             ZoneSites.applyStartupSites();
             showFragment(NAV_MOVIE);
@@ -163,7 +198,7 @@ public class HomeActivity extends BaseActivity {
             e.printStackTrace();
             com.yingtu.plus.App.logCaught(e);
             try {
-                Toast.makeText(this, "首页加载失败，请重启应用", Toast.LENGTH_LONG).show();
+                SourceMsgGate.error(this, "首页加载失败，请重启应用");
             } catch (Throwable ignored) {}
         }
     }
@@ -176,6 +211,9 @@ public class HomeActivity extends BaseActivity {
         int navTab = intent.getIntExtra(EXTRA_NAV_TAB, -1);
         if (navTab == NAV_MOVIE || navTab == NAV_DRAMA || navTab == NAV_MIDNIGHT) {
             showFragment(navTab);
+        } else if (navTab == NAV_LIVE || navTab == NAV_FILE) {
+            // 默认启动=直播/文件：直接进对应独立页
+            onNavGo(navTab);
         }
     }
 
@@ -263,6 +301,7 @@ public class HomeActivity extends BaseActivity {
         if (tabFileRow != null) tabFileRow.setOnClickListener(v -> onNavGo(NAV_FILE));
 
         View edgeZone = find(R.id.edgeSwipeZone);
+        edgeZoneView = edgeZone;
         if (edgeZone != null) {
             final int minDx = ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP);
             edgeZone.setOnTouchListener((v, e) -> {
@@ -292,9 +331,85 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
+    /** 当前是不是原版布局（Hawk HOME_LAYOUT，默认 0=侧边栏）。 */
+    private boolean isClassicLayout() {
+        try {
+            return Hawk.get(HawkConfig.HOME_LAYOUT, HawkConfig.HOME_LAYOUT_SIDEBAR)
+                    == HawkConfig.HOME_LAYOUT_CLASSIC;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    /** 原版布局接线：顶栏下常驻的区域 Tab 行 + 八个功能按钮。
+     * Tab 与侧边栏那套各绑各的点击，都走 onNavGo() 同一切区逻辑；
+     * 八个按钮照旧版首页：历史 / 直播 / 文件 / 站源 / 搜索 / 推送 / 放映 / 设置。 */
+    private void setupClassic() {
+        classicContainer = find(R.id.classicContainer);
+        tabMovieRowC = find(R.id.tabMovieC);
+        tabDramaRowC = find(R.id.tabDramaC);
+        tabLiveRowC = find(R.id.tabLiveC);
+        tabMidnightRowC = find(R.id.tabMidnightC);
+        tabFileRowC = find(R.id.tabFileC);
+        tvTabMovieC = find(R.id.tvTabMovieC);
+        tvTabDramaC = find(R.id.tvTabDramaC);
+        tvTabLiveC = find(R.id.tvTabLiveC);
+        tvTabMidnightC = find(R.id.tvTabMidnightC);
+        tvTabFileC = find(R.id.tvTabFileC);
+        ivTabMovieC = find(R.id.ivTabMovieC);
+        ivTabDramaC = find(R.id.ivTabDramaC);
+        ivTabLiveC = find(R.id.ivTabLiveC);
+        ivTabMidnightC = find(R.id.ivTabMidnightC);
+        ivTabFileC = find(R.id.ivTabFileC);
+        if (tabMovieRowC != null) tabMovieRowC.setOnClickListener(v -> onNavGo(NAV_MOVIE));
+        if (tabDramaRowC != null) tabDramaRowC.setOnClickListener(v -> onNavGo(NAV_DRAMA));
+        if (tabLiveRowC != null) tabLiveRowC.setOnClickListener(v -> onNavGo(NAV_LIVE));
+        if (tabMidnightRowC != null) tabMidnightRowC.setOnClickListener(v -> onNavGo(NAV_MIDNIGHT));
+        if (tabFileRowC != null) tabFileRowC.setOnClickListener(v -> onNavGo(NAV_FILE));
+
+        View btnHistory = find(R.id.btnClassicHistory);
+        if (btnHistory != null) btnHistory.setOnClickListener(v ->
+                startActivity(new Intent(this, HistoryActivity.class)));
+        View btnLive = find(R.id.btnClassicLive);
+        if (btnLive != null) btnLive.setOnClickListener(v -> onNavGo(NAV_LIVE));
+        View btnFile = find(R.id.btnClassicFile);
+        if (btnFile != null) btnFile.setOnClickListener(v -> onNavGo(NAV_FILE));
+        View btnSource = find(R.id.btnClassicSource);
+        if (btnSource != null) btnSource.setOnClickListener(v ->
+                startActivity(new Intent(this, SourceActivity.class)));
+        View btnSearch = find(R.id.btnClassicSearch);
+        if (btnSearch != null) btnSearch.setOnClickListener(v ->
+                startActivity(new Intent(this, SearchActivity.class)));
+        View btnPush = find(R.id.btnClassicPush);
+        if (btnPush != null) btnPush.setOnClickListener(v -> onNavGo(NAV_PUSH));
+        View btnCast = find(R.id.btnClassicCast);
+        if (btnCast != null) btnCast.setOnClickListener(v ->
+                CastDialog.create().show(this));
+        View btnSetting = find(R.id.btnClassicSetting);
+        if (btnSetting != null) btnSetting.setOnClickListener(v ->
+                startActivity(new Intent(this, SettingActivity.class)));
+    }
+
+    /** 按当前布局切换首页形态，设置里改完返回首页时 onResume() 里调这里立即生效，不用重启。
+     * 原版：显示顶栏下常驻 Tab + 按钮区，收起并禁用抽屉（左缘划入区藏掉）；
+     * 侧边栏：藏掉原版顶区，恢复左缘划入区。 */
+    private void applyLayout() {
+        boolean classic = isClassicLayout();
+        if (classicContainer != null) {
+            classicContainer.setVisibility(classic ? View.VISIBLE : View.GONE);
+        }
+        if (classic && sidebarOpen) closeSidebar();
+        if (edgeZoneView != null) {
+            edgeZoneView.setVisibility(classic ? View.GONE : View.VISIBLE);
+        }
+        if (classic) updateTabSelected(currentNav);
+    }
+
     /** 侧边栏滑出：遮罩露出来，面板从左边缘滑进来；开栏时把抽屉头部 Tab 行的高亮
-     * 刷成当前区（从直播/文件独立页返回后，高亮仍是回来前所在的区）。 */
+     * 刷成当前区（从直播/文件独立页返回后，高亮仍是回来前所在的区）。
+     * 原版模式下抽屉禁用，直接返回。 */
     private void openSidebar() {
+        if (isClassicLayout()) return;
         if (sidebarOpen) return;
         if (sidebarPanel == null || sidebarScrim == null) return;
         sidebarOpen = true;
@@ -358,7 +473,8 @@ public class HomeActivity extends BaseActivity {
     }
 
     /** 区域 Tab 行当前区高亮：选中 Tab 用胶囊底 + 白字白图标，其余常规色；
-     * 直播/文件是独立页，点后不在 Tab 行标当前（切走后 Tab 行仍按内容区当前区标）。 */
+     * 直播/文件是独立页，点后不在 Tab 行标当前（切走后 Tab 行仍按内容区当前区标）。
+     * 两套 Tab（侧边栏抽屉头部 + 原版顶栏下）一起刷，藏着的那套刷了也不碍事。 */
     private void updateTabSelected(int navId) {
         if (tvTabMovie == null) return;
         setTabRow(tabMovieRow, tvTabMovie, ivTabMovie, navId == NAV_MOVIE);
@@ -366,6 +482,11 @@ public class HomeActivity extends BaseActivity {
         setTabRow(tabLiveRow, tvTabLive, ivTabLive, false);
         setTabRow(tabMidnightRow, tvTabMidnight, ivTabMidnight, navId == NAV_MIDNIGHT);
         setTabRow(tabFileRow, tvTabFile, ivTabFile, false);
+        setTabRow(tabMovieRowC, tvTabMovieC, ivTabMovieC, navId == NAV_MOVIE);
+        setTabRow(tabDramaRowC, tvTabDramaC, ivTabDramaC, navId == NAV_DRAMA);
+        setTabRow(tabLiveRowC, tvTabLiveC, ivTabLiveC, false);
+        setTabRow(tabMidnightRowC, tvTabMidnightC, ivTabMidnightC, navId == NAV_MIDNIGHT);
+        setTabRow(tabFileRowC, tvTabFileC, ivTabFileC, false);
     }
 
     private void setTabRow(View row, TextView tv, ImageView iv, boolean selected) {
@@ -408,7 +529,7 @@ public class HomeActivity extends BaseActivity {
             e.printStackTrace();
             com.yingtu.plus.App.logCaught(e);
             try {
-                Toast.makeText(this, "页面切换失败，请重启应用", Toast.LENGTH_LONG).show();
+                SourceMsgGate.error(this, "页面切换失败，请重启应用");
             } catch (Throwable ignored) {}
         }
     }
@@ -428,7 +549,7 @@ public class HomeActivity extends BaseActivity {
                 .inflate(R.layout.dialog_source_picker, null);
 
         sourcePopup = new PopupWindow(popupView,
-                (int) (getResources().getDisplayMetrics().widthPixels * 0.68),
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.90),
                 ViewGroup.LayoutParams.WRAP_CONTENT, true);
         sourcePopup.setOutsideTouchable(true);
         sourcePopup.setBackgroundDrawable(null);
@@ -444,7 +565,8 @@ public class HomeActivity extends BaseActivity {
         btnPopupImport = popupView.findViewById(R.id.btnPopupImport);
 
         androidx.recyclerview.widget.RecyclerView rv = popupView.findViewById(R.id.rvSource);
-        rv.setLayoutManager(new GridLayoutManager(this, 2));
+        rvSourceGrid = rv;
+        rv.setLayoutManager(new GridLayoutManager(this, sourcePopupColumns()));
         sourceAdapter = new SourceGridAdapter();
         sourceAdapter.setOnSourceClick(this::onSourcePicked);
         rv.setAdapter(sourceAdapter);
@@ -515,7 +637,14 @@ public class HomeActivity extends BaseActivity {
         // 按当前所在区分区列站：午夜列午夜站、短剧列短剧站 + 番茄短剧、
         // 影视列用户自己导入的站（内置站不进影视区，老口径不动）。
         String zone = zoneOf(currentNav);
-        List<SourceBean> sources = ZoneSites.getZoneSites(zone);
+        List<SourceBean> sources = new ArrayList<>(ZoneSites.getZoneSites(zone));
+        // 站源置顶 / 站源禁用（设置 → 首页和搜索）：置顶的排前面，被禁用的来源不列
+        SiteFilter.sortPinnedFirst(sources);
+        SiteFilter.filterDisabled(sources);
+        // 首页选源列数（设置 → 首页和搜索）：打开时按当前设置重设列数
+        if (rvSourceGrid != null) {
+            rvSourceGrid.setLayoutManager(new GridLayoutManager(this, sourcePopupColumns()));
+        }
         if (currentNav == NAV_MOVIE) {
             sourceAdapter.setOnSourceClick(this::onSourcePicked);
             if (tvPopupTitle != null) tvPopupTitle.setText("站源选择");
@@ -550,7 +679,7 @@ public class HomeActivity extends BaseActivity {
             int screenW = content != null && content.getWidth() > 0
                     ? content.getWidth()
                     : getResources().getDisplayMetrics().widthPixels;
-            sourcePopup.setWidth((int) (screenW * 0.68));
+            sourcePopup.setWidth((int) (screenW * 0.90));
             sourcePopup.showAtLocation(find(android.R.id.content),
                     Gravity.TOP | Gravity.CENTER_HORIZONTAL,
                     0, 100);
@@ -629,7 +758,12 @@ public class HomeActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 设置里切了首页布局，回来立即生效（applyLayout 按 Hawk 当前值刷形态，不用重启）。
+        applyLayout();
         refreshTitle();
+        applyLogo();
+        // 标题栏一直显示开时回首页总显示顶栏；关时由内容区滑动控制
+        if (isTopBarAlwaysVisible()) setTopBarVisible(true);
     }
 
     @Override
@@ -645,24 +779,88 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    private void applyCustomWallpaper() {
-        // 包一层：Hawk 没起来时 getWallpaperUri 会抛异常，接住只丢壁纸，不闪退
-        android.net.Uri uri;
+    /** 首页LOGO（设置 → 更多设置）：显示/隐藏 + 圆形化（椭圆裁剪）。 */
+    private void applyLogo() {
+        View logo = find(R.id.ivLogo);
+        if (logo == null) return;
+        boolean show = true;
+        boolean round = true;
         try {
-            uri = com.yingtu.plus.util.WallpaperHelper.getWallpaperUri(this);
+            show = Hawk.get(HawkConfig.HOME_LOGO, true);
+            round = Hawk.get(HawkConfig.HOME_LOGO_ROUND, true);
         } catch (Throwable ignored) {
-            return;
         }
-        if (uri != null) {
-            try {
-                android.graphics.Bitmap bmp =
-                        android.graphics.BitmapFactory.decodeStream(
-                                getContentResolver().openInputStream(uri));
-                if (bmp != null) {
-                    getWindow().setBackgroundDrawable(
-                            new android.graphics.drawable.BitmapDrawable(bmp));
+        logo.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (round) {
+            logo.setClipToOutline(true);
+            logo.setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
                 }
-            } catch (Exception ignored) {}
+            });
+        } else {
+            logo.setClipToOutline(false);
+            logo.setOutlineProvider(null);
+        }
+    }
+
+    /** 首页选源列数（设置 → 首页和搜索）：1/2/3 列，默认 3 列。 */
+    private int sourcePopupColumns() {
+        try {
+            int c = Hawk.get(HawkConfig.HOME_SOURCE_COLUMNS, 3);
+            return c >= 1 && c <= 3 ? c : 3;
+        } catch (Throwable e) {
+            return 3;
+        }
+    }
+
+    /** 首页标题栏一直显示（设置 → 更多设置）：关时内容下滑隐藏顶栏、上滑恢复（HomeMainFragment 调）。 */
+    public void setTopBarVisible(boolean visible) {
+        View topBar = find(R.id.topBar);
+        if (topBar == null) return;
+        topBar.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    public boolean isTopBarAlwaysVisible() {
+        try {
+            return Hawk.get(HawkConfig.HOME_TITLE_BAR, true);
+        } catch (Throwable e) {
+            return true;
+        }
+    }
+
+    /** 首页滑动切屏（设置 → 更多设置）：内容区左右滑动按 影视→短剧→直播→午夜→文件 顺序切区。 */
+    public void swipeZone(boolean toLeft) {
+        boolean on = false;
+        try {
+            on = Hawk.get(HawkConfig.HOME_SWIPE_SWITCH, false);
+        } catch (Throwable ignored) {
+        }
+        if (!on) return;
+        int[] order = {NAV_MOVIE, NAV_DRAMA, NAV_LIVE, NAV_MIDNIGHT, NAV_FILE};
+        int idx = 0;
+        for (int i = 0; i < order.length; i++) {
+            if (order[i] == currentNav) {
+                idx = i;
+                break;
+            }
+        }
+        int next = toLeft ? (idx + 1) % order.length : (idx - 1 + order.length) % order.length;
+        onNavGo(order[next]);
+    }
+
+    private void applyCustomWallpaper() {
+        // 包一层：Hawk 没起来时读壁纸会抛异常，接住只丢壁纸，不闪退；
+        // 解码结果进程内缓存（启动页已解过就直接复用，不重复解码）。
+        try {
+            android.graphics.Bitmap bmp =
+                    com.yingtu.plus.util.WallpaperHelper.getWallpaperBitmap(this);
+            if (bmp != null) {
+                getWindow().setBackgroundDrawable(
+                        new android.graphics.drawable.BitmapDrawable(bmp));
+            }
+        } catch (Throwable ignored) {
         }
     }
 

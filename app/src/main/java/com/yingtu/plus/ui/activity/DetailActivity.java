@@ -37,7 +37,9 @@ import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation;
 import com.github.catvod.crawler.SpiderDebug;
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
@@ -258,6 +260,8 @@ Glide.with(this).load(ImgUtil.getUrl(info.pic))
 
 // 本片剧照：滚动区最下面一节（选集网格之后）。
 bindStills(info.stills);
+// 详情视图1只显标题 / 详情页样式（设置 → 更多设置 / 播放设置）
+applyDetailViewOptions();
 
 flagAdapter.submit(info.seriesFlags);
 updateQualityRow();
@@ -269,6 +273,32 @@ onFlagSelected(0);
 preloadDetailPlayback();
 
 loadRelated();
+}
+
+/** 详情视图1只显标题：只留标题行，隐藏简介与剧照区；详情页样式“简洁文字”：藏剧照与毛玻璃背景。 */
+private void applyDetailViewOptions() {
+boolean titleOnly = false;
+int style = 0;
+try {
+titleOnly = Hawk.get(HawkConfig.DETAIL_VIEW1_TITLE_ONLY, false);
+style = Hawk.get(HawkConfig.DETAIL_STYLE, 0);
+} catch (Throwable ignored) {
+}
+View stills = find(R.id.stillsSection);
+View desc = find(R.id.tvDesc);
+View bg = find(R.id.ivBg);
+if (titleOnly) {
+if (desc != null) desc.setVisibility(View.GONE);
+if (stills != null) stills.setVisibility(View.GONE);
+return;
+}
+if (desc != null) desc.setVisibility(View.VISIBLE);
+if (style == 1) {
+if (stills != null) stills.setVisibility(View.GONE);
+if (bg != null) bg.setVisibility(View.GONE);
+} else if (bg != null) {
+bg.setVisibility(View.VISIBLE);
+}
 }
 
 /** 剧照：滚动区最下面一节（选集网格之后）；无剧照时本节隐藏。 */
@@ -902,6 +932,13 @@ android.widget.Toast.LENGTH_SHORT).show();
 /** 推送（投屏）：把当前播出流的真地址推给局域网设备（CastDialog，DLNA）。
  * 没播出流时没有地址可推，先提示，不造一个假的推。 */
 private void castCurrent() {
+try {
+if (!Hawk.get(HawkConfig.DLNA_ALLOW, false)) {
+Toast.makeText(this, "投屏已在设置里关闭", Toast.LENGTH_SHORT).show();
+return;
+}
+} catch (Throwable ignored) {
+}
 if (TextUtils.isEmpty(currentPlayUrl)) {
 Toast.makeText(this, "请先点选集播放", Toast.LENGTH_SHORT).show();
 return;

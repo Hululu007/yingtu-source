@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tvBlurValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="虚化：0"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp" />
+
+    <SeekBar
+        android:id="@+id/sbBlur"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:max="25" />
+
+    <TextView
+        android:id="@+id/tvBrightValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="亮度：0"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp" />
+
+    <SeekBar
+        android:id="@+id/sbBright"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:max="200" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="虚化 0～25（越大越糊）；亮度 -100～100，0 为不变。下次启动壁纸生效。"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnSysWallpaper"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="系统壁纸" />
+
+        <Button
+            android:id="@+id/btnNetWallpaper"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="网络壁纸" />
+    </LinearLayout>
+</LinearLayout>

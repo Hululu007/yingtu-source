@@ -55,4 +55,32 @@ public final class WallpaperHelper {
     public static boolean hasCustomWallpaper(Context ctx) {
         return getWallpaperUri(ctx) != null;
     }
+
+    /** 解码后的壁纸进程内缓存：启动页与首页各调一次，同一张图只解一次。 */
+    private static android.graphics.Bitmap cachedBitmap;
+    private static String cachedKey;
+
+    /**
+     * 解码自定义壁纸并按当前虚化/亮度处理后返回；无自定义壁纸返回 null。
+     * 结果按（URI + 虚化 + 亮度）缓存，换图或改设置后自动重解。
+     */
+    public static android.graphics.Bitmap getWallpaperBitmap(Context ctx) {
+        Uri uri = getWallpaperUri(ctx);
+        if (uri == null) return null;
+        String key = uri.toString() + "|" + WallpaperFx.getBlur() + "|" + WallpaperFx.getBrightness();
+        if (key.equals(cachedKey) && cachedBitmap != null && !cachedBitmap.isRecycled()) {
+            return cachedBitmap;
+        }
+        android.graphics.Bitmap bmp = null;
+        try {
+            bmp = android.graphics.BitmapFactory.decodeStream(
+                    ctx.getContentResolver().openInputStream(uri));
+            if (bmp != null) bmp = WallpaperFx.applyCurrent(bmp);
+        } catch (Exception ignored) {
+            return null;
+        }
+        cachedBitmap = bmp;
+        cachedKey = key;
+        return bmp;
+    }
 }

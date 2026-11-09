@@ -334,7 +334,8 @@ public class PlayerManager implements ParseCallback {
             }
         };
         this.playerType = PlayerSetting.getPlayer();
-        this.engine = buildEngine(playerType, PlayerEngine.HARD);
+        this.engine = buildEngine(playerType,
+                playerType == PlayerSetting.IJK ? PlayerSetting.getIjkDecode() : PlayerEngine.HARD);
         this.player = engine.getPlayer();
     }
 
@@ -8116,13 +8117,15 @@ public class PlayerManager implements ParseCallback {
         if (!LocalProxyDebug.isConnectionRefused(e)) return false;
         if (++localProxyRetry > LOCAL_PROXY_MAX_RETRY) return false;
         int attempt = localProxyRetry;
-        if (SpiderDebug.isEnabled()) SpiderDebug.log("player", "local proxy retry schedule attempt=%d delay=%d spec=%s", attempt, LOCAL_PROXY_RETRY_DELAY_MS, debugSpec());
+        // 慢网退避：第 1 次 1 秒、第 2 次 2 秒，不固定间隔死磕。
+        long delayMs = LOCAL_PROXY_RETRY_DELAY_MS * attempt;
+        if (SpiderDebug.isEnabled()) SpiderDebug.log("player", "local proxy retry schedule attempt=%d delay=%d spec=%s", attempt, delayMs, debugSpec());
         App.removeCallbacks(runnable);
         App.post(() -> {
             if (spec == null || attempt != localProxyRetry) return;
             if (SpiderDebug.isEnabled()) SpiderDebug.log("player", "local proxy retry start attempt=%d spec=%s", attempt, debugSpec());
             setMediaItem();
-        }, LOCAL_PROXY_RETRY_DELAY_MS);
+        }, delayMs);
         return true;
     }
 

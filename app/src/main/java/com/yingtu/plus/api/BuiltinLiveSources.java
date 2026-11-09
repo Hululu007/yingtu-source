@@ -158,7 +158,30 @@ public class BuiltinLiveSources {
         result.addAll(visibleBuiltinSources());
         // 2. 远程 lives（配置里的真名 + url + type）与注入地址
         addRemoteSources(result);
+        // 3. 直播仓库（高级配置里用户自己加的“名称,列表链接”，按名/地址去重）
+        addRepoSources(result);
         return result;
+    }
+
+    /** 直播仓库：Hawk LIVE_REPO 每行“名称,列表链接”，并进生效源列表。 */
+    private static void addRepoSources(List<Source> result) {
+        List<String> lines;
+        try {
+            lines = com.orhanobut.hawk.Hawk.get(
+                    com.yingtu.plus.util.HawkConfig.LIVE_REPO, new ArrayList<String>());
+        } catch (Throwable e) {
+            return;
+        }
+        if (lines == null) return;
+        for (String line : lines) {
+            if (line == null) continue;
+            String[] parts = line.split(",", 2);
+            if (parts.length < 2) continue;
+            String name = parts[0].trim();
+            String url = parts[1].trim();
+            if (name.isEmpty() || url.isEmpty()) continue;
+            addRemoteSource(result, "repo_" + name, name, url);
+        }
     }
 
     /** 把订阅配置的 lives 与注入地址合并进列表（内置已在前，远程追加，去重，覆盖清单生效）。 */

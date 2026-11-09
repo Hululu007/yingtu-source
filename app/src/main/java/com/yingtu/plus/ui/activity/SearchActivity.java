@@ -65,8 +65,9 @@ public class SearchActivity extends BaseActivity {
         });
 
         RecyclerView rv = find(R.id.recyclerView);
-        rv.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new GridMovieAdapter();
+        // 搜索展示（设置 → 首页和搜索）：前半段决定搜索页形态，后半段决定聚搜页形态
+        com.yingtu.plus.util.SearchDisplay.applySearch(rv, adapter);
         adapter.setOnItemClick(movie -> {
             Intent i = new Intent(this, DetailActivity.class);
             i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
@@ -138,7 +139,8 @@ public class SearchActivity extends BaseActivity {
         set.add(keyword);
         set.addAll(getHistory());
         List<String> list = new ArrayList<>(set);
-        if (list.size() > 12) list = list.subList(0, 12);
+        int max = com.yingtu.plus.util.HistoryHelper.getSearchLimit();
+        if (list.size() > max) list = list.subList(0, max);
         Hawk.put(HawkConfig.SEARCH_HISTORY, list);
     }
 }

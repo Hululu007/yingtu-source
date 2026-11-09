@@ -24,6 +24,7 @@ import com.yingtu.plus.bean.Result;
 import com.yingtu.plus.player.PlayerManager;
 import com.yingtu.plus.player.engine.PlaySpec;
 import com.yingtu.plus.player.exo.ExoUtil;
+import com.yingtu.plus.setting.PlayerSetting;
 import com.yingtu.plus.service.PlaybackService;
 import com.yingtu.plus.ui.custom.CustomSeekView;
 
@@ -241,7 +242,7 @@ public abstract class PlaybackActivity extends BaseActivity implements ServiceCo
 
     protected void applyResizeMode(int resizeMode) {
         PlayerView exo = getExoView();
-        if (exo != null) exo.setResizeMode(resizeMode);
+        if (exo != null) exo.setResizeMode(PlayerSetting.scaleToResizeMode(resizeMode));
     }
 
     protected boolean seekTo(long deltaMs) {
@@ -270,6 +271,13 @@ public abstract class PlaybackActivity extends BaseActivity implements ServiceCo
         // 三路内核都没地方渲染画面。先建面再接播放器（和 webhtv attachSurface 同款顺序）。
         ExoUtil.setPlayerView(exo);
         exo.setPlayer(player);
+        // IJK 内嵌字幕：把 PlayerView 的字幕层交给 IJK 播放器，timed text 到时直接渲染到这层。
+        if (player instanceof com.yingtu.plus.player.engine.IjkSimplePlayer) {
+            try {
+                ((com.yingtu.plus.player.engine.IjkSimplePlayer) player).setSubtitleView(exo.getSubtitleView());
+            } catch (Throwable ignored) {
+            }
+        }
         if (player != null) {
             attachPlayerListener(player);
             onSurfaceAttached();

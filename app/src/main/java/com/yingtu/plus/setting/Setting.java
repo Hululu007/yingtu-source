@@ -23,6 +23,7 @@ public class Setting {
     public static boolean isCompactEpisodeTitle() { return Prefers.getBoolean("compact_episode_title", false); }
     public static void putCompactEpisodeTitle(boolean v) { Prefers.put("compact_episode_title", v); }
     public static String getUa() { return Prefers.getString("ua", ""); }
+    public static void putUa(String ua) { Prefers.put("ua", ua == null ? "" : ua.trim()); }
     public static boolean isAdblock() { return Prefers.getBoolean("adblock", false); }
     public static boolean isIncognito() { return Prefers.getBoolean("incognito", false); }
     public static boolean isPlaybackArtworkWall() { return Prefers.getBoolean("playback_artwork_wall", false); }

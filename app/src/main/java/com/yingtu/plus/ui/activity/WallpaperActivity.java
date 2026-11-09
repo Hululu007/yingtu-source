@@ -73,7 +73,7 @@ public class WallpaperActivity extends BaseActivity {
             ivWallpaper.setBackgroundResource(0);
         } else {
             ivWallpaper.setImageURI(null);
-            ivWallpaper.setBackgroundResource(R.drawable.bg_main_gradient);
+            ivWallpaper.setBackgroundResource(R.drawable.bg_beach);
         }
     }
 

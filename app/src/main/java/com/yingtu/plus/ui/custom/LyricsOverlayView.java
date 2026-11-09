@@ -40,6 +40,24 @@ public class LyricsOverlayView extends FrameLayout {
     private boolean audioStageMode;
     private boolean suppressed;
     private boolean playing;
+    /** 歌词转换显示模式：0=单行（只显当前行） 1=双行交替显示（当前行+下一行） 2=关闭（整块不显） */
+    private int displayMode = 1;
+
+    public void setDisplayMode(int mode) {
+        displayMode = mode >= 0 && mode <= 2 ? mode : 1;
+        applyDisplayMode();
+    }
+
+    public int getDisplayMode() {
+        return displayMode;
+    }
+
+    private void applyDisplayMode() {
+        nextView.setVisibility(displayMode == 0 ? GONE : VISIBLE);
+        if (displayMode == 2) setVisibility(GONE);
+        else if (!lines.isEmpty() && !suppressed) setVisibility(VISIBLE);
+    }
+
     private long basePositionMs;
     private long baseRealtimeMs;
     private float downX;
@@ -120,6 +138,10 @@ public class LyricsOverlayView extends FrameLayout {
             return;
         }
         if (suppressed) {
+            setVisibility(GONE);
+            return;
+        }
+        if (displayMode == 2) {
             setVisibility(GONE);
             return;
         }

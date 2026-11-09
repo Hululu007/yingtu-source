@@ -12,6 +12,7 @@ import java.io.PushbackInputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -225,12 +226,25 @@ public class WebServer {
         try {
             response = OkGo.client().newCall(builder.build()).execute();
             int code = response.code();
+            // 投屏链接2的 m3u8 改写（调用方带 m3u8=1）：清单里的相对分片地址改成
+            // 原站绝对地址，否则电视按代理地址解析分片会 404。只改写清单文本，
+            // 分片本身仍由电视直接向原站拉（与直链时一致，不回退）。
+            byte[] rewritten = null;
+            if ("1".equals(params.get("m3u8")) && response.body() != null) {
+                String ct = response.header("Content-Type", "");
+                if (ct.contains("mpegurl") || target.toLowerCase(Locale.US).contains(".m3u8")) {
+                    byte[] raw = response.body().bytes();
+                    rewritten = rewriteM3u8Body(new String(raw, StandardCharsets.UTF_8), target)
+                            .getBytes(StandardCharsets.UTF_8);
+                }
+            }
             writeStatus(out, code, response.message() == null ? "OK" : response.message());
 
-            // 复制上游响应头（移除 hop-by-hop）
+            // 复制上游响应头（移除 hop-by-hop；改写过的清单不沿用旧 Content-Length）
             Headers upstream = response.headers();
             for (String name : upstream.names()) {
                 if (isHopByHop(name)) continue;
+                if (rewritten != null && "Content-Length".equalsIgnoreCase(name)) continue;
                 for (String value : upstream.values(name)) {
                     out.write((name + ": " + value + "\r\n").getBytes(StandardCharsets.UTF_8));
                 }
@@ -241,6 +255,12 @@ public class WebServer {
             ResponseBody rb = response.body();
             if ("HEAD".equals(m) || rb == null) {
                 out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                return;
+            }
+            if (rewritten != null) {
+                out.write(("Content-Length: " + rewritten.length + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+                out.write(rewritten);
                 out.flush();
                 return;
             }
@@ -263,6 +283,33 @@ public class WebServer {
         } finally {
             if (response != null) response.close();
         }
+    }
+
+    /** m3u8 清单改写：# 开头的标签行与空行不动，相对地址的分片/密钥行按原清单地址解析成绝对地址。 */
+    private static String rewriteM3u8Body(String body, String baseUrl) {
+        if (body == null || body.isEmpty()) return body == null ? "" : body;
+        URI base;
+        try {
+            base = new URI(baseUrl);
+        } catch (Throwable e) {
+            return body;
+        }
+        StringBuilder out = new StringBuilder(body.length() + 64);
+        String[] lines = body.split("\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty() && !trimmed.startsWith("#")
+                    && !trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+                try {
+                    line = base.resolve(trimmed).toString();
+                } catch (Throwable ignored) {
+                }
+            }
+            out.append(line);
+            if (i < lines.length - 1) out.append('\n');
+        }
+        return out.toString();
     }
 
     /**

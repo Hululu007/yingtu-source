@@ -32,6 +32,16 @@
    "filterable": 1
   },
   {
+   "key": "ZakaMjv011",
+   "name": "🔞mjv011",
+   "type": 3,
+   "api": "csp_ZakaMjv011Amns",
+   "jar": "assets/jars/zakatv.jar;md5;1c87eeaefc985aa64b17eb87967c8557",
+   "searchable": 1,
+   "quickSearch": 1,
+   "filterable": 1
+  },
+  {
    "key": "ZakaSex8",
    "name": "🔞sex8┃视频",
    "type": 3,

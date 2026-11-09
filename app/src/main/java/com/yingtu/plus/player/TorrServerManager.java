@@ -12,7 +12,9 @@ package com.yingtu.plus.player;
 import android.net.Uri;
 
 import com.github.catvod.net.OkHttp;
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
+import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.utils.Download;
 import com.yingtu.plus.utils.Notify;
 
@@ -46,9 +48,31 @@ public class TorrServerManager {
 
     public static final int PORT = 8090;
     public static final String BASE_URL = "http://127.0.0.1:" + PORT;
-    // 健康检查：GET /echo，官方文档写明返回服务器版本；通了就说明服务已起好。
-    private static final String ECHO_URL = BASE_URL + "/echo";
-    private static final String TORRENTS_URL = BASE_URL + "/torrents";
+    // 健康检查：GET /echo，官方文档写明返回服务器版本；通了就说明服务已起好（地址走 baseUrl()，见下）。
+
+    /** P2P播放使用外部IP：开时用局域网 IP 作播放地址（电视/局域网设备也能直连），关时只用 127.0.0.1。 */
+    public static String baseUrl() {
+        try {
+            if (Hawk.get(HawkConfig.P2P_EXTERNAL_IP, false)) {
+                String ip = bindIp();
+                if (!"127.0.0.1".equals(ip)) return "http://" + ip + ":" + PORT;
+            }
+        } catch (Throwable ignored) {
+        }
+        return BASE_URL;
+    }
+
+    /** TorrServer 绑定的 IP：外部IP开时取本机局域网 IP（无局域网 IP 时回落 127.0.0.1），关时 127.0.0.1。 */
+    public static String bindIp() {
+        try {
+            if (Hawk.get(HawkConfig.P2P_EXTERNAL_IP, false)) {
+                String ip = com.github.catvod.utils.Util.getIp();
+                if (ip != null && !ip.isEmpty() && !"127.0.0.1".equals(ip)) return ip;
+            }
+        } catch (Throwable ignored) {
+        }
+        return "127.0.0.1";
+    }
 
     // 子进程启动最多等 20 秒；种子元数据/首字节探测各最多 15/30 秒，见下面常量。
     private static final long START_TIMEOUT_MS = 20000;
@@ -88,9 +112,9 @@ public class TorrServerManager {
     // 保证服务可用：已在跑就直接复用；否则先下二进制（仅首次）、再拉进程、等 /echo 通。
     // 调用方在取流线程上跑，本方法会阻塞；首次下载约几十 MB，耗时看网速，调用前由提取器先给用户提示。
     public synchronized String ensureStarted() throws Exception {
-        if (isRunning()) return BASE_URL;
+        if (isRunning()) return baseUrl();
         if (process != null && process.isAlive()) {
-            if (waitForEcho(START_TIMEOUT_MS)) return BASE_URL;
+            if (waitForEcho(START_TIMEOUT_MS)) return baseUrl();
             stopProcess();
         }
         ensureBinary();
@@ -100,11 +124,11 @@ public class TorrServerManager {
             stopProcess();
             throw new IOException("TorrServer 启动超时（20 秒内 /echo 不通）" + (tail.isEmpty() ? "" : "，日志尾部：" + tail));
         }
-        return BASE_URL;
+        return baseUrl();
     }
 
     public boolean isRunning() {
-        try (Response res = OkHttp.newCall(OkHttp.client(ECHO_PROBE_MS), ECHO_URL).execute()) {
+        try (Response res = OkHttp.newCall(OkHttp.client(ECHO_PROBE_MS), baseUrl() + "/echo").execute()) {
             return res.isSuccessful();
         } catch (Exception e) {
             return false;
@@ -168,7 +192,7 @@ public class TorrServerManager {
         command.add("--port");
         command.add(String.valueOf(PORT));
         command.add("--ip");
-        command.add("127.0.0.1");
+        command.add(bindIp());
         command.add("--path");
         command.add(dataDir.getAbsolutePath());
         ProcessBuilder builder = new ProcessBuilder(command);
@@ -237,7 +261,7 @@ public class TorrServerManager {
             body.put("link", magnet);
             body.put("save_to_db", false);
             RequestBody requestBody = RequestBody.create(body.toString(), MediaType.parse("application/json; charset=utf-8"));
-            try (Response res = OkHttp.newCall(OkHttp.client(ADD_TIMEOUT_MS), TORRENTS_URL, requestBody).execute()) {
+            try (Response res = OkHttp.newCall(OkHttp.client(ADD_TIMEOUT_MS), baseUrl() + "/torrents", requestBody).execute()) {
                 if (!res.isSuccessful() || res.body() == null) return null;
                 return Torrent.fromJson(new JSONObject(res.body().string()));
             }
@@ -248,14 +272,14 @@ public class TorrServerManager {
 
     // 直接播某文件的地址：GET /play/<hash>/<文件序号>，官方接口，支持 Range 断点续播，Exo/MPV 可直接播。
     public String playUrl(String hash, int fileId) {
-        return BASE_URL + "/play/" + hash.toLowerCase(Locale.US) + "/" + fileId;
+        return baseUrl() + "/play/" + hash.toLowerCase(Locale.US) + "/" + fileId;
     }
 
     // 不知道 hash 或文件列表时的流地址：GET /stream/<文件名>?link=<磁力>&index=<序号>&play，
     // 官方接口，TorrServer 接到请求才现加种子、现取元数据；文件名一段只是展示用。
     public String streamUrl(String magnet, int index, String fileName) throws Exception {
         String name = fileName == null || fileName.isEmpty() ? "file" : new File(fileName).getName();
-        return BASE_URL + "/stream/" + Uri.encode(name)
+        return baseUrl() + "/stream/" + Uri.encode(name)
                 + "?link=" + URLEncoder.encode(magnet, StandardCharsets.UTF_8.name())
                 + "&index=" + index + "&play";
     }

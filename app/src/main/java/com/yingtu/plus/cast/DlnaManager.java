@@ -7,9 +7,12 @@ import android.net.wifi.WifiManager;
 import android.os.IBinder;
 import android.text.TextUtils;
 
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
 import com.yingtu.plus.bean.CastVideo;
 import com.yingtu.plus.bean.Device;
+import com.yingtu.plus.util.HawkConfig;
+import com.yingtu.plus.web.WebServer;
 
 import org.jupnp.android.AndroidUpnpService;
 import org.jupnp.android.AndroidUpnpServiceImpl;
@@ -28,6 +31,8 @@ import org.jupnp.support.avtransport.callback.Stop;
 import org.jupnp.support.model.SeekMode;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -209,7 +214,14 @@ public class DlnaManager {
             postResult(callback, false, "投屏服务未就绪");
             return;
         }
-        String url = rewriteLocalUrl(video.getUrl());
+        String url = video.getUrl();
+        // 投屏视频链接2：直链电视拉不到（需防盗头/Referer）时走本机 WebServer /webResource 代理；
+        // m3u8 也走代理，但分片相对地址由代理端改写成原站绝对地址（见 WebServer m3u8=1 分支）。
+        if (useCastLink2()) {
+            String proxied = proxyCastUrl(video);
+            if (!TextUtils.isEmpty(proxied)) url = proxied;
+        }
+        url = rewriteLocalUrl(url);
         String title = TextUtils.isEmpty(video.getName()) ? "影图" : video.getName();
         String metadata = buildMetadata(title, url);
         long position = Math.max(0, video.getPosition());
@@ -385,6 +397,39 @@ public class DlnaManager {
         } catch (Exception ignored) {
         }
         multicastLock = null;
+    }
+
+    private static boolean useCastLink2() {
+        try {
+            return Hawk.get(HawkConfig.CAST_LINK2, false);
+        } catch (Throwable e) {
+            return false;
+        }
+    }
+
+    /**
+     * 投屏链接2：把原地址包成本机 /webResource 代理地址（电视只访问本机局域网地址，
+     * 手机端代取原地址并带上原请求头、透传 Range）。WebServer 未启动或原地址不是
+     * http(s) 时返回空串，调用方回落直链。
+     */
+    private static String proxyCastUrl(CastVideo video) {
+        try {
+            String raw = video.getUrl();
+            if (TextUtils.isEmpty(raw)) return "";
+            if (!raw.startsWith("http://") && !raw.startsWith("https://")) return "";
+            String base = WebServer.get().getAddress("/webResource");
+            if (TextUtils.isEmpty(base)) return "";
+            StringBuilder sb = new StringBuilder(base);
+            sb.append("?url=").append(URLEncoder.encode(raw, StandardCharsets.UTF_8.name()));
+            if (video.getHeaders() != null && !video.getHeaders().isEmpty()) {
+                sb.append("&headers=").append(URLEncoder.encode(
+                        App.gson().toJson(video.getHeaders()), StandardCharsets.UTF_8.name()));
+            }
+            if (raw.toLowerCase(Locale.US).contains(".m3u8")) sb.append("&m3u8=1");
+            return sb.toString();
+        } catch (Throwable e) {
+            return "";
+        }
     }
 
     /** 回环地址电视访问不到，换成本机局域网 IP，端口与路径不变。 */

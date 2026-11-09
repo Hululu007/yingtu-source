@@ -7,19 +7,37 @@ import com.github.catvod.utils.Util;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import okhttp3.ConnectionPool;
 import okhttp3.Dns;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import okhttp3.dnsoverhttps.DnsOverHttps;
 
 public class OkDns implements Dns {
+
+    // DoH queries go through this one shared client instead of a throwaway
+    // `new OkHttpClient()` per setDoh() (which had 10s defaults, no pool,
+    // and re-handshaked on every SecureDns switch). It deliberately uses
+    // system DNS (no .dns() here) so DoH resolution cannot recurse into itself;
+    // bootstrap hosts resolve via system DNS. Slow net: 15s connect / 20s read.
+    private static final OkHttpClient DOH_CLIENT = new OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .connectionPool(new ConnectionPool(2, 5, TimeUnit.MINUTES))
+            .protocols(Arrays.asList(Protocol.HTTP_2, Protocol.HTTP_1_1))
+            .retryOnConnectionFailure(true)
+            .build();
 
     private final ConcurrentHashMap<String, String> map;
     private volatile Supplier<Doh> supplier;
@@ -31,7 +49,7 @@ public class OkDns implements Dns {
 
     public synchronized void setDoh(Doh item) {
         HttpUrl url = HttpUrl.parse(item.getUrl());
-        this.doh = url == null ? null : new DnsOverHttps.Builder().client(new OkHttpClient()).url(url).bootstrapDnsHosts(item.getHosts()).build();
+        this.doh = url == null ? null : new DnsOverHttps.Builder().client(DOH_CLIENT).url(url).bootstrapDnsHosts(item.getHosts()).build();
         this.supplier = null;
     }
 

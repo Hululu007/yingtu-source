@@ -92,6 +92,41 @@ public class SourceViewModel extends ViewModel {
         });
     }
 
+    /** 混合首页：激活的混合规则逐站取首页推荐并去重合并；分类 Tab 不出（各站分类 id 会撞）。 */
+    public void getSortMixed(List<SourceBean> members) {
+        OkGo.io(() -> {
+            sortError.postValue(null);
+            try {
+                List<Movie> merged = new ArrayList<>();
+                java.util.Set<String> seen = new java.util.HashSet<>();
+                String firstKey = null;
+                for (SourceBean bean : members) {
+                    if (bean == null) continue;
+                    try {
+                        Site site = VodConfig.get().getSite(bean.getKey());
+                        if (site == null) continue;
+                        if (firstKey == null) firstKey = bean.getKey();
+                        Result result = SiteApi.homeContent(site);
+                        if (result == null || result.getList() == null) continue;
+                        for (Movie m : toMovies(bean.getKey(), result.getList())) {
+                            String dedup = m.sourceKey + "|" + m.vodId;
+                            if (seen.add(dedup)) merged.add(m);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                homeKey = firstKey;
+                sortResult.postValue(new ArrayList<>());
+                listResult.postValue(merged);
+            } catch (Exception e) {
+                App.logCaught(e);
+                sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
+                sortResult.postValue(null);
+                listResult.postValue(null);
+            }
+        });
+    }
+
     /** 分类列表分页。 */
     public void getList(String typeId, int page, HashMap<String, String> extend) {
         OkGo.io(() -> {
@@ -155,6 +190,7 @@ public class SourceViewModel extends ViewModel {
             movie.actor = vod.getActor();
             movie.director = vod.getDirector();
             movie.content = vod.getContent();
+            movie.douban = vod.isDouban();
             list.add(movie);
         }
         return list;

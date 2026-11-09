@@ -84,8 +84,9 @@ public class FastSearchActivity extends BaseActivity {
         });
 
         RecyclerView rv = find(R.id.recyclerView);
-        rv.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new GridMovieAdapter();
+        // 搜索展示（设置 → 首页和搜索）：后半段决定聚搜页形态
+        com.yingtu.plus.util.SearchDisplay.applyFast(rv, adapter);
         adapter.setOnItemClick(movie -> {
             Intent i = new Intent(this, DetailActivity.class);
             i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
@@ -149,6 +150,12 @@ public class FastSearchActivity extends BaseActivity {
                     break;
                 }
             }
+        }
+        // 搜索站点范围（设置 → 首页和搜索）+ 站源禁用：先按范围过滤，再去掉被禁用的站
+        all = com.yingtu.plus.util.SiteFilter.filterSearchSites(all, homeKey);
+        java.util.Iterator<com.yingtu.plus.bean.Site> it = all.iterator();
+        while (it.hasNext()) {
+            if (com.yingtu.plus.util.SiteFilter.isKeyDisabled(it.next().getKey())) it.remove();
         }
         return all;
     }
@@ -217,7 +224,8 @@ public class FastSearchActivity extends BaseActivity {
             set.add(keyword);
             set.addAll(history);
             List<String> list = new ArrayList<>(set);
-            if (list.size() > 12) list = list.subList(0, 12);
+            int max = com.yingtu.plus.util.HistoryHelper.getSearchLimit();
+            if (list.size() > max) list = list.subList(0, max);
             Hawk.put(HawkConfig.SEARCH_HISTORY, list);
         } catch (Throwable ignored) {}
     }

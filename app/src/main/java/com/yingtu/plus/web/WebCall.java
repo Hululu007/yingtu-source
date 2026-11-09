@@ -2,6 +2,8 @@ package com.yingtu.plus.web;
 
 import android.text.TextUtils;
 
+import com.github.catvod.net.OkHttp;
+import com.github.catvod.net.RetryInterceptor;
 import com.yingtu.plus.util.OkGo;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -12,15 +14,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
+import okhttp3.ConnectionPool;
+import okhttp3.Dispatcher;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -33,8 +39,32 @@ import okhttp3.Response;
  */
 public class WebCall {
 
+    // Was a bare builder (10s OkHttp defaults, no pool, no DNS, no retry):
+    // every WebHome request re-handshaked and died on the first slow stall.
+    // Per-request timeouts from the payload still override via client(timeout);
+    // derived clients share this pool/dispatcher/DNS/retry via newBuilder().
+    private static final ConnectionPool POOL = new ConnectionPool(4, 5, TimeUnit.MINUTES);
+    private static final Dispatcher DISPATCHER = newDispatcher();
+
+    private static Dispatcher newDispatcher() {
+        Dispatcher dispatcher = new Dispatcher();
+        dispatcher.setMaxRequests(16);
+        dispatcher.setMaxRequestsPerHost(4);
+        return dispatcher;
+    }
+
     private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
-            .followRedirects(true).followSslRedirects(true).build();
+            .followRedirects(true).followSslRedirects(true)
+            .connectionPool(POOL)
+            .dispatcher(DISPATCHER)
+            .protocols(Arrays.asList(Protocol.HTTP_2, Protocol.HTTP_1_1))
+            .dns(OkHttp.dns())
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .addInterceptor(new RetryInterceptor())
+            .build();
 
     public static String request(JsonObject payload) {
         Response response = null;
