@@ -3,6 +3,7 @@ package com.yingtu.plus.player.exo;
 import android.net.Uri;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.OptIn;
 import androidx.media3.common.C;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.BaseDataSource;
