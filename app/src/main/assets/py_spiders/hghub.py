@@ -77,6 +77,18 @@ def _gmul(a, b):
     return p
 
 
+def _gmul_table(c):
+    return [_gmul(i, c) for i in range(256)]
+
+
+_GM2 = _gmul_table(2)
+_GM3 = _gmul_table(3)
+_GM9 = _gmul_table(9)
+_GM11 = _gmul_table(11)
+_GM13 = _gmul_table(13)
+_GM14 = _gmul_table(14)
+
+
 def _expand(key):
     w = [list(key[i * 4:(i + 1) * 4]) for i in range(4)]
     for i in range(4, 44):
@@ -104,10 +116,10 @@ def _inv_mix_columns(s):
     out = [0] * 16
     for c in range(4):
         col = s[c * 4:(c + 1) * 4]
-        out[c * 4 + 0] = _gmul(col[0], 14) ^ _gmul(col[1], 11) ^ _gmul(col[2], 13) ^ _gmul(col[3], 9)
-        out[c * 4 + 1] = _gmul(col[0], 9) ^ _gmul(col[1], 14) ^ _gmul(col[2], 11) ^ _gmul(col[3], 13)
-        out[c * 4 + 2] = _gmul(col[0], 13) ^ _gmul(col[1], 9) ^ _gmul(col[2], 14) ^ _gmul(col[3], 11)
-        out[c * 4 + 3] = _gmul(col[0], 11) ^ _gmul(col[1], 13) ^ _gmul(col[2], 9) ^ _gmul(col[3], 14)
+        out[c * 4 + 0] = _GM14[col[0]] ^ _GM11[col[1]] ^ _GM13[col[2]] ^ _GM9[col[3]]
+        out[c * 4 + 1] = _GM9[col[0]] ^ _GM14[col[1]] ^ _GM11[col[2]] ^ _GM13[col[3]]
+        out[c * 4 + 2] = _GM13[col[0]] ^ _GM9[col[1]] ^ _GM14[col[2]] ^ _GM11[col[3]]
+        out[c * 4 + 3] = _GM11[col[0]] ^ _GM13[col[1]] ^ _GM9[col[2]] ^ _GM14[col[3]]
     return out
 
 
@@ -203,10 +215,10 @@ def _mix_columns(s):
     out = [0] * 16
     for c in range(4):
         col = s[c * 4:(c + 1) * 4]
-        out[c * 4 + 0] = _gmul(col[0], 2) ^ _gmul(col[1], 3) ^ col[2] ^ col[3]
-        out[c * 4 + 1] = col[0] ^ _gmul(col[1], 2) ^ _gmul(col[2], 3) ^ col[3]
-        out[c * 4 + 2] = col[0] ^ col[1] ^ _gmul(col[2], 2) ^ _gmul(col[3], 3)
-        out[c * 4 + 3] = _gmul(col[0], 3) ^ col[1] ^ col[2] ^ _gmul(col[3], 2)
+        out[c * 4 + 0] = _GM2[col[0]] ^ _GM3[col[1]] ^ col[2] ^ col[3]
+        out[c * 4 + 1] = col[0] ^ _GM2[col[1]] ^ _GM3[col[2]] ^ col[3]
+        out[c * 4 + 2] = col[0] ^ col[1] ^ _GM2[col[2]] ^ _GM3[col[3]]
+        out[c * 4 + 3] = _GM3[col[0]] ^ col[1] ^ col[2] ^ _GM2[col[3]]
     return out
 
 
@@ -569,9 +581,15 @@ class Spider(BaseSpider):
         sess = _ENC_SESSIONS.get(self.base)
         if sess is not None and sess.alive():
             return sess
-        try:
-            sess = _EncSession(self.base)
-        except Exception:
+        for attempt in range(2):
+            try:
+                sess = _EncSession(self.base)
+                break
+            except Exception:
+                sess = None
+                if attempt == 0:
+                    time.sleep(1)
+        if sess is None:
             return None
         _ENC_SESSIONS[self.base] = sess
         return sess
