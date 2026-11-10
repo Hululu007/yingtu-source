@@ -1,49 +1,118 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 潮影霓虹主题首页：hero 轮播 + 热播推荐横行（分类与筛选搬去频道页） -->
+<!-- 潮影霓虹主题首页：hero 轮播（圆点指示）+ 热播推荐横行（右上“全部 >”）
+     + 猜你想看 3 列行（分类与筛选搬去频道页） -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:fillViewport="true"
+        android:scrollbars="none">
 
-        <!-- hero 轮播（横向，LayoutManager 由 Java 设） -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvHero"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:clipToPadding="false"
-            android:scrollbars="none" />
-
-        <!-- 热播标题 -->
-        <TextView
-            android:id="@+id/tvHotTitle"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="12dp"
-            android:text="热播推荐"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:orientation="vertical">
 
-        <!-- 热播横行（横向，LayoutManager 由 Java 设） -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvContent"
-            android:layout_width="match_parent"
-            android:layout_height="220dp"
-            android:clipToPadding="false"
-            android:paddingStart="7dp"
-            android:paddingEnd="7dp"
-            android:paddingTop="4dp"
-            android:scrollbars="none" />
-    </LinearLayout>
+            <!-- hero 轮播（横向，LayoutManager 由 Java 设） -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvHero"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:clipToPadding="false"
+                android:scrollbars="none" />
 
-    <!-- 空提示 + MissAV 网页版入口（影视区没选站时显示按钮；空盒子常驻可见，
-         里面的 tvHint / 按钮各自按原有逻辑显隐，盒子本身无可见子项时不占地方） -->
+            <!-- hero 圆点指示（第几张，圆点由 Java 按轮播张数建） -->
+            <LinearLayout
+                android:id="@+id/heroDots"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="2dp"
+                android:orientation="horizontal" />
+
+            <!-- 热播标题行：左标题 + 右“全部 >”（点开进频道页看本站全部） -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginEnd="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvHotTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="热播推荐"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvHotAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingStart="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="4dp"
+                    android:text="全部 >"
+                    android:textColor="@color/neon_cyan"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- 热播横行：2 排横向网格，可横滑（LayoutManager 由 Java 设）；
+                 卡片 96x144 标题压图底，行高 = 2 排 x (144 + 10 边距) + 4 = 312dp -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvContent"
+                android:layout_width="match_parent"
+                android:layout_height="312dp"
+                android:clipToPadding="false"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:paddingTop="4dp"
+                android:scrollbars="none" />
+
+            <!-- 猜你想看标题 -->
+            <TextView
+                android:id="@+id/tvGuessTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="12dp"
+                android:text="猜你想看"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <!-- 猜你想看：3 列网格（LayoutManager 由 Java 设，嵌套滚动关掉，跟整页一起滑） -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvGuess"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:nestedScrollingEnabled="false"
+                android:paddingStart="7dp"
+                android:paddingEnd="7dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="16dp"
+                android:scrollbars="none"
+                android:visibility="gone" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- 空提示（MissAV 网页版入口已撤：用户不要 web 套壳，见 WebHomeHelper；
+         空盒子常驻可见，里面的 tvHint 按原有逻辑显隐，盒子本身无可见子项时不占地方） -->
     <LinearLayout
         android:id="@+id/emptyBox"
         android:layout_width="wrap_content"
@@ -63,19 +132,6 @@
             android:text="@string/home_no_source"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btnMissavWeb"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:backgroundTint="@color/colorPrimary"
-            android:paddingStart="28dp"
-            android:paddingEnd="28dp"
-            android:text="🔞 MissAV 网页版"
-            android:textColor="@android:color/white"
-            android:textSize="15sp"
             android:visibility="gone" />
     </LinearLayout>
 

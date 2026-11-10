@@ -11,31 +11,17 @@ import java.util.List;
  * WebHome 网页主页条目存取（Hawk 本地持久化）。
  *
  * 首次使用时自动植入两个内置示例主页（assets/webhome 下）。
+ * MissAV 网页版已撤（用户不要 web 套壳）：MISSAV 常量、ensureBuiltinEntries
+ * 里的 MissAV 常驻逻辑、seed 里的 missav 条目一并删掉，MissAV 改走
+ * missavt 蜘蛛站（首页/频道默认站）。missav.html 资源文件也已删。
  */
 public class WebHomeHelper {
-
-    /** 内置 MissAV 网页版（assets/webhome/missav.html）：影视区空位的一键入口。 */
-    public static final String MISSAV_NAME = "\uD83D\uDD1EMissAV 网页版";
-    public static final String MISSAV_TARGET = "webhome/missav.html";
 
     private WebHomeHelper() {}
 
     public static List<WebHomeEntry> getAll() {
         seedIfNeeded();
-        ensureBuiltinEntries();
         return Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
-    }
-
-    /** 内置条目常驻：用户删光/种子已跑过也不丢 MissAV（与 BuiltinConfigs.ensureLoaded 同款思路）。 */
-    private static void ensureBuiltinEntries() {
-        List<WebHomeEntry> list = Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
-        for (WebHomeEntry e : list) {
-            if (e != null && MISSAV_TARGET.equals(e.target)) return;
-        }
-        WebHomeEntry missav = new WebHomeEntry(MISSAV_NAME, MISSAV_TARGET, WebHomeEntry.TYPE_ASSET);
-        missav.builtin = true;
-        list.add(0, missav);
-        Hawk.put(HawkConfig.WEBHOME_ENTRIES, list);
     }
 
     public static void add(WebHomeEntry entry) {
@@ -63,15 +49,12 @@ public class WebHomeHelper {
     private static void seedIfNeeded() {
         if (Hawk.get(HawkConfig.WEBHOME_SEEDED, false)) return;
         List<WebHomeEntry> list = Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
-        WebHomeEntry missav = new WebHomeEntry(MISSAV_NAME, MISSAV_TARGET, WebHomeEntry.TYPE_ASSET);
-        missav.builtin = true;
         WebHomeEntry showcase = new WebHomeEntry("能力演示主页",
                 "webhome/showcase.html", WebHomeEntry.TYPE_ASSET);
         showcase.builtin = true;
         WebHomeEntry basic = new WebHomeEntry("基础模板主页",
                 "webhome/basic.html", WebHomeEntry.TYPE_ASSET);
         basic.builtin = true;
-        list.add(missav);
         list.add(showcase);
         list.add(basic);
         Hawk.put(HawkConfig.WEBHOME_ENTRIES, list);

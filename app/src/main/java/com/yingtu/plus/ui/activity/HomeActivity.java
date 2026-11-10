@@ -45,7 +45,8 @@ import java.util.List;
 
 /**
  * 首页外壳（潮影霓虹主题）。顶栏：潮影标题 + 搜索 + 消息；
- * 底部悬浮导航：首页 / 频道 / +（一键写 PY）/ 片单 / 我的；
+ * 底部悬浮导航：首页 / 频道 / 直播（中央圆钮，点开 LiveActivity）/ 片单 / 我的；
+ * 加站入口挪到“我的”页（加站行，进一键写 PY）。
  * 内容区（fragmentContainer）按底栏切四个片段：首页 HomeMainFragment、
  * 频道 ChannelFragment（group 参数 all/drama/midnight）、片单 ListFragment、
  * 我的 MineFragment。点击标题不再弹站源弹窗，站源弹窗改由各分区页
@@ -108,14 +109,15 @@ public class HomeActivity extends BaseActivity {
             View btnMessage = find(R.id.btnMessage);
             if (btnMessage != null) btnMessage.setOnClickListener(v ->
                     startActivity(new Intent(this, PushActivity.class)));
-            // 底部悬浮导航：首页 / 频道 / + / 片单 / 我的。
+            // 底部悬浮导航：首页 / 频道 / 直播 / 片单 / 我的。
             View navHome = find(R.id.navHome);
             if (navHome != null) navHome.setOnClickListener(v -> showFragment(NAV_MOVIE));
             View navChannel = find(R.id.navChannel);
             if (navChannel != null) navChannel.setOnClickListener(v -> showFragment(NAV_CHANNEL));
+            // 中央圆钮不再是加站，改成点开直播；加站入口在“我的”页。
             View navAdd = find(R.id.navAdd);
             if (navAdd != null) navAdd.setOnClickListener(v ->
-                    startActivity(new Intent(this, OneKeyPyActivity.class)));
+                    startActivity(new Intent(this, LiveActivity.class)));
             View navList = find(R.id.navList);
             if (navList != null) navList.setOnClickListener(v -> showFragment(NAV_LIST));
             View navMine = find(R.id.navMine);
@@ -164,7 +166,7 @@ public class HomeActivity extends BaseActivity {
     }
 
     /** 底部导航当前项高亮：选中项图标与文字 tint 霓虹粉，其余暗紫灰；
-     * 频道组（默认 / 短剧 / 午夜）都算“频道”选中；中央 + 号不参与高亮。 */
+     * 频道组（默认 / 短剧 / 午夜）都算“频道”选中；中央直播钮不参与高亮。 */
     private void updateBottomNav(int navId) {
         setNavItem(find(R.id.ivNavHome), find(R.id.tvNavHome), navId == NAV_MOVIE);
         setNavItem(find(R.id.ivNavChannel), find(R.id.tvNavChannel),
@@ -231,6 +233,12 @@ public class HomeActivity extends BaseActivity {
                 SourceMsgGate.error(this, "页面切换失败，请重启应用");
             } catch (Throwable ignored) {}
         }
+    }
+
+    /** 首页“热播推荐”右上角“全部 >”：切到频道页（影视组），站与首页同站
+     *（频道页按影视区当前站解析，与首页同一站）。 */
+    public void openChannelAll() {
+        showFragment(NAV_CHANNEL);
     }
 
     /** 供 ChannelFragment 点站名切站：按指定分区弹出选站弹窗。

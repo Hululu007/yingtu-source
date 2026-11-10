@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- hero 轮播圆点：当前页（源码 Neon.hotGradient 粉紫长条，宽高由 View 定） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="0"
+        android:startColor="@color/neon_hot_start"
+        android:endColor="@color/neon_hot_end"
+        android:type="linear" />
+    <corners android:radius="2dp" />
+</shape>

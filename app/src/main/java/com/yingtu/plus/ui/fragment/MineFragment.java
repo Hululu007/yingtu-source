@@ -9,15 +9,18 @@ import com.yingtu.plus.BuildConfig;
 import com.yingtu.plus.R;
 import com.yingtu.plus.base.BaseLazyFragment;
 import com.yingtu.plus.ui.activity.FileActivity;
+import com.yingtu.plus.ui.activity.OneKeyPyActivity;
 import com.yingtu.plus.ui.activity.OnlineSiteListActivity;
 import com.yingtu.plus.ui.activity.SettingActivity;
 import com.yingtu.plus.ui.activity.SourceActivity;
-import com.yingtu.plus.ui.activity.WebHomeActivity;
-import com.yingtu.plus.util.WebHomeHelper;
+import com.yingtu.plus.ui.activity.WebHomeListActivity;
 
 /**
  * 我的页：纵向菜单——头部（“我的”+ 版本号）+ 设置 / 文件 / 站源管理 /
- * 在线网站 / MissAV 网页版。行点按跳对应 Activity。
+ * 在线网站 / 加站（一键写 PY，底栏中央钮改直播后加站入口挪到这里）/
+ * 网页首页（原来内置的 web 条目从这里进）。
+ * MissAV 网页版行已撤：用户不要 web 套壳，MissAV 改走 missavt 蜘蛛站（默认站）。
+ * 行点按跳对应 Activity。
  */
 public class MineFragment extends BaseLazyFragment {
 
@@ -39,10 +42,8 @@ public class MineFragment extends BaseLazyFragment {
             bindRow(root, R.id.mineFiles, FileActivity.class);
             bindRow(root, R.id.mineSources, SourceActivity.class);
             bindRow(root, R.id.mineOnline, OnlineSiteListActivity.class);
-            View missav = root.findViewById(R.id.mineMissav);
-            if (missav != null) {
-                missav.setOnClickListener(v -> openMissavWeb());
-            }
+            bindRow(root, R.id.mineAddSite, OneKeyPyActivity.class);
+            bindRow(root, R.id.mineWebHome, WebHomeListActivity.class);
         } catch (Throwable e) {
             e.printStackTrace();
             App.logCaught(e);
@@ -60,18 +61,5 @@ public class MineFragment extends BaseLazyFragment {
                 e.printStackTrace();
             }
         });
-    }
-
-    /** MissAV 网页版（extras 照 HomeMainFragment.openMissavWeb）。 */
-    private void openMissavWeb() {
-        try {
-            if (getActivity() == null) return;
-            Intent i = new Intent(getActivity(), WebHomeActivity.class);
-            i.putExtra(WebHomeActivity.KEY_URL, "file:///android_asset/" + WebHomeHelper.MISSAV_TARGET);
-            i.putExtra(WebHomeActivity.KEY_TITLE, WebHomeHelper.MISSAV_NAME);
-            startActivity(i);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
     }
 }

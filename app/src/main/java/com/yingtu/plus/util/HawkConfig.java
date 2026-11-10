@@ -27,6 +27,10 @@ public class HawkConfig {
     public static final String ZONE_SITE_DRAMA = "zone_site_drama";
     public static final String ZONE_SITE_MIDNIGHT = "zone_site_midnight";
 
+    /** 频道页最后一次实际用过的站（不限分区）：进频道页时按它直接出数据，
+     * 影视区没记过站、全局当前源又不是影视区站时就靠它不断档；用户切站即改写 */
+    public static final String CHANNEL_LAST_SITE_KEY = "channel_last_site_key";
+
     /** 各区启动站（设置里按区独立设）：影视 / 短剧 / 午夜，空字符串 = 未设 */
     public static final String STARTUP_SITE_MOVIE = "startup_site_movie";
     public static final String STARTUP_SITE_DRAMA = "startup_site_drama";

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 潮影霓虹主题悬浮底部导航：首页 / 频道 / + / 片单 / 我的 -->
+<!-- 潮影霓虹主题悬浮底部导航：首页 / 频道 / 直播 / 片单 / 我的 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -75,9 +75,9 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:background="@drawable/bg_add_button"
-            android:contentDescription="添加"
+            android:contentDescription="直播"
             android:padding="14dp"
-            android:src="@drawable/ic_add"
+            android:src="@drawable/ic_live"
             app:tint="@android:color/white" />
     </LinearLayout>
 

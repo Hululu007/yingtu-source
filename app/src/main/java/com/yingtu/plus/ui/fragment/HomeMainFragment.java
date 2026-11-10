@@ -4,12 +4,13 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
@@ -21,13 +22,12 @@ import com.yingtu.plus.base.BaseLazyFragment;
 import com.yingtu.plus.bean.Movie;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.ui.activity.DetailActivity;
+import com.yingtu.plus.ui.activity.HomeActivity;
 import com.yingtu.plus.ui.activity.VideoActivity;
-import com.yingtu.plus.ui.activity.WebHomeActivity;
 import com.yingtu.plus.ui.adapter.HeroAdapter;
 import com.yingtu.plus.ui.adapter.NeonPosterAdapter;
 import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.util.MixRules;
-import com.yingtu.plus.util.WebHomeHelper;
 import com.yingtu.plus.util.ZoneSites;
 import com.yingtu.plus.viewmodel.SourceViewModel;
 
@@ -36,33 +36,41 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 「影视」页（底部导航第一项，潮影霓虹主题）：
- * 顶部 hero 轮播（前 3 个）+ 热播横滑行，无分类 Tab、无筛选区、无翻页。
+ * 「影视」页（底部导航第一项，潮影霓虹主题，结构对齐 moyi 源码 neon_home_view.dart）：
+ * 顶部 hero 轮播（前 6 个有封面的，源码 _featured 最多 6 张）+ 热播横滑行
+ * （2 排横向网格，卡片 96dp 紧凑宽，一眼约 8 张，本站 homeVideoContent 全量进横行，
+ * 不截断；源码热播行是单排 112dp 最多 12 张，用户嫌少才改的 2 排，这里保留 2 排）
+ * + 猜你想看（源码同站同一份列表进 3 列网格，不是另一批；角标、标题压图底
+ * 与热播行同款卡片结构，源码猜你想看格子本身不带角标）。
  * 取数仍走 SourceViewModel.getSort / getSortMixed（混合规则分支照旧）。
  *
- * 本页当前站（顶层影视页分支）：影视区当前站 → 影视区启动站 → 全局当前源
- * → 硬编码回退站 ZakaTgMovie（TG电影）。回退站只用来取数，不写进任何
- * Hawk 键（不顶掉用户自己的选站）；内嵌时（getParentFragment()!=null）
- * 仍走 ApiConfig 全局当前源不动。
+ * 本页当前站（顶层影视页分支）：用户设过的影视区站固定用它；没设过才走
+ * 回退链——影视区启动站 → 全局当前源 → 默认站 missavt（MissAV 蜘蛛站，
+ * jar 站验唯一 good，分类/卡片/详情/播放都走蜘蛛，不是 web）。
+ * 回退解析到的站会钉进影视区当前站键（ZONE_SITE_MOVIE），之后不再跟着
+ * 全局当前源变来变去；用户一旦自己选站，选站写键为准，回退不再插手。
+ * 内嵌时（getParentFragment()!=null）仍走 ApiConfig 全局当前源不动。
  */
 public class HomeMainFragment extends BaseLazyFragment {
 
-    /** 回退站 key：TG电影（builtin_midnight.json，验过 good、通用电影内容）。 */
-    private static final String FALLBACK_SOURCE_KEY = "ZakaTgMovie";
+    /** 默认站 key：missavt（builtin_midnight.json，MissAV 蜘蛛站，站验唯一 good）。 */
+    private static final String FALLBACK_SOURCE_KEY = "missavt";
 
-    private RecyclerView rvHero, rvContent;
-    private TextView tvHotTitle;
+    private RecyclerView rvHero, rvContent, rvGuess;
+    private LinearLayout heroDots;
+    private TextView tvHotTitle, tvHotAll, tvGuessTitle;
     private LinearLayout emptyBox;
     private ProgressBar progress;
     private TextView tvHint;
-    /** 影视区没选站时显示的 MissAV 网页版入口按钮（有站时隐藏）。 */
-    private Button btnMissavWeb;
     private HeroAdapter heroAdapter;
     private NeonPosterAdapter adapter;
+    private NeonPosterAdapter guessAdapter;
     private SourceViewModel viewModel;
 
     private String currentSourceKey = "";
     private boolean observersBound = false;
+    /** hero 轮播张数（圆点个数，= hero 列表长度，最多 6 张，源码 _featured 上限）。 */
+    private int heroCount = 0;
 
     // hero 轮播：每 5 秒滑到下一页（取模循环）
     private final Handler heroHandler = new Handler(Looper.getMainLooper());
@@ -85,26 +93,52 @@ public class HomeMainFragment extends BaseLazyFragment {
         // 任何漏网的异常都退化成空首页，不杀进程。顺序与正常路径不变。
         try {
             rvHero = root.findViewById(R.id.rvHero);
+            heroDots = root.findViewById(R.id.heroDots);
             tvHotTitle = root.findViewById(R.id.tvHotTitle);
+            tvHotAll = root.findViewById(R.id.tvHotAll);
             rvContent = root.findViewById(R.id.rvContent);
+            tvGuessTitle = root.findViewById(R.id.tvGuessTitle);
+            rvGuess = root.findViewById(R.id.rvGuess);
             emptyBox = root.findViewById(R.id.emptyBox);
             progress = root.findViewById(R.id.progress);
             tvHint = root.findViewById(R.id.tvHint);
-            btnMissavWeb = root.findViewById(R.id.btnMissavWeb);
-            if (btnMissavWeb != null) {
-                btnMissavWeb.setOnClickListener(v -> openMissavWeb());
-            }
 
             rvHero.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
             new PagerSnapHelper().attachToRecyclerView(rvHero);
             heroAdapter = new HeroAdapter();
             heroAdapter.setOnHeroClick(this::openMovie);
             rvHero.setAdapter(heroAdapter);
+            // hero 滑动时圆点跟着走（自动轮播也会触发 onScrolled）。
+            rvHero.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                    updateHeroDots(currentHeroPosition());
+                }
+            });
 
-            rvContent.setLayoutManager(new LinearLayoutManager(getContext(), RecyclerView.HORIZONTAL, false));
+            // 热播行右上角“全部 >”：切到频道页（影视组），站与首页同站。
+            if (tvHotAll != null) {
+                tvHotAll.setOnClickListener(v -> openChannelAll());
+            }
+
+            // 热播行：2 排横向网格，可横滑；卡片 96dp 紧凑宽（海报 96x144，2:3），
+            // 一眼约 2 排 x 4 列 = 8 张；行内是本站 homeVideoContent 全量，不截断。
+            // 角标按源码位置轮换（视觉列 % 3 == 0 → HD）。
+            rvContent.setLayoutManager(new GridLayoutManager(getContext(), 2, RecyclerView.HORIZONTAL, false));
             adapter = new NeonPosterAdapter();
+            adapter.setCompactWidthDp(96);
+            adapter.setBadgeMode(NeonPosterAdapter.BADGE_HOME);
             adapter.setOnClick(this::openMovie);
             rvContent.setAdapter(adapter);
+
+            // 猜你想看：3 列网格，跟整页一起滑（嵌套滚动关掉），数据见 listResult；
+            // 角标按源码不显示（猜你想看格子本身不带角标）。
+            rvGuess.setLayoutManager(new GridLayoutManager(getContext(), 3));
+            rvGuess.setNestedScrollingEnabled(false);
+            guessAdapter = new NeonPosterAdapter();
+            guessAdapter.setBadgeMode(NeonPosterAdapter.BADGE_NONE);
+            guessAdapter.setOnClick(this::openMovie);
+            rvGuess.setAdapter(guessAdapter);
 
             viewModel = new ViewModelProvider(this).get(SourceViewModel.class);
         } catch (Throwable e) {
@@ -163,14 +197,33 @@ public class HomeMainFragment extends BaseLazyFragment {
                 if (empty) tvHint.setText(homeEmptyHint());
             }
             if (heroAdapter != null) {
+                // hero：前 6 个有封面的（源码 _featured：跳过无封面的，最多 6 张；
+                // 全无封面时回退取前 6 张）。
                 List<Movie> hero = new ArrayList<>();
                 if (shown != null) {
-                    for (int i = 0; i < shown.size() && i < 3; i++) hero.add(shown.get(i));
+                    for (Movie m : shown) {
+                        if (m.pic != null && !m.pic.trim().isEmpty()) {
+                            hero.add(m);
+                            if (hero.size() >= 6) break;
+                        }
+                    }
+                    if (hero.isEmpty()) {
+                        for (int i = 0; i < shown.size() && i < 6; i++) hero.add(shown.get(i));
+                    }
                 }
                 heroAdapter.submit(hero);
+                rebuildHeroDots(hero.size());
             }
             if (adapter != null) adapter.submit(shown);
             if (rvContent != null) rvContent.scrollToPosition(0);
+            // 猜你想看：源码用的是同一份首页列表（gridItems），不是另一批；
+            // 有内容就整行显示（源码非空即出网格，不设“少于 3 张隐藏”）。
+            if (guessAdapter != null) {
+                guessAdapter.submit(shown);
+                boolean showGuess = shown != null && !shown.isEmpty();
+                if (tvGuessTitle != null) tvGuessTitle.setVisibility(showGuess ? View.VISIBLE : View.GONE);
+                if (rvGuess != null) rvGuess.setVisibility(showGuess ? View.VISIBLE : View.GONE);
+            }
             if (empty) stopHeroAutoScroll();
             else startHeroAutoScroll();
         });
@@ -216,15 +269,16 @@ public class HomeMainFragment extends BaseLazyFragment {
                 if (emptyBox != null) emptyBox.setVisibility(View.VISIBLE);
                 tvHint.setVisibility(View.VISIBLE);
                 tvHint.setText(R.string.home_no_source);
-                // 影视区没选站：露出 MissAV 网页版入口，空状态不再只有一个“请选择源”。
-                if (btnMissavWeb != null) btnMissavWeb.setVisibility(View.VISIBLE);
                 heroAdapter.submit(null);
                 adapter.submit(null);
+                rebuildHeroDots(0);
+                if (guessAdapter != null) guessAdapter.submit(null);
+                if (tvGuessTitle != null) tvGuessTitle.setVisibility(View.GONE);
+                if (rvGuess != null) rvGuess.setVisibility(View.GONE);
                 stopHeroAutoScroll();
                 currentSourceKey = "";
                 return;
             }
-            if (btnMissavWeb != null) btnMissavWeb.setVisibility(View.GONE);
             if (key.equals(currentSourceKey)) return;
             currentSourceKey = key;
             bindObservers();
@@ -243,23 +297,11 @@ public class HomeMainFragment extends BaseLazyFragment {
         }
     }
 
-    /** 打开 MissAV 网页版（WebHomeActivity 内置 WebView，站内浏览/播放）。 */
-    private void openMissavWeb() {
-        try {
-            if (getActivity() == null) return;
-            Intent i = new Intent(getActivity(), WebHomeActivity.class);
-            i.putExtra(WebHomeActivity.KEY_URL, "file:///android_asset/" + WebHomeHelper.MISSAV_TARGET);
-            i.putExtra(WebHomeActivity.KEY_TITLE, WebHomeHelper.MISSAV_NAME);
-            startActivity(i);
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * 本页当前站：被午夜/短剧区内嵌时用全局当前源（分区页切站时写进去）；
      * 顶层影视页用回退链——影视区当前站 → 影视区启动站 → 全局当前源
-     * → 硬编码回退站 ZakaTgMovie。回退站只用来取数，不写进任何 Hawk 键。
+     * → 默认站 missavt。回退解析到的站钉进影视区当前站键，之后固定用它，
+     * 不再跟着全局当前源变；用户自己选站写键为准。
      */
     private SourceBean zoneSource() {
         if (getParentFragment() != null) return ApiConfig.get().getHomeSource();
@@ -271,11 +313,27 @@ public class HomeMainFragment extends BaseLazyFragment {
         String startup = ZoneSites.getStartupSiteKey(ZoneSites.ZONE_MOVIE);
         if (startup != null && !startup.isEmpty()) {
             SourceBean bean = ApiConfig.get().getSource(startup);
-            if (bean != null) return bean;
+            if (bean != null) {
+                pinMovieSite(bean.getKey());
+                return bean;
+            }
         }
         SourceBean home = ApiConfig.get().getHomeSource();
-        if (home != null) return home;
-        return ApiConfig.get().getSource(FALLBACK_SOURCE_KEY);
+        if (home != null) {
+            pinMovieSite(home.getKey());
+            return home;
+        }
+        SourceBean fallback = ApiConfig.get().getSource(FALLBACK_SOURCE_KEY);
+        if (fallback != null) pinMovieSite(fallback.getKey());
+        return fallback;
+    }
+
+    /** 把回退解析到的站钉成影视区当前站（固定默认站，用户选站会改写它）。 */
+    private void pinMovieSite(String siteKey) {
+        try {
+            ZoneSites.setCurrentSiteKey(ZoneSites.ZONE_MOVIE, siteKey);
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 由 HomeActivity 在站源抽屉切源后调用，强制重载首页内容。 */
@@ -296,6 +354,10 @@ public class HomeMainFragment extends BaseLazyFragment {
             tvHint.setVisibility(View.GONE);
             heroAdapter.submit(null);
             adapter.submit(null);
+            rebuildHeroDots(0);
+            if (guessAdapter != null) guessAdapter.submit(null);
+            if (tvGuessTitle != null) tvGuessTitle.setVisibility(View.GONE);
+            if (rvGuess != null) rvGuess.setVisibility(View.GONE);
             stopHeroAutoScroll();
             progress.setVisibility(View.VISIBLE);
             // 混合规则（高级配置 → 混合规则）：有激活规则时逐站取首页推荐合并
@@ -373,6 +435,71 @@ public class HomeMainFragment extends BaseLazyFragment {
             if (cur < 0) cur = 0;
         }
         rvHero.smoothScrollToPosition((cur + 1) % count);
+    }
+
+    /** hero 当前页（取模到圆点下标）。 */
+    private int currentHeroPosition() {
+        if (heroCount <= 0) return 0;
+        int cur = 0;
+        if (rvHero != null) {
+            RecyclerView.LayoutManager lm = rvHero.getLayoutManager();
+            if (lm instanceof LinearLayoutManager) {
+                cur = ((LinearLayoutManager) lm).findFirstVisibleItemPosition();
+                if (cur < 0) cur = 0;
+            }
+        }
+        return cur % heroCount;
+    }
+
+    /** 按轮播张数重建圆点（源码 _dots：当前页 16x4 粉紫渐变长条，其余 5x4 白 22%）。 */
+    private void rebuildHeroDots(int count) {
+        heroCount = count;
+        if (heroDots == null) return;
+        heroDots.removeAllViews();
+        if (count <= 1) return;
+        float density = getResources().getDisplayMetrics().density;
+        for (int i = 0; i < count; i++) {
+            View dot = new View(getContext());
+            int w = (int) (i == 0 ? 16 * density + 0.5f : 5 * density + 0.5f);
+            int h = (int) (4 * density + 0.5f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(w, h);
+            lp.setMargins((int) (2.5f * density + 0.5f), 0, (int) (2.5f * density + 0.5f), 0);
+            dot.setLayoutParams(lp);
+            dot.setBackgroundResource(i == 0
+                    ? R.drawable.bg_hero_dot_selected : R.drawable.bg_hero_dot_normal);
+            heroDots.addView(dot);
+        }
+    }
+
+    /** 圆点跟随当前页：选中变粉紫长条，其余变白 22% 小圆点。 */
+    private void updateHeroDots(int position) {
+        if (heroDots == null || heroCount <= 1) return;
+        float density = getResources().getDisplayMetrics().density;
+        for (int i = 0; i < heroDots.getChildCount() && i < heroCount; i++) {
+            View dot = heroDots.getChildAt(i);
+            boolean on = i == position;
+            int w = (int) (on ? 16 * density + 0.5f : 5 * density + 0.5f);
+            int h = (int) (4 * density + 0.5f);
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) dot.getLayoutParams();
+            if (lp != null) {
+                lp.width = w;
+                lp.height = h;
+                dot.setLayoutParams(lp);
+            }
+            dot.setBackgroundResource(on
+                    ? R.drawable.bg_hero_dot_selected : R.drawable.bg_hero_dot_normal);
+        }
+    }
+
+    /** 热播推荐右上角“全部 >”：切到频道页（影视组），站与首页同站。 */
+    private void openChannelAll() {
+        try {
+            if (getActivity() instanceof HomeActivity) {
+                ((HomeActivity) getActivity()).openChannelAll();
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
     }
 
     private void startHeroAutoScroll() {

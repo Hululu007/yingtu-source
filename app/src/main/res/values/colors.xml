@@ -79,13 +79,17 @@
     <color name="dialog_tonal_button_bg">#FF333333</color>
     <color name="dialog_tonal_button_text">#FFBDBDBD</color>
 
-    <!-- Neon theme new colors -->
-    <color name="neon_pink">#FF2E93</color>
-    <color name="neon_cyan">#00E5FF</color>
-    <color name="neon_purple">#7B2FFF</color>
-    <color name="neon_violet">#8B2FFF</color>
+    <!-- Neon theme new colors（对齐 moyi 源码 Neon 调色板：neon_ui.dart） -->
+    <color name="neon_pink">#FF4FA3</color>
+    <color name="neon_cyan">#33E1FF</color>
+    <color name="neon_purple">#B14BFF</color>
+    <color name="neon_violet">#7B4BFF</color>
+    <color name="neon_hot_start">#FF5FC8</color>
+    <color name="neon_hot_end">#8A5BFF</color>
+    <color name="poster_subtitle">#C9B9E6</color>
+    <color name="badge_text_dark">#04141C</color>
     <color name="bg_dark">#0D0518</color>
     <color name="bg_panel">#241640</color>
     <color name="bg_panel2">#1C1030</color>
-    <color name="text_muted">#B9A8D6</color>
+    <color name="text_muted">#B4A5CE</color>
 </resources>
