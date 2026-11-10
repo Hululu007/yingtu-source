@@ -3,12 +3,14 @@ package com.yingtu.plus.drama;
 import android.content.Context;
 import android.text.TextUtils;
 
+import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.yingtu.plus.App;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.bean.SourceBean;
 
@@ -49,7 +51,7 @@ public final class BuiltinDramaConfigs {
     /** Jar name as used for the JarLoader cache key (MD5 of this string). */
     public static final String JAR_NAME = "assets/jars/zakatv.jar";
     /** File MD5 of the zakatv.jar in assets (same as BuiltinConfigs). */
-    public static final String JAR_MD5 = "b63fb5aa7f0ecb17cbd56465709a6242";
+    public static final String JAR_MD5 = "427616ca49c8b37bde8b75230e202cc9";
     /** Full jar spec used in the config's jar field. */
     public static final String JAR_SPEC = JAR_NAME + ";md5;" + JAR_MD5;
 
@@ -153,6 +155,10 @@ public final class BuiltinDramaConfigs {
         try {
             if (Util.equals(JAR_NAME, JAR_MD5)) return;
             File target = Path.jar(JAR_NAME);
+            // dm16：上一版 JarLoader.load() 成功后把缓存 jar 置了只读；覆盖安装换指纹后
+            // 不先清掉只读位，new FileOutputStream 在这里就权限拒绝、旧 jar 原样留下，
+            // 外层再一吞就成了全站静默空。先调 setWritable 再写。
+            target.setWritable(true);
             try (InputStream in = context.getAssets().open(JAR_ASSET);
                  OutputStream out = new FileOutputStream(target)) {
                 byte[] buf = new byte[8192];
@@ -160,7 +166,10 @@ public final class BuiltinDramaConfigs {
                 while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
             }
             if (!Util.equals(JAR_NAME, JAR_MD5)) target.delete();
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            // dm16：拷贝失败不许再静默吞掉，否则下次换指纹还是全站空、查无可查。
+            SpiderDebug.log("builtin-config", "ensureJarCached failed: %s", e.toString());
+            App.logCaught(e);
         }
     }
 

@@ -67,6 +67,20 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void init() {
+        // web 测试闪退加固：WebView 初始化（容器 WebView 缺失、find 拿不到 view、
+        // 网关启动、loadUrl）任一步抛错都不许杀进程，提示一句直接退出本页。
+        try {
+            initInner();
+        } catch (Throwable e) {
+            e.printStackTrace();
+            try {
+                Toast.makeText(this, "网页打开失败", Toast.LENGTH_SHORT).show();
+            } catch (Throwable ignored) {}
+            try { finish(); } catch (Throwable ignored) {}
+        }
+    }
+
+    private void initInner() {
         webView = find(R.id.webView);
         progress = find(R.id.progress);
         tvTitle = find(R.id.tvTitle);
@@ -134,8 +148,10 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                injectSdk();
-                progress.setVisibility(View.GONE);
+                try {
+                    injectSdk();
+                } catch (Throwable ignored) {}
+                if (progress != null) progress.setVisibility(View.GONE);
             }
         });
 
@@ -148,19 +164,34 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
-                if (customView != null) {
-                    callback.onCustomViewHidden();
-                    return;
+                // 全屏 custom view：Activity 正在退出时 getWindow() 可能为 null，
+                // bar 也可能没建好，任一步抛错都不许杀进程。
+                try {
+                    if (customView != null) {
+                        callback.onCustomViewHidden();
+                        return;
+                    }
+                    if (view == null || getWindow() == null) {
+                        if (callback != null) callback.onCustomViewHidden();
+                        return;
+                    }
+                    customView = view;
+                    customViewCallback = callback;
+                    ((ViewGroup) getWindow().getDecorView()).addView(customView,
+                            new FrameLayout.LayoutParams(
+                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT));
+                    if (bar != null) bar.setVisibility(View.GONE);
+                    Util.hideSystemUI(WebHomeActivity.this);
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                    try {
+                        if (callback != null) callback.onCustomViewHidden();
+                    } catch (Throwable ignored) {}
+                    customView = null;
+                    customViewCallback = null;
                 }
-                customView = view;
-                customViewCallback = callback;
-                ((ViewGroup) getWindow().getDecorView()).addView(customView,
-                        new FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT));
-                bar.setVisibility(View.GONE);
-                Util.hideSystemUI(WebHomeActivity.this);
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
             }
 
             @Override
@@ -171,6 +202,7 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     }
 
     private void injectSdk() {
+        if (webView == null) return;
         webView.evaluateJavascript(WebHomeSdk.script(isLeanback()), value -> {
             sdkReady = true;
             pushViewport();
@@ -188,15 +220,23 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
     private void hideCustomView() {
         if (customView == null) return;
-        ((ViewGroup) getWindow().getDecorView()).removeView(customView);
+        try {
+            if (getWindow() != null) {
+                ((ViewGroup) getWindow().getDecorView()).removeView(customView);
+            }
+        } catch (Throwable ignored) {}
         customView = null;
         boolean edge = "edge".equals(chromeMode) || "immersive".equals(chromeMode)
                 || "tv-full".equals(chromeMode) || "fullscreen".equals(chromeMode);
-        bar.setVisibility(edge ? View.GONE : View.VISIBLE);
-        Util.showSystemUI(this);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        if (bar != null) bar.setVisibility(edge ? View.GONE : View.VISIBLE);
+        try {
+            Util.showSystemUI(this);
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+        } catch (Throwable ignored) {}
         if (customViewCallback != null) {
-            customViewCallback.onCustomViewHidden();
+            try {
+                customViewCallback.onCustomViewHidden();
+            } catch (Throwable ignored) {}
             customViewCallback = null;
         }
     }
@@ -243,7 +283,7 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
     @Override
     public void setToolbar(boolean visible) {
-        bar.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (bar != null) bar.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
     @Override
@@ -254,7 +294,7 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
             chromeMode = mode;
             boolean edge = "edge".equals(mode) || "immersive".equals(mode)
                     || "tv-full".equals(mode) || "fullscreen".equals(mode);
-            bar.setVisibility(edge ? View.GONE : View.VISIBLE);
+            if (bar != null) bar.setVisibility(edge ? View.GONE : View.VISIBLE);
         }
         pushViewport();
     }
@@ -262,7 +302,7 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     @Override
     public void restoreChrome() {
         chromeMode = "normal";
-        bar.setVisibility(View.VISIBLE);
+        if (bar != null) bar.setVisibility(View.VISIBLE);
         pushViewport();
     }
 
@@ -286,7 +326,7 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
     @Override
     public void reload() {
-        progress.setVisibility(View.VISIBLE);
+        if (progress != null) progress.setVisibility(View.VISIBLE);
         if (webView != null) {
             webView.clearCache(true);
             webView.reload();
@@ -330,9 +370,15 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
     @Override
     protected void onDestroy() {
         if (webView != null) {
-            webView.loadUrl("about:blank");
-            webView.removeJavascriptInterface(WebHomeSdk.BRIDGE);
-            webView.destroy();
+            try {
+                webView.loadUrl("about:blank");
+            } catch (Throwable ignored) {}
+            try {
+                webView.removeJavascriptInterface(WebHomeSdk.BRIDGE);
+            } catch (Throwable ignored) {}
+            try {
+                webView.destroy();
+            } catch (Throwable ignored) {}
             webView = null;
         }
         super.onDestroy();

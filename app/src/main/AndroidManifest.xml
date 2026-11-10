@@ -99,6 +99,17 @@
             android:screenOrientation="unspecified" />
 
         <activity
+            android:name=".ui.activity.OnlineSiteListActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
+            android:screenOrientation="unspecified" />
+
+        <activity
+            android:name=".ui.activity.OnlineSiteBrowserActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
+            android:hardwareAccelerated="true"
+            android:screenOrientation="unspecified" />
+
+        <activity
             android:name=".ui.activity.SettingActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />

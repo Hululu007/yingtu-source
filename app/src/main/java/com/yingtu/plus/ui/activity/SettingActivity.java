@@ -60,7 +60,7 @@ import java.util.Set;
  */
 public class SettingActivity extends BaseActivity {
 
-    private TextView tvApiUrl, tvParseName, tvHomeRec, tvHomeLayout, tvGridColumns,
+    private TextView tvApiUrl, tvParseName, tvHomeRec, tvGridColumns,
             tvOrientation, tvStartSource, tvCacheHint, tvImportLocalJson, tvBuiltinZone,
             tvApiCache, tvSearchShow, tvProgressTag, tvRender, tvScale,
             tvHomeSourceCols, tvSearchSite, tvBufferTimeout, tvIjkBuffer, tvIjkDecode,
@@ -250,9 +250,6 @@ public class SettingActivity extends BaseActivity {
         tvSearchSite = find(R.id.tvSearchSite);
         refreshSearchSite();
         find(R.id.rowSearchSite).setOnClickListener(v -> pickSearchSite());
-        tvHomeLayout = find(R.id.tvHomeLayout);
-        refreshHomeLayout();
-        find(R.id.rowHomeLayout).setOnClickListener(v -> pickHomeLayout());
         refreshStartSource();
     }
 
@@ -495,32 +492,6 @@ public class SettingActivity extends BaseActivity {
                 .setMessage("远程接口站源：" + remote + " 个\n内置站源：" + builtin + " 个\n"
                         + "本地导入配置组：" + local + " 个\n内置直播源：" + live + " 个")
                 .setPositiveButton("知道了", null)
-                .show();
-    }
-
-    /** 首页布局行的值：侧边栏 / 原版。 */
-    private void refreshHomeLayout() {
-        if (tvHomeLayout == null) return;
-        tvHomeLayout.setText(Hawk.get(HawkConfig.HOME_LAYOUT, HawkConfig.HOME_LAYOUT_SIDEBAR)
-                == HawkConfig.HOME_LAYOUT_CLASSIC ? "原版" : "侧边栏");
-    }
-
-    /** 首页布局切换：原版（顶栏下常驻区域 Tab + 八个功能按钮）/ 侧边栏（区域 Tab 收进左侧抽屉）。
-     * 存进 Hawk，返回首页时 HomeActivity.onResume() 里立即生效，不用重启。 */
-    private void pickHomeLayout() {
-        String[] opts = {"侧边栏", "原版"};
-        int cur = Hawk.get(HawkConfig.HOME_LAYOUT, HawkConfig.HOME_LAYOUT_SIDEBAR);
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("首页布局")
-                .setSingleChoiceItems(opts, cur, (d, which) -> {
-                    Hawk.put(HawkConfig.HOME_LAYOUT, which);
-                    refreshHomeLayout();
-                    d.dismiss();
-                    toast(which == HawkConfig.HOME_LAYOUT_CLASSIC
-                            ? "已切原版布局，返回首页即生效"
-                            : "已切侧边栏布局，返回首页即生效");
-                })
-                .setNegativeButton("取消", null)
                 .show();
     }
 

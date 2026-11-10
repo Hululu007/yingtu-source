@@ -37,8 +37,9 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/online_site_title"
             android:padding="6dp"
-            android:src="@drawable/ic_add"
+            android:src="@drawable/ic_web"
             app:tint="@color/colorPrimary" />
     </LinearLayout>
 

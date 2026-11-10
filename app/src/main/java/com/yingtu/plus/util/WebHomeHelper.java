@@ -14,11 +14,28 @@ import java.util.List;
  */
 public class WebHomeHelper {
 
+    /** 内置 MissAV 网页版（assets/webhome/missav.html）：影视区空位的一键入口。 */
+    public static final String MISSAV_NAME = "\uD83D\uDD1EMissAV 网页版";
+    public static final String MISSAV_TARGET = "webhome/missav.html";
+
     private WebHomeHelper() {}
 
     public static List<WebHomeEntry> getAll() {
         seedIfNeeded();
+        ensureBuiltinEntries();
         return Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
+    }
+
+    /** 内置条目常驻：用户删光/种子已跑过也不丢 MissAV（与 BuiltinConfigs.ensureLoaded 同款思路）。 */
+    private static void ensureBuiltinEntries() {
+        List<WebHomeEntry> list = Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
+        for (WebHomeEntry e : list) {
+            if (e != null && MISSAV_TARGET.equals(e.target)) return;
+        }
+        WebHomeEntry missav = new WebHomeEntry(MISSAV_NAME, MISSAV_TARGET, WebHomeEntry.TYPE_ASSET);
+        missav.builtin = true;
+        list.add(0, missav);
+        Hawk.put(HawkConfig.WEBHOME_ENTRIES, list);
     }
 
     public static void add(WebHomeEntry entry) {
@@ -46,12 +63,15 @@ public class WebHomeHelper {
     private static void seedIfNeeded() {
         if (Hawk.get(HawkConfig.WEBHOME_SEEDED, false)) return;
         List<WebHomeEntry> list = Hawk.get(HawkConfig.WEBHOME_ENTRIES, new ArrayList<>());
+        WebHomeEntry missav = new WebHomeEntry(MISSAV_NAME, MISSAV_TARGET, WebHomeEntry.TYPE_ASSET);
+        missav.builtin = true;
         WebHomeEntry showcase = new WebHomeEntry("能力演示主页",
                 "webhome/showcase.html", WebHomeEntry.TYPE_ASSET);
         showcase.builtin = true;
         WebHomeEntry basic = new WebHomeEntry("基础模板主页",
                 "webhome/basic.html", WebHomeEntry.TYPE_ASSET);
         basic.builtin = true;
+        list.add(missav);
         list.add(showcase);
         list.add(basic);
         Hawk.put(HawkConfig.WEBHOME_ENTRIES, list);

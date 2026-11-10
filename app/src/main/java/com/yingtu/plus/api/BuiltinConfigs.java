@@ -3,12 +3,14 @@ package com.yingtu.plus.api;
 import android.content.Context;
 import android.text.TextUtils;
 
+import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.utils.Path;
 import com.github.catvod.utils.Util;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.yingtu.plus.App;
 import com.yingtu.plus.bean.SourceBean;
 
 import java.io.ByteArrayOutputStream;
@@ -45,7 +47,7 @@ public class BuiltinConfigs {
     /** 配置里登记的 jar 名（JarLoader 缓存键用这个字符串算 MD5）。 */
     public static final String JAR_NAME = "assets/jars/zakatv.jar";
     /** 火蚁TV树 zakatv.jar 的文件 MD5（与 lib/zakatv_builtin.dart 的 zakatvJarMd5 一致）。 */
-    public static final String JAR_MD5 = "b63fb5aa7f0ecb17cbd56465709a6242";
+    public static final String JAR_MD5 = "427616ca49c8b37bde8b75230e202cc9";
     /** 配置里 spider / 各 jar 站 jar 字段用的完整写法。 */
     public static final String JAR_SPEC = JAR_NAME + ";md5;" + JAR_MD5;
 
@@ -155,6 +157,10 @@ public class BuiltinConfigs {
         try {
             if (Util.equals(JAR_NAME, JAR_MD5)) return;
             File target = Path.jar(JAR_NAME);
+            // dm16：上一版 JarLoader.load() 成功后把缓存 jar 置了只读；覆盖安装换指纹后
+            // 不先清掉只读位，new FileOutputStream 在这里就权限拒绝、旧 jar 原样留下，
+            // 外层再一吞就成了全站静默空。先调 setWritable 再写。
+            target.setWritable(true);
             try (InputStream in = context.getAssets().open(JAR_ASSET);
                  OutputStream out = new FileOutputStream(target)) {
                 byte[] buf = new byte[8192];
@@ -162,7 +168,10 @@ public class BuiltinConfigs {
                 while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
             }
             if (!Util.equals(JAR_NAME, JAR_MD5)) target.delete();
-        } catch (Throwable ignored) {
+        } catch (Throwable e) {
+            // dm16：拷贝失败不许再静默吞掉，否则下次换指纹还是全站空、查无可查。
+            SpiderDebug.log("builtin-config", "ensureJarCached failed: %s", e.toString());
+            App.logCaught(e);
         }
     }
 

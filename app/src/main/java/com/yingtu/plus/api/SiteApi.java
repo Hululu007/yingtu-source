@@ -20,6 +20,7 @@ import com.yingtu.plus.utils.Sniffer;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderDebug;
+import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Prefers;
 import com.github.catvod.utils.Util;
@@ -69,6 +70,11 @@ public class SiteApi {
     public static Result homeContentDirect(@NonNull Site site) throws Exception {
         if (isSpider(site)) {
             Spider spider = site.recent().spider();
+            // dm16：蜘蛛实例化失败回 SpiderNull 时直接抛错，让界面显示“蜘蛛加载失败”，
+            // 不要再静默回空列表（SpiderNull.homeContent() 默认返回 ""）。
+            if (spider == null || spider instanceof SpiderNull) {
+                throw new IllegalStateException("蜘蛛加载失败");
+            }
             boolean crash = Prefers.getBoolean("crash");
             String home = crash ? "" : spider.homeContent(true);
             String video = crash ? "" : spider.homeVideoContent();
@@ -115,7 +121,12 @@ public class SiteApi {
         SpiderDebug.log("category", "key=%s,tid=%s,page=%s,filter=%s,extend=%s", key, tid, page, filter, extend);
         Site site = VodConfig.get().getSite(key);
         if (isSpider(site)) {
-            String categoryContent = site.recent().spider().categoryContent(tid, page, filter, extend);
+            Spider spider = site.recent().spider();
+            // dm16：同上，SpiderNull 直接抛错，不静默回空列表。
+            if (spider == null || spider instanceof SpiderNull) {
+                throw new IllegalStateException("蜘蛛加载失败");
+            }
+            String categoryContent = spider.categoryContent(tid, page, filter, extend);
             SpiderDebug.log("category", categoryContent);
             return Result.fromJson(categoryContent);
         } else {

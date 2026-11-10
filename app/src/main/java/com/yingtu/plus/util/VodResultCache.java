@@ -114,7 +114,16 @@ public final class VodResultCache {
                                         String siteKey, String tid, String page,
                                         HashMap<String, String> extend, String id) {
         if (!enabled(kind) || result == null) return;
+        // dm16：空结果（列表空且分类空）不缓存，一次瞬时失败不能钉住 120 分钟。
+        if (isEmpty(result)) return;
         CACHE.put(cacheKey, new Entry(kind, result, siteKey, tid, page, extend, id));
+    }
+
+    /** 空结果判定：视频列表与分类都空才算空；只一头空（例如首页只回分类）照常缓存。 */
+    private static boolean isEmpty(Result result) {
+        boolean listEmpty = result.getList() == null || result.getList().isEmpty();
+        boolean typesEmpty = result.getTypes() == null || result.getTypes().isEmpty();
+        return listEmpty && typesEmpty;
     }
 
     public static synchronized void clear() {

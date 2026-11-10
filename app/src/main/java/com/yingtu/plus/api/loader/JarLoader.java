@@ -183,6 +183,11 @@ public class JarLoader {
                 load(key, Download.create(jar, Path.jar(jar)).get());
             } else if (jar.startsWith("file")) {
                 load(key, Path.local(jar));
+            } else if (!md5.isEmpty() && Path.exists(Path.jar(jar))) {
+                // dm16：md5 不符但本地有文件时照常加载，旧 jar 总比 SpiderNull 强；
+                // md5 不匹配绝不能静默杀掉全部 jar 站（dm15 换指纹 + 只读缓存就是这么死的）。
+                SpiderDebug.log("jar-loader", "parse md5 mismatch, load anyway key=%s jar=%s", key, jar);
+                load(key, Path.jar(jar));
             }
         }
     }

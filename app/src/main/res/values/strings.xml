@@ -580,4 +580,27 @@
     <string name="setting_live">直播</string>
     <string name="setting_off">已关闭</string>
     <string name="setting_on">已开启</string>
+    <string name="online_site_title">在线网站</string>
+    <string name="online_site_empty">还没有在线网站\n点右下角 + 输网址添加</string>
+    <string name="online_site_add">添加网站</string>
+    <string name="online_site_edit">编辑网站</string>
+    <string name="online_site_edit_action">编辑</string>
+    <string name="online_site_delete_action">删除</string>
+    <string name="online_site_delete_confirm">删除网站「%1$s」？</string>
+    <string name="online_site_name_hint">名称（可选）</string>
+    <string name="online_site_url_hint">网址 http(s)://...</string>
+    <string name="online_site_mode_auto">工作模式：自动（推荐）</string>
+    <string name="online_site_pure">开启纯净化</string>
+    <string name="online_site_pure_sub">打开后按现有去广告规则拦截广告请求</string>
+    <string name="online_site_need_url">请输入网址</string>
+    <string name="online_site_need_http">网址需以 http:// 或 https:// 开头</string>
+    <string name="online_site_list">列表</string>
+    <string name="online_site_episodes">选集</string>
+    <string name="online_site_hide">收起</string>
+    <string name="online_site_loading">正在识别页面…</string>
+    <string name="online_site_no_list">未识别到列表，可在网页里直接点开</string>
+    <string name="online_site_no_episode">未识别到选集，可在网页里直接点开</string>
+    <string name="online_site_sniffing">正在嗅探播放地址…</string>
+    <string name="online_site_no_video">播放失败：未嗅探到可播地址</string>
+    <string name="online_site_unknown">暂无</string>
 </resources>

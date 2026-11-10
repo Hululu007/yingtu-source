@@ -20,6 +20,7 @@ import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
 import com.yingtu.plus.util.OkGo;
+import com.yingtu.plus.util.VodResultCache;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 
 import java.util.ArrayList;
@@ -55,7 +56,11 @@ public class SourceViewModel extends ViewModel {
                     listResult.postValue(null);
                     return;
                 }
-                homeKey = source.getKey();
+                String newHomeKey = source.getKey();
+                // dm16：切站时清掉新站的旧缓存条目（含此前瞬时失败钉住的空结果），强制现取；
+                // 同站重进 homeKey 不变，不清，缓存照常用。
+                if (!newHomeKey.equals(homeKey)) VodResultCache.clearSite(newHomeKey);
+                homeKey = newHomeKey;
                 Site site = VodConfig.get().getSite(homeKey);
                 if (site == null) {
                     sortResult.postValue(null);
@@ -81,9 +86,10 @@ public class SourceViewModel extends ViewModel {
                 }
                 sortResult.postValue(sorts);
                 listResult.postValue(toMovies(homeKey, result.getList()));
-            } catch (Exception e) {
-                // 之前这里静默吞错：界面只显示“该源暂无推荐内容”，堆栈哪都找不到。
-                // 现在记进 crash.log，界面也给一句可读的原因。
+            } catch (Throwable e) {
+                // 死站蜘蛛可能抛 Error（如栈溢出、类找不到）：只接 Exception 会漏网，
+                // 未捕获的 Error 会杀掉后台线程直至进程闪退。这里接 Throwable，
+                // 退化成“加载失败：原因”，不杀进程。
                 App.logCaught(e);
                 sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
                 sortResult.postValue(null);
@@ -112,13 +118,13 @@ public class SourceViewModel extends ViewModel {
                             String dedup = m.sourceKey + "|" + m.vodId;
                             if (seen.add(dedup)) merged.add(m);
                         }
-                    } catch (Exception ignored) {
+                    } catch (Throwable ignored) {
                     }
                 }
                 homeKey = firstKey;
                 sortResult.postValue(new ArrayList<>());
                 listResult.postValue(merged);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 App.logCaught(e);
                 sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
                 sortResult.postValue(null);
@@ -133,7 +139,7 @@ public class SourceViewModel extends ViewModel {
             try {
                 Result result = SiteApi.categoryContent(homeKey, typeId, String.valueOf(page), true, extend);
                 listResult.postValue(toMovies(homeKey, result.getList()));
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 listResult.postValue(null);
             }
         });
@@ -150,7 +156,7 @@ public class SourceViewModel extends ViewModel {
                     vod = SiteApi.detailContent(sourceKey, vodId).getVod();
                 }
                 detailResult.postValue(vod == null ? null : toVodInfo(sourceKey, vod));
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 detailResult.postValue(null);
             }
         });
@@ -172,7 +178,7 @@ public class SourceViewModel extends ViewModel {
                 }
                 Result result = SiteApi.searchContent(site, keyword, false, "1");
                 searchResult.postValue(toMovies(source.getKey(), result.getList()));
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 searchResult.postValue(null);
             }
         });

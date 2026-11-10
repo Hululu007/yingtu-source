@@ -2,16 +2,13 @@ package com.yingtu.plus.ui.activity;
 
 import android.content.Intent;
 import android.content.res.ColorStateList;
-import android.graphics.Outline;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -25,23 +22,20 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.yingtu.plus.BuildConfig;
 import com.yingtu.plus.R;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.VodConfigSync;
 import com.yingtu.plus.base.BaseActivity;
 import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.ui.adapter.SourceGridAdapter;
-import com.yingtu.plus.ui.dialog.CastDialog;
-import com.yingtu.plus.ui.fragment.DramaFragment;
-import com.yingtu.plus.ui.fragment.FavVodFragment;
+import com.yingtu.plus.ui.fragment.ChannelFragment;
 import com.yingtu.plus.ui.fragment.HomeMainFragment;
-import com.yingtu.plus.ui.fragment.MidnightFragment;
+import com.yingtu.plus.ui.fragment.ListFragment;
+import com.yingtu.plus.ui.fragment.MineFragment;
 import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.util.OkGo;
 import com.yingtu.plus.util.SiteFilter;
 import com.yingtu.plus.util.SourceMsgGate;
-import com.yingtu.plus.utils.ResUtil;
 import com.yingtu.plus.util.ZoneSites;
 import com.orhanobut.hawk.Hawk;
 import com.google.android.material.chip.Chip;
@@ -50,27 +44,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 首页外壳。顶栏：头像 + 站点名 + 居中搜索框 + 历史/收藏/放映/网页/设置五个图标；
- * 两种首页布局可切（设置 → 首页和搜索 → 首页布局，Hawk HOME_LAYOUT，返回即生效不用重启）：
- * ①侧边栏（默认）：区域导航（影视 / 短剧 / 直播 / 午夜 / 文件，横向胶囊 Tab，
- * 图标在上文字在下）挪进左侧边栏抽屉头部，其下是六个工具行（快搜 / 收藏 / 应用 /
- * 网盘 / 推送 / 节目单）；顶栏左端头像开栏、左缘向右划入，点遮罩或左滑收起。
- * ②原版：顶栏下方常驻区域 Tab 行 + 八个功能按钮（历史 / 直播 / 文件 / 站源 /
- * 搜索 / 推送 / 放映 / 设置，照旧版“影图 - 本地”首页），抽屉禁用，点头像开站源弹窗。
- * 两套 Tab 各绑各的点击，都走 onNavGo() 同一切区逻辑；内容区（全屏，底部导航已删）。
- * 点击标题弹出站源选择小窗（带搜索 + 分类筛选）。
- * 点击标题/Logo 弹出站源选择小窗（带搜索 + 分类筛选）。
- * 影视区只列用户自己导入的站：内置站（午夜区、短剧区的内置配置站）由
- * ApiConfig.isBuiltinSite(key) 判定后过滤，该方法是 H 批（午夜区）在 ApiConfig 里加的。
+ * 首页外壳（潮影霓虹主题）。顶栏：潮影标题 + 搜索 + 消息；
+ * 底部悬浮导航：首页 / 频道 / +（一键写 PY）/ 片单 / 我的；
+ * 内容区（fragmentContainer）按底栏切四个片段：首页 HomeMainFragment、
+ * 频道 ChannelFragment（group 参数 all/drama/midnight）、片单 ListFragment、
+ * 我的 MineFragment。点击标题不再弹站源弹窗，站源弹窗改由各分区页
+ * 点站名经 openSourcePopupForZone() 打开。
  */
 public class HomeActivity extends BaseActivity {
 
-    /**
-     * 兼容 HomeWebBridge.openKeep()：它用 KEY_TAB=4 打开“分享收藏”。
-     * 顶部 tab 已删，只剩 4（收藏）还有效，其余值忽略。
-     */
+    /** WebHome 桥接的 KEY_TAB 键名（HomeWebBridge.openKeep 沿用，收藏 Tab 已随侧边栏撤下）。 */
     public static final String KEY_TAB = "tab";
-    /** 内置区列表点站进来时用：要打开的侧边栏去向（NAV_MOVIE / NAV_DRAMA / NAV_MIDNIGHT）。 */
+    /** 内置区列表点站进来时用：要打开的去向（NAV_MOVIE / NAV_DRAMA / NAV_MIDNIGHT）。 */
     public static final String EXTRA_NAV_TAB = "nav_tab";
     /** 内置区列表点站进来时用：要进的站 key，分区页在 onVisible 里认领。 */
     public static final String EXTRA_SITE_KEY = "site_key";
@@ -80,47 +65,18 @@ public class HomeActivity extends BaseActivity {
     public static final int NAV_LIVE = 1003;
     public static final int NAV_MIDNIGHT = 1004;
     public static final int NAV_FILE = 1005;
-    /** 第九批第二路：三个独立页直达（快搜 / 收藏 / 应用），接法与直播/文件同一路。 */
-    public static final int NAV_FASTSEARCH = 1006;
-    public static final int NAV_COLLECT = 1007;
-    public static final int NAV_APPS = 1008;
-    /** 第九批第三路：三个独立页直达（网盘 / 推送 / 节目单），接法与直播/文件同一路。 */
-    public static final int NAV_DRIVE = 1009;
-    public static final int NAV_PUSH = 1010;
-    public static final int NAV_EPG = 1011;
+    /** 片单（底栏）。 */
+    public static final int NAV_LIST = 1006;
+    /** 我的（底栏）。 */
+    public static final int NAV_MINE = 1007;
+    /** 频道·默认组（底栏，ChannelFragment group="all"）。 */
+    public static final int NAV_CHANNEL = 1010;
 
-    private TextView tvTitle, tvSourceCount;
+    private TextView tvSourceCount;
     private SourceGridAdapter sourceAdapter;
     private PopupWindow sourcePopup;
     private EditText etSearch;
     private LinearLayout chipContainer;
-    // 左侧边栏（第十批）：面板 / 遮罩 / 左缘划入区 + 六个工具行；区域 Tab 行在侧栏头部。
-    private View sidebarPanel;
-    private View sidebarScrim;
-    private TextView tvSbVersion;
-    private TextView tvSbFastSearch, tvSbCollect, tvSbApps;
-    private TextView tvSbDrive, tvSbPush, tvSbEpg;
-    private View sbFastSearchRow, sbCollectRow, sbAppsRow;
-    private View sbDriveRow, sbPushRow, sbEpgRow;
-    private View tabMovieRow, tabDramaRow, tabLiveRow, tabMidnightRow, tabFileRow;
-    private TextView tvTabMovie, tvTabDrama, tvTabLive, tvTabMidnight, tvTabFile;
-    private ImageView ivTabMovie, ivTabDrama, ivTabLive, ivTabMidnight, ivTabFile;
-    private boolean sidebarOpen = false;
-    // 原版布局（设置 → 首页布局 → 原版）：顶栏下常驻的区域 Tab 行 + 八个功能按钮，
-    // 与侧边栏那套 Tab 各绑各的点击，都走 onNavGo() 同一切区逻辑。
-    private View classicContainer;
-    private View edgeZoneView;
-    private View tabMovieRowC, tabDramaRowC, tabLiveRowC, tabMidnightRowC, tabFileRowC;
-    private TextView tvTabMovieC, tvTabDramaC, tvTabLiveC, tvTabMidnightC, tvTabFileC;
-    private ImageView ivTabMovieC, ivTabDramaC, ivTabLiveC, ivTabMidnightC, ivTabFileC;
-    private static final int SIDEBAR_WIDTH_DP = 304;
-    private static final int EDGE_SWIPE_MIN_DX_DP = 40;
-    private float edgeDownX;
-    private float edgeDownY;
-    private boolean edgeSwiping;
-    private float sidebarDownX;
-    private float sidebarDownY;
-    private boolean sidebarSwiping;
     // 站源弹窗里的标题 / 网格 / 空态视图：每次打开按当前区重填（标题、站数、空态提示）。
     private TextView tvPopupTitle;
     private View rvSourceView;
@@ -129,7 +85,6 @@ public class HomeActivity extends BaseActivity {
     private View btnPopupImport;
 
     private int currentNav = NAV_MOVIE;
-    private boolean showingFav = false;
     private RecyclerView rvSourceGrid;
 
     @Override
@@ -144,56 +99,34 @@ public class HomeActivity extends BaseActivity {
         try {
             // 应用自定义壁纸
             applyCustomWallpaper();
-            applyLogo();
-            tvTitle = find(R.id.tvTitle);
-
-            // 顶栏：标题点开站源弹窗；左端头像在侧边栏模式下开左侧栏，
-            // 原版模式下抽屉禁用，点头像改为开站源弹窗（与标题同路）。
-            tvTitle.setOnClickListener(v -> openSourcePopup());
-            find(R.id.ivLogo).setOnClickListener(v -> {
-                if (isClassicLayout()) openSourcePopup();
-                else openSidebar();
-            });
-            find(R.id.tvSearchBox).setOnClickListener(v ->
+            // 顶栏：标题静态显示“潮影”，不点；搜索进搜索页，消息进推送页。
+            TextView tvAppTitle = find(R.id.tvAppTitle);
+            if (tvAppTitle != null) tvAppTitle.setText("潮影");
+            View btnSearch = find(R.id.btnSearch);
+            if (btnSearch != null) btnSearch.setOnClickListener(v ->
                     startActivity(new Intent(this, SearchActivity.class)));
-            find(R.id.ivHistory).setOnClickListener(v ->
-                    startActivity(new Intent(this, HistoryActivity.class)));
-            find(R.id.ivFav).setOnClickListener(v -> showFav());
-            find(R.id.ivCast).setOnClickListener(v -> {
-                // 允许DLNA投屏（设置 → 更多设置）：关时不打开投屏
-                boolean allow = false;
-                try {
-                    allow = Hawk.get(HawkConfig.DLNA_ALLOW, false);
-                } catch (Throwable ignored) {
-                }
-                if (!allow) {
-                    Toast.makeText(this, "投屏已在设置里关闭", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                CastDialog.create().show(this);
-            });
-            find(R.id.ivWeb).setOnClickListener(v -> {
-                // 网页首页默认进内置示例主页：WebHomeActivity 没带 KEY_URL 会弹
-                // “首页地址为空”并直接 finish，之前这里一个参数都没带。
-                Intent web = new Intent(this, WebHomeActivity.class);
-                web.putExtra(WebHomeActivity.KEY_URL, "file:///android_asset/webhome/showcase.html");
-                web.putExtra(WebHomeActivity.KEY_TITLE, "网页首页");
-                startActivity(web);
-            });
-            // 设置入口在顶栏右上角（底部导航已删，见 setupSidebar）。
-            find(R.id.ivSetting).setOnClickListener(v ->
-                    startActivity(new Intent(this, SettingActivity.class)));
+            View btnMessage = find(R.id.btnMessage);
+            if (btnMessage != null) btnMessage.setOnClickListener(v ->
+                    startActivity(new Intent(this, PushActivity.class)));
+            // 底部悬浮导航：首页 / 频道 / + / 片单 / 我的。
+            View navHome = find(R.id.navHome);
+            if (navHome != null) navHome.setOnClickListener(v -> showFragment(NAV_MOVIE));
+            View navChannel = find(R.id.navChannel);
+            if (navChannel != null) navChannel.setOnClickListener(v -> showFragment(NAV_CHANNEL));
+            View navAdd = find(R.id.navAdd);
+            if (navAdd != null) navAdd.setOnClickListener(v ->
+                    startActivity(new Intent(this, OneKeyPyActivity.class)));
+            View navList = find(R.id.navList);
+            if (navList != null) navList.setOnClickListener(v -> showFragment(NAV_LIST));
+            View navMine = find(R.id.navMine);
+            if (navMine != null) navMine.setOnClickListener(v -> showFragment(NAV_MINE));
 
-            setupSidebar();
-            setupClassic();
-            applyLayout();
             // 各区启动站：设置里按区设好的启动站，冷启动时写进各区当前站。
             ZoneSites.applyStartupSites();
             showFragment(NAV_MOVIE);
             handleTabExtra(getIntent());
 
             setupSourcePopup();
-            refreshTitle();
         } catch (Throwable e) {
             e.printStackTrace();
             com.yingtu.plus.App.logCaught(e);
@@ -203,17 +136,22 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    /** WebHome 桥接的 KEY_TAB=4 → 打开收藏页；其余旧 tab 值已废弃，忽略。
-     * 内置区列表点站进来带 EXTRA_NAV_TAB：切到对应分区，站 key 留给分区页认领。 */
+    /** 内置区列表点站进来带 EXTRA_NAV_TAB：切到对应分区，站 key 留给分区页认领
+     * （分区页从本 Activity 的 intent 里读 EXTRA_SITE_KEY）。
+     * 直播 / 文件是独立页，直接打开。 */
     private void handleTabExtra(Intent intent) {
         if (intent == null) return;
-        if (intent.getIntExtra(KEY_TAB, -1) == 4) showFav();
         int navTab = intent.getIntExtra(EXTRA_NAV_TAB, -1);
         if (navTab == NAV_MOVIE || navTab == NAV_DRAMA || navTab == NAV_MIDNIGHT) {
             showFragment(navTab);
-        } else if (navTab == NAV_LIVE || navTab == NAV_FILE) {
-            // 默认启动=直播/文件：直接进对应独立页
-            onNavGo(navTab);
+        } else if (navTab == NAV_LIVE) {
+            startActivity(new Intent(this, LiveActivity.class));
+        } else if (navTab == NAV_FILE) {
+            startActivity(new Intent(this, FileActivity.class));
+        }
+        // WebHome 桥接 openKeep 发的 KEY_TAB=4（分享收藏）：收藏已并入“片单”Tab。
+        if (intent.getIntExtra(KEY_TAB, -1) == 4) {
+            showFragment(NAV_LIST);
         }
     }
 
@@ -225,278 +163,19 @@ public class HomeActivity extends BaseActivity {
         handleTabExtra(intent);
     }
 
-    /** 左侧边栏接线（第十批，标准模态抽屉）：顶栏左端头像 + 左缘向右划滑出面板，
-     * 面板头部是区域导航 Tab 行（影视 / 短剧 / 直播 / 午夜 / 文件，点 Tab 切区并收栏），
-     * 其下是六个工具行，点行先关栏再动作；点遮罩或面板左滑收回，不自动收回。
-     * 边缘划入只认最左 16dp（顶栏 56dp 不占），不抢内容区分类 chips 的横滑。 */
-    private void setupSidebar() {
-        sidebarPanel = find(R.id.sidebarPanel);
-        sidebarScrim = find(R.id.sidebarScrim);
-        sbFastSearchRow = find(R.id.sbFastSearch);
-        sbCollectRow = find(R.id.sbCollect);
-        sbAppsRow = find(R.id.sbApps);
-        sbDriveRow = find(R.id.sbDrive);
-        sbPushRow = find(R.id.sbPush);
-        sbEpgRow = find(R.id.sbEpg);
-        tvSbFastSearch = find(R.id.tvSbFastSearch);
-        tvSbCollect = find(R.id.tvSbCollect);
-        tvSbApps = find(R.id.tvSbApps);
-        tvSbDrive = find(R.id.tvSbDrive);
-        tvSbPush = find(R.id.tvSbPush);
-        tvSbEpg = find(R.id.tvSbEpg);
-        tvSbVersion = find(R.id.tvSbVersion);
-        if (tvSbVersion != null) tvSbVersion.setText("v" + BuildConfig.VERSION_NAME);
-        tabMovieRow = find(R.id.tabMovie);
-        tabDramaRow = find(R.id.tabDrama);
-        tabLiveRow = find(R.id.tabLive);
-        tabMidnightRow = find(R.id.tabMidnight);
-        tabFileRow = find(R.id.tabFile);
-        tvTabMovie = find(R.id.tvTabMovie);
-        tvTabDrama = find(R.id.tvTabDrama);
-        tvTabLive = find(R.id.tvTabLive);
-        tvTabMidnight = find(R.id.tvTabMidnight);
-        tvTabFile = find(R.id.tvTabFile);
-        ivTabMovie = find(R.id.ivTabMovie);
-        ivTabDrama = find(R.id.ivTabDrama);
-        ivTabLive = find(R.id.ivTabLive);
-        ivTabMidnight = find(R.id.ivTabMidnight);
-        ivTabFile = find(R.id.ivTabFile);
-
-        if (sidebarScrim != null) sidebarScrim.setOnClickListener(v -> closeSidebar());
-        if (sidebarPanel != null) {
-            sidebarPanel.setOnTouchListener((v, e) -> {
-                switch (e.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        sidebarDownX = e.getX();
-                        sidebarDownY = e.getY();
-                        sidebarSwiping = false;
-                        break;
-                    case MotionEvent.ACTION_MOVE:
-                        if (!sidebarSwiping) {
-                            float dx = e.getX() - sidebarDownX;
-                            float dy = e.getY() - sidebarDownY;
-                            if (dx < -ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP)
-                                    && Math.abs(dx) > Math.abs(dy) * 2) {
-                                sidebarSwiping = true;
-                                closeSidebar();
-                            }
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                return false;
-            });
-        }
-        if (sbFastSearchRow != null) sbFastSearchRow.setOnClickListener(v -> onNavGo(NAV_FASTSEARCH));
-        if (sbCollectRow != null) sbCollectRow.setOnClickListener(v -> onNavGo(NAV_COLLECT));
-        if (sbAppsRow != null) sbAppsRow.setOnClickListener(v -> onNavGo(NAV_APPS));
-        if (sbDriveRow != null) sbDriveRow.setOnClickListener(v -> onNavGo(NAV_DRIVE));
-        if (sbPushRow != null) sbPushRow.setOnClickListener(v -> onNavGo(NAV_PUSH));
-        if (sbEpgRow != null) sbEpgRow.setOnClickListener(v -> onNavGo(NAV_EPG));
-        if (tabMovieRow != null) tabMovieRow.setOnClickListener(v -> onNavGo(NAV_MOVIE));
-        if (tabDramaRow != null) tabDramaRow.setOnClickListener(v -> onNavGo(NAV_DRAMA));
-        if (tabLiveRow != null) tabLiveRow.setOnClickListener(v -> onNavGo(NAV_LIVE));
-        if (tabMidnightRow != null) tabMidnightRow.setOnClickListener(v -> onNavGo(NAV_MIDNIGHT));
-        if (tabFileRow != null) tabFileRow.setOnClickListener(v -> onNavGo(NAV_FILE));
-
-        View edgeZone = find(R.id.edgeSwipeZone);
-        edgeZoneView = edgeZone;
-        if (edgeZone != null) {
-            final int minDx = ResUtil.dp2px(EDGE_SWIPE_MIN_DX_DP);
-            edgeZone.setOnTouchListener((v, e) -> {
-                switch (e.getActionMasked()) {
-                    case MotionEvent.ACTION_DOWN:
-                        edgeDownX = e.getX();
-                        edgeDownY = e.getY();
-                        edgeSwiping = false;
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        if (!edgeSwiping) {
-                            float dx = e.getX() - edgeDownX;
-                            float dy = e.getY() - edgeDownY;
-                            if (dx > minDx && Math.abs(dx) > Math.abs(dy) * 2) {
-                                edgeSwiping = true;
-                                openSidebar();
-                            }
-                        }
-                        return true;
-                    case MotionEvent.ACTION_UP:
-                    case MotionEvent.ACTION_CANCEL:
-                        return true;
-                    default:
-                        return true;
-                }
-            });
-        }
+    /** 底部导航当前项高亮：选中项图标与文字 tint 霓虹粉，其余暗紫灰；
+     * 频道组（默认 / 短剧 / 午夜）都算“频道”选中；中央 + 号不参与高亮。 */
+    private void updateBottomNav(int navId) {
+        setNavItem(find(R.id.ivNavHome), find(R.id.tvNavHome), navId == NAV_MOVIE);
+        setNavItem(find(R.id.ivNavChannel), find(R.id.tvNavChannel),
+                navId == NAV_CHANNEL || navId == NAV_DRAMA || navId == NAV_MIDNIGHT);
+        setNavItem(find(R.id.ivNavList), find(R.id.tvNavList), navId == NAV_LIST);
+        setNavItem(find(R.id.ivNavMine), find(R.id.tvNavMine), navId == NAV_MINE);
     }
 
-    /** 当前是不是原版布局（Hawk HOME_LAYOUT，默认 0=侧边栏）。 */
-    private boolean isClassicLayout() {
-        try {
-            return Hawk.get(HawkConfig.HOME_LAYOUT, HawkConfig.HOME_LAYOUT_SIDEBAR)
-                    == HawkConfig.HOME_LAYOUT_CLASSIC;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    /** 原版布局接线：顶栏下常驻的区域 Tab 行 + 八个功能按钮。
-     * Tab 与侧边栏那套各绑各的点击，都走 onNavGo() 同一切区逻辑；
-     * 八个按钮照旧版首页：历史 / 直播 / 文件 / 站源 / 搜索 / 推送 / 放映 / 设置。 */
-    private void setupClassic() {
-        classicContainer = find(R.id.classicContainer);
-        tabMovieRowC = find(R.id.tabMovieC);
-        tabDramaRowC = find(R.id.tabDramaC);
-        tabLiveRowC = find(R.id.tabLiveC);
-        tabMidnightRowC = find(R.id.tabMidnightC);
-        tabFileRowC = find(R.id.tabFileC);
-        tvTabMovieC = find(R.id.tvTabMovieC);
-        tvTabDramaC = find(R.id.tvTabDramaC);
-        tvTabLiveC = find(R.id.tvTabLiveC);
-        tvTabMidnightC = find(R.id.tvTabMidnightC);
-        tvTabFileC = find(R.id.tvTabFileC);
-        ivTabMovieC = find(R.id.ivTabMovieC);
-        ivTabDramaC = find(R.id.ivTabDramaC);
-        ivTabLiveC = find(R.id.ivTabLiveC);
-        ivTabMidnightC = find(R.id.ivTabMidnightC);
-        ivTabFileC = find(R.id.ivTabFileC);
-        if (tabMovieRowC != null) tabMovieRowC.setOnClickListener(v -> onNavGo(NAV_MOVIE));
-        if (tabDramaRowC != null) tabDramaRowC.setOnClickListener(v -> onNavGo(NAV_DRAMA));
-        if (tabLiveRowC != null) tabLiveRowC.setOnClickListener(v -> onNavGo(NAV_LIVE));
-        if (tabMidnightRowC != null) tabMidnightRowC.setOnClickListener(v -> onNavGo(NAV_MIDNIGHT));
-        if (tabFileRowC != null) tabFileRowC.setOnClickListener(v -> onNavGo(NAV_FILE));
-
-        View btnHistory = find(R.id.btnClassicHistory);
-        if (btnHistory != null) btnHistory.setOnClickListener(v ->
-                startActivity(new Intent(this, HistoryActivity.class)));
-        View btnLive = find(R.id.btnClassicLive);
-        if (btnLive != null) btnLive.setOnClickListener(v -> onNavGo(NAV_LIVE));
-        View btnFile = find(R.id.btnClassicFile);
-        if (btnFile != null) btnFile.setOnClickListener(v -> onNavGo(NAV_FILE));
-        View btnSource = find(R.id.btnClassicSource);
-        if (btnSource != null) btnSource.setOnClickListener(v ->
-                startActivity(new Intent(this, SourceActivity.class)));
-        View btnSearch = find(R.id.btnClassicSearch);
-        if (btnSearch != null) btnSearch.setOnClickListener(v ->
-                startActivity(new Intent(this, SearchActivity.class)));
-        View btnPush = find(R.id.btnClassicPush);
-        if (btnPush != null) btnPush.setOnClickListener(v -> onNavGo(NAV_PUSH));
-        View btnCast = find(R.id.btnClassicCast);
-        if (btnCast != null) btnCast.setOnClickListener(v ->
-                CastDialog.create().show(this));
-        View btnSetting = find(R.id.btnClassicSetting);
-        if (btnSetting != null) btnSetting.setOnClickListener(v ->
-                startActivity(new Intent(this, SettingActivity.class)));
-    }
-
-    /** 按当前布局切换首页形态，设置里改完返回首页时 onResume() 里调这里立即生效，不用重启。
-     * 原版：显示顶栏下常驻 Tab + 按钮区，收起并禁用抽屉（左缘划入区藏掉）；
-     * 侧边栏：藏掉原版顶区，恢复左缘划入区。 */
-    private void applyLayout() {
-        boolean classic = isClassicLayout();
-        if (classicContainer != null) {
-            classicContainer.setVisibility(classic ? View.VISIBLE : View.GONE);
-        }
-        if (classic && sidebarOpen) closeSidebar();
-        if (edgeZoneView != null) {
-            edgeZoneView.setVisibility(classic ? View.GONE : View.VISIBLE);
-        }
-        if (classic) updateTabSelected(currentNav);
-    }
-
-    /** 侧边栏滑出：遮罩露出来，面板从左边缘滑进来；开栏时把抽屉头部 Tab 行的高亮
-     * 刷成当前区（从直播/文件独立页返回后，高亮仍是回来前所在的区）。
-     * 原版模式下抽屉禁用，直接返回。 */
-    private void openSidebar() {
-        if (isClassicLayout()) return;
-        if (sidebarOpen) return;
-        if (sidebarPanel == null || sidebarScrim == null) return;
-        sidebarOpen = true;
-        updateTabSelected(currentNav);
-        sidebarScrim.setVisibility(View.VISIBLE);
-        sidebarPanel.setVisibility(View.VISIBLE);
-        sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));
-        sidebarPanel.animate().cancel();
-        sidebarPanel.animate().translationX(0).setDuration(250).start();
-    }
-
-    /** 侧边栏收回：面板立刻藏掉、遮罩藏掉。
-     * 注意：原来靠滑出动画 + withEndAction 藏面板，但在用户手机上（鸿蒙 NEXT 卓易通容器）
-     * 动画的 endAction 不触发，面板一直停在 translationX=0 盖住半屏，点区只换高亮不切区；
-     * 所以这里不再依赖动画做收尾——先取消残留动画，再把面板移出屏外并直接 GONE，
-     * 关栏在点按当下就确定生效。开栏的滑入动画不受影响。 */
-    private void closeSidebar() {
-        if (!sidebarOpen) return;
-        sidebarOpen = false;
-        if (sidebarPanel == null || sidebarScrim == null) return;
-        sidebarPanel.animate().cancel();
-        sidebarPanel.setTranslationX(-ResUtil.dp2px(SIDEBAR_WIDTH_DP));
-        sidebarPanel.setVisibility(View.GONE);
-        sidebarScrim.setVisibility(View.GONE);
-    }
-
-    /** 点一个去向：先收回面板；直播/文件/快搜/收藏/应用是独立页直接打开，其余切内容区。
-     * 切区逻辑与原来底部导航那路一致（showFragment），顶栏站名与各区站点弹窗
-     * 仍按当前选中去向所在区来。 */
-    private void onNavGo(int navId) {
-        closeSidebar();
-        if (navId == NAV_LIVE) {
-            startActivity(new Intent(this, LiveActivity.class));
-            return;
-        }
-        if (navId == NAV_FILE) {
-            startActivity(new Intent(this, FileActivity.class));
-            return;
-        }
-        if (navId == NAV_FASTSEARCH) {
-            startActivity(new Intent(this, FastSearchActivity.class));
-            return;
-        }
-        if (navId == NAV_COLLECT) {
-            startActivity(new Intent(this, CollectActivity.class));
-            return;
-        }
-        if (navId == NAV_APPS) {
-            startActivity(new Intent(this, AppsActivity.class));
-            return;
-        }
-        if (navId == NAV_DRIVE) {
-            startActivity(new Intent(this, DriveActivity.class));
-            return;
-        }
-        if (navId == NAV_PUSH) {
-            startActivity(new Intent(this, PushActivity.class));
-            return;
-        }
-        if (navId == NAV_EPG) {
-            startActivity(new Intent(this, EpgActivity.class));
-            return;
-        }
-        showFragment(navId);
-    }
-
-    /** 区域 Tab 行当前区高亮：选中 Tab 用胶囊底 + 白字白图标，其余常规色；
-     * 直播/文件是独立页，点后不在 Tab 行标当前（切走后 Tab 行仍按内容区当前区标）。
-     * 两套 Tab（侧边栏抽屉头部 + 原版顶栏下）一起刷，藏着的那套刷了也不碍事。 */
-    private void updateTabSelected(int navId) {
-        if (tvTabMovie == null) return;
-        setTabRow(tabMovieRow, tvTabMovie, ivTabMovie, navId == NAV_MOVIE);
-        setTabRow(tabDramaRow, tvTabDrama, ivTabDrama, navId == NAV_DRAMA);
-        setTabRow(tabLiveRow, tvTabLive, ivTabLive, false);
-        setTabRow(tabMidnightRow, tvTabMidnight, ivTabMidnight, navId == NAV_MIDNIGHT);
-        setTabRow(tabFileRow, tvTabFile, ivTabFile, false);
-        setTabRow(tabMovieRowC, tvTabMovieC, ivTabMovieC, navId == NAV_MOVIE);
-        setTabRow(tabDramaRowC, tvTabDramaC, ivTabDramaC, navId == NAV_DRAMA);
-        setTabRow(tabLiveRowC, tvTabLiveC, ivTabLiveC, false);
-        setTabRow(tabMidnightRowC, tvTabMidnightC, ivTabMidnightC, navId == NAV_MIDNIGHT);
-        setTabRow(tabFileRowC, tvTabFileC, ivTabFileC, false);
-    }
-
-    private void setTabRow(View row, TextView tv, ImageView iv, boolean selected) {
-        if (row == null || tv == null || iv == null) return;
-        row.setSelected(selected);
-        int color = getColor(selected ? android.R.color.white : R.color.text_primary);
+    private void setNavItem(ImageView iv, TextView tv, boolean selected) {
+        if (iv == null || tv == null) return;
+        int color = getColor(selected ? R.color.neon_pink : R.color.text_muted);
         tv.setTextColor(color);
         tv.setTypeface(null, selected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
         iv.setImageTintList(ColorStateList.valueOf(color));
@@ -505,22 +184,34 @@ public class HomeActivity extends BaseActivity {
     private void showFragment(int navId) {
         try {
             currentNav = navId;
-            showingFav = false;
-            // 区域 Tab 行当前区高亮跟着切（从内置区列表、返回键等路子切过来也一样）。
-            updateTabSelected(navId);
-            // 切 tab 就按新区刷新顶栏站名（之前顶栏一直显示全局当前源，
-            // 在午夜区会错显示短剧站名）。
-            refreshTitle();
+            updateBottomNav(navId);
             String tag;
             Fragment fragment;
-            if (navId == NAV_DRAMA) {
-                tag = "drama";
+            if (navId == NAV_CHANNEL || navId == NAV_DRAMA || navId == NAV_MIDNIGHT) {
+                tag = "channel";
+                String group = navId == NAV_DRAMA ? "drama"
+                        : navId == NAV_MIDNIGHT ? "midnight" : "all";
                 fragment = getSupportFragmentManager().findFragmentByTag(tag);
-                if (fragment == null) fragment = new DramaFragment();
-            } else if (navId == NAV_MIDNIGHT) {
-                tag = "midnight";
+                boolean reuse = false;
+                if (fragment instanceof ChannelFragment) {
+                    Bundle args = fragment.getArguments();
+                    reuse = group.equals(args != null ? args.getString("group", "") : "");
+                }
+                if (!reuse) {
+                    ChannelFragment cf = new ChannelFragment();
+                    Bundle args = new Bundle();
+                    args.putString("group", group);
+                    cf.setArguments(args);
+                    fragment = cf;
+                }
+            } else if (navId == NAV_LIST) {
+                tag = "list";
                 fragment = getSupportFragmentManager().findFragmentByTag(tag);
-                if (fragment == null) fragment = new MidnightFragment();
+                if (fragment == null) fragment = new ListFragment();
+            } else if (navId == NAV_MINE) {
+                tag = "mine";
+                fragment = getSupportFragmentManager().findFragmentByTag(tag);
+                if (fragment == null) fragment = new MineFragment();
             } else {
                 tag = "home";
                 fragment = getSupportFragmentManager().findFragmentByTag(tag);
@@ -542,14 +233,21 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    /** 顶栏收藏图标：收藏页（FavVodFragment）直接宿在首页内容区。 */
-    private void showFav() {
-        showingFav = true;
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag("fav");
-        if (fragment == null) fragment = new FavVodFragment();
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragmentContainer, fragment, "fav")
-                .commit();
+    /** 供 ChannelFragment 点站名切站：按指定分区弹出选站弹窗。
+     * openSourcePopup() 按 currentNav 取区（zoneOf），所以先把 currentNav
+     * 临时换成该区对应的导航值再打开，弹窗里已按该区取好站并 captured
+     * zone，打开后立即恢复 currentNav；"all" 不对应独立分区，
+     * 按 openSourcePopup 原有默认走影视区。 */
+    public void openSourcePopupForZone(String zone) {
+        int savedNav = currentNav;
+        if (ZoneSites.ZONE_DRAMA.equals(zone)) currentNav = NAV_DRAMA;
+        else if (ZoneSites.ZONE_MIDNIGHT.equals(zone)) currentNav = NAV_MIDNIGHT;
+        else if (ZoneSites.ZONE_MOVIE.equals(zone)) currentNav = NAV_MOVIE;
+        try {
+            openSourcePopup();
+        } finally {
+            currentNav = savedNav;
+        }
     }
 
     private void setupSourcePopup() {
@@ -591,10 +289,10 @@ public class HomeActivity extends BaseActivity {
             }
         });
 
-        // 管理源按钮
+        // Online website entry (globe icon): opens the online website manager.
         popupView.findViewById(R.id.btnManageSource).setOnClickListener(v -> {
             if (sourcePopup.isShowing()) sourcePopup.dismiss();
-            startActivity(new Intent(this, SourceActivity.class));
+            startActivity(new Intent(this, OnlineSiteListActivity.class));
         });
 
         // 空态里的“去导入”按钮：用户自己点才跳订阅页，绝不自动跳。
@@ -706,7 +404,6 @@ public class HomeActivity extends BaseActivity {
         if (jar != null && !jar.isEmpty()) {
             OkGo.io(() -> com.yingtu.plus.api.SpiderManager.get().parseJar(jar));
         }
-        refreshTitle();
         if (sourcePopup.isShowing()) sourcePopup.dismiss();
         showFragment(NAV_MOVIE);
         notifyHomeReload();
@@ -714,16 +411,33 @@ public class HomeActivity extends BaseActivity {
 
     /** 分区弹窗里点站：只换本区的站，其他区不动；不切 tab，留在本区看内容。 */
     private void onZoneSourcePicked(String zone, SourceBean source) {
+        // 切死站闪退加固：pickSite 里走片段事务 + 同步执行，任一步抛错
+        // （含子片段 onVisible/loadHome）都不许杀进程，留在本区给一句提示。
+        try {
+            onZoneSourcePickedInner(zone, source);
+        } catch (Throwable e) {
+            e.printStackTrace();
+            com.yingtu.plus.App.logCaught(e);
+            try {
+                Toast.makeText(this, "切站失败，请稍后重试", Toast.LENGTH_SHORT).show();
+            } catch (Throwable ignored) {}
+            try {
+                if (sourcePopup != null && sourcePopup.isShowing()) sourcePopup.dismiss();
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    private void onZoneSourcePickedInner(String zone, SourceBean source) {
         if (source == null) return;
         ZoneSites.setCurrentSiteKey(zone, source.getKey());
-        if (ZoneSites.ZONE_DRAMA.equals(zone)) {
-            Fragment f = getSupportFragmentManager().findFragmentByTag("drama");
-            if (f instanceof DramaFragment) ((DramaFragment) f).pickSite(source);
-        } else if (ZoneSites.ZONE_MIDNIGHT.equals(zone)) {
-            Fragment f = getSupportFragmentManager().findFragmentByTag("midnight");
-            if (f instanceof MidnightFragment) ((MidnightFragment) f).pickSite(source);
+        ApiConfig.get().setSourceBean(source);
+        Fragment f = getSupportFragmentManager().findFragmentByTag("channel");
+        if (f instanceof ChannelFragment) {
+            ((ChannelFragment) f).reloadForSourceChange(zone);
+        } else {
+            Fragment h = getSupportFragmentManager().findFragmentByTag("home");
+            if (h instanceof HomeMainFragment) ((HomeMainFragment) h).reloadForSourceChange();
         }
-        refreshTitle();
         if (sourcePopup != null && sourcePopup.isShowing()) sourcePopup.dismiss();
     }
 
@@ -751,65 +465,19 @@ public class HomeActivity extends BaseActivity {
         }
     }
 
-    private void refreshTitle() {
-        // init 失败后 tvTitle 可能还没拿到手，onResume 还会调这里，先守住空指针
-        if (tvTitle == null) return;
-        // 顶栏显示当前所在区的站名，不再显示全局当前源（之前在午夜区会错显示短剧站名）。
-        // Hawk 没起来时 ZoneSites 会抛，接住只显示“请选择源”，不拖死切 tab。
-        String name = null;
-        try {
-            name = ZoneSites.getCurrentSiteName(zoneOf(currentNav));
-        } catch (Throwable ignored) {}
-        tvTitle.setText(name != null ? name : getString(R.string.source_default));
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
-        // 设置里切了首页布局，回来立即生效（applyLayout 按 Hawk 当前值刷形态，不用重启）。
-        applyLayout();
-        refreshTitle();
-        applyLogo();
         // 标题栏一直显示开时回首页总显示顶栏；关时由内容区滑动控制
         if (isTopBarAlwaysVisible()) setTopBarVisible(true);
     }
 
     @Override
     public void onBackPressed() {
-        if (sidebarOpen) {
-            closeSidebar();
-        } else if (sourcePopup != null && sourcePopup.isShowing()) {
-            sourcePopup.dismiss();
-        } else if (showingFav || currentNav != NAV_MOVIE) {
+        if (currentNav != NAV_MOVIE) {
             showFragment(NAV_MOVIE);
         } else {
             super.onBackPressed();
-        }
-    }
-
-    /** 首页LOGO（设置 → 更多设置）：显示/隐藏 + 圆形化（椭圆裁剪）。 */
-    private void applyLogo() {
-        View logo = find(R.id.ivLogo);
-        if (logo == null) return;
-        boolean show = true;
-        boolean round = true;
-        try {
-            show = Hawk.get(HawkConfig.HOME_LOGO, true);
-            round = Hawk.get(HawkConfig.HOME_LOGO_ROUND, true);
-        } catch (Throwable ignored) {
-        }
-        logo.setVisibility(show ? View.VISIBLE : View.GONE);
-        if (round) {
-            logo.setClipToOutline(true);
-            logo.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    outline.setOval(0, 0, view.getWidth(), view.getHeight());
-                }
-            });
-        } else {
-            logo.setClipToOutline(false);
-            logo.setOutlineProvider(null);
         }
     }
 
@@ -836,26 +504,6 @@ public class HomeActivity extends BaseActivity {
         } catch (Throwable e) {
             return true;
         }
-    }
-
-    /** 首页滑动切屏（设置 → 更多设置）：内容区左右滑动按 影视→短剧→直播→午夜→文件 顺序切区。 */
-    public void swipeZone(boolean toLeft) {
-        boolean on = false;
-        try {
-            on = Hawk.get(HawkConfig.HOME_SWIPE_SWITCH, false);
-        } catch (Throwable ignored) {
-        }
-        if (!on) return;
-        int[] order = {NAV_MOVIE, NAV_DRAMA, NAV_LIVE, NAV_MIDNIGHT, NAV_FILE};
-        int idx = 0;
-        for (int i = 0; i < order.length; i++) {
-            if (order[i] == currentNav) {
-                idx = i;
-                break;
-            }
-        }
-        int next = toLeft ? (idx + 1) % order.length : (idx - 1 + order.length) % order.length;
-        onNavGo(order[next]);
     }
 
     private void applyCustomWallpaper() {

@@ -156,14 +156,6 @@
 
             <View style="@style/SettingSep" />
 
-            <LinearLayout android:id="@+id/rowHomeLayout" style="@style/SettingRow">
-                <TextView style="@style/SettingLabel" android:text="首页布局" />
-                <TextView android:id="@+id/tvHomeLayout" style="@style/SettingValue" android:text="侧边栏" />
-                <ImageView style="@style/SettingArrow" />
-            </LinearLayout>
-
-            <View style="@style/SettingSep" />
-
             <LinearLayout android:id="@+id/rowHomeSourceCols" style="@style/SettingRow">
                 <TextView style="@style/SettingLabel" android:text="首页选源列数" />
                 <TextView android:id="@+id/tvHomeSourceCols" style="@style/SettingValue" android:text="2 列" />

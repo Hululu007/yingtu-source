@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 频道左侧栏单行（选中态由 Java 改色） -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvChannelCategory"
+    android:layout_width="match_parent"
+    android:layout_height="48dp"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:textColor="@color/text_primary"
+    android:textSize="15sp" />

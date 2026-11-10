@@ -37,6 +37,9 @@ public class HawkConfig {
     /** WebHome 内置示例主页是否已初始化 */
     public static final String WEBHOME_SEEDED = "webhome_seeded";
 
+    /** 在线网站条目列表（List<OnlineSite>） */
+    public static final String ONLINE_SITES = "online_sites";
+
     // ===== 旧版设置移植（2026-11-09）：只收有真实核心的项，没核心的不建键 =====
 
     /** 接口缓存：开时启动读本地已缓存的订阅配置，关时每次现取（默认开，与现行为一致） */
@@ -176,9 +179,4 @@ public class HawkConfig {
     /** 站源禁用新增位：64=SITES文件 128=网址站源（自定/网址添加的站） */
     public static final int DISABLE_SITES_FILE = 64;
     public static final int DISABLE_URL_SITE = 128;
-
-    /** 首页布局：0=侧边栏（默认，区域 Tab 收进左侧抽屉） 1=原版（顶栏下常驻区域 Tab + 八个功能按钮） */
-    public static final String HOME_LAYOUT = "home_layout";
-    public static final int HOME_LAYOUT_SIDEBAR = 0;
-    public static final int HOME_LAYOUT_CLASSIC = 1;
 }

@@ -1,135 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 首页外壳：顶栏 + 内容区全屏；两种首页布局可切（设置 → 首页布局）：
-     ①侧边栏（默认）：区域 Tab 行 + 应用工具收进左侧 304dp 抽屉，顶栏左端头像开栏、
-     左缘向右划入，点遮罩或左滑收起；顶栏下方不常驻 Tab 行。
-     ②原版：顶栏下方常驻区域 Tab 行 + 八个功能按钮（历史 / 直播 / 文件 / 站源 /
-     搜索 / 推送 / 放映 / 设置），照旧版“影图 - 本地”首页；抽屉禁用。 -->
+<!-- 潮影霓虹主题首页外壳：顶栏 + 内容区 + 悬浮底部导航 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/bg_dark"
     android:fitsSystemWindows="true">
 
-    <!-- 内容区：顶栏 + 影视/短剧/午夜/收藏页（底部导航腾出的位置归内容，全屏显示） -->
+    <!-- 内容区：顶栏 + fragmentContainer，底部留 92dp 给悬浮底栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingBottom="92dp">
 
-        <!-- 顶栏：头像（点开左侧栏）+ 站点名 + 居中搜索框 + 右上角五个图标入口（含设置齿轮） -->
+        <!-- 顶栏：潮影 + 搜索 + 消息 -->
         <LinearLayout
             android:id="@+id/topBar"
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
+            android:paddingStart="16dp"
             android:paddingEnd="8dp">
 
-            <ImageView
-                android:id="@+id/ivLogo"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:contentDescription="打开导航"
-                android:src="@drawable/logo" />
-
             <TextView
-                android:id="@+id/tvTitle"
+                android:id="@+id/tvAppTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:maxWidth="110dp"
-                android:text="@string/source_default"
+                android:text="潮影"
                 android:textColor="@color/text_primary"
-                android:textSize="16sp"
+                android:textSize="26sp"
                 android:textStyle="bold" />
 
-            <!-- 居中搜索框：点进搜索页（渔老 webhtv 做法：顶栏无边框输入框样式） -->
-            <TextView
-                android:id="@+id/tvSearchBox"
+            <View
                 android:layout_width="0dp"
-                android:layout_height="38dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_input"
-                android:clickable="true"
-                android:drawableStart="@drawable/ic_search"
-                android:drawablePadding="6dp"
-                android:ellipsize="end"
-                android:focusable="true"
-                android:gravity="center_vertical"
-                android:maxLines="1"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:text="@string/hint_search"
-                android:textColor="@color/text_hint"
-                android:textSize="14sp" />
+                android:layout_height="0dp"
+                android:layout_weight="1" />
 
             <ImageView
-                android:id="@+id/ivHistory"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:id="@+id/btnSearch"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="历史"
-                android:padding="5dp"
-                android:src="@drawable/ic_history"
-                app:tint="@color/text_primary" />
+                android:contentDescription="搜索"
+                android:padding="8dp"
+                android:src="@drawable/ic_search"
+                app:tint="@android:color/white" />
 
             <ImageView
-                android:id="@+id/ivFav"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:id="@+id/btnMessage"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="收藏"
-                android:padding="5dp"
-                android:src="@drawable/ic_fav_on"
-                app:tint="@color/text_primary" />
-
-            <ImageView
-                android:id="@+id/ivCast"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="放映"
-                android:padding="5dp"
-                android:src="@drawable/ic_cast"
-                app:tint="@color/text_primary" />
-
-            <ImageView
-                android:id="@+id/ivWeb"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="网页"
-                android:padding="5dp"
-                android:src="@drawable/ic_web"
-                app:tint="@color/text_primary" />
-
-            <ImageView
-                android:id="@+id/ivSetting"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="设置"
-                android:padding="5dp"
-                android:src="@drawable/ic_setting"
-                app:tint="@color/text_primary" />
+                android:contentDescription="消息"
+                android:padding="8dp"
+                android:src="@drawable/ic_chat"
+                app:tint="@android:color/white" />
         </LinearLayout>
 
-
-        <!-- 原版布局顶区：区域 Tab 行 + 八个功能按钮（layout_home_classic）；
-             默认隐藏，设置里切到“原版”才显示；侧边栏模式下不显示。 -->
-        <include
-            android:id="@+id/classicContainer"
-            layout="@layout/layout_home_classic"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-
-        <!-- 内容区：影视主页 / 短剧占位 / 午夜占位 / 收藏页 -->
+        <!-- 内容区：首页 / 频道 / 片单 / 我的 -->
         <FrameLayout
             android:id="@+id/fragmentContainer"
             android:layout_width="match_parent"
@@ -137,411 +67,15 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <!-- 边缘划入区：最左 16dp、顶栏以下；向右划 40dp 以上打开左侧栏。
-         只认这一小段，不抢内容区分类 chips 的横滑；顶栏那 56dp 不占，
-         左端头像的点按不受影响。 -->
-    <View
-        android:id="@+id/edgeSwipeZone"
-        android:layout_width="16dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:layout_marginTop="56dp"
-        android:background="@android:color/transparent" />
-
-    <!-- 遮罩：面板打开时盖住内容，点一下收回 -->
-    <View
-        android:id="@+id/sidebarScrim"
+    <!-- 悬浮底部导航 -->
+    <include
+        android:id="@+id/bottomNav"
+        layout="@layout/layout_bottom_nav_neon"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#80000000"
-        android:visibility="gone" />
-
-    <!-- 左侧栏面板：头部（圆形 logo + 影图+ + 版本号）+ 区域导航 Tab 行 +“应用工具”分组卡片；默认藏在屏幕外 -->
-    <LinearLayout
-        android:id="@+id/sidebarPanel"
-        android:layout_width="304dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="@color/gradient_bottom"
-        android:orientation="vertical"
-        android:paddingTop="16dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="20dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="12dp">
-
-            <ImageView
-                android:id="@+id/ivSbLogo"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_circle_transparent"
-                android:contentDescription="影图+"
-                android:padding="6dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/logo" />
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="影图+"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tvSbVersion"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:background="#26FFFFFF" />
-
-        <!-- 区域导航 Tab 行（抽屉头部，照蚂蚁影视抽屉头部横向胶囊 Tab）：
-             影视 / 短剧 / 直播 / 午夜 / 文件，图标在上文字在下，点区名切区并收起抽屉；
-             复用 layout_home_zone_tabs（与原来顶栏下那排同一份布局、同一套 id 与选中样式）。 -->
-        <include
-            layout="@layout/layout_home_zone_tabs"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="4dp" />
-
-        <!-- 应用工具分组卡片：六个工具行，每行图标 + 标题 + 副标题 + 右箭头 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/bg_widget"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="8dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="8dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="应用工具"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="通用配置与管理"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbFastSearch"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_search"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbFastSearch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="快搜"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="多站并行搜索，快速找片"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbCollect"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_fav_on"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbCollect"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="收藏"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="收藏的影片，随时回看"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbApps"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_apps"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbApps"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="应用"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="手机已装应用，点一下打开"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbDrive"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_folder"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbDrive"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="网盘"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="网盘资源浏览与播放"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbPush"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_chat"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbPush"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="推送"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="推送消息收件箱"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/sbEpg"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="12dp">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_episode"
-                    app:tint="@color/text_primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="14dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tvSbEpg"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="节目单"
-                        android:textColor="@color/text_primary"
-                        android:textSize="15sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="直播频道节目时间表"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_arrow_right"
-                    app:tint="@color/text_secondary" />
-            </LinearLayout>
-        </LinearLayout>
-    </LinearLayout>
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp" />
 
 </FrameLayout>
