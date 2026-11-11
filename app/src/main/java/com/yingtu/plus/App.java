@@ -47,6 +47,19 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        // 全局崩溃捕获：把启动闪退的堆栈写进 crash.log（外部文件目录），
+        // 否则闪退原因查不到。写完后交给系统默认处理（照常弹崩溃框/退出）。
+        final Thread.UncaughtExceptionHandler prevHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, e) -> {
+            try {
+                writeCrashLog("FATAL thread=" + thread.getName() + " " + e);
+                StringWriter sw = new StringWriter();
+                e.printStackTrace(new PrintWriter(sw));
+                writeCrashLog(sw.toString());
+            } catch (Throwable ignored) {
+            }
+            if (prevHandler != null) prevHandler.uncaughtException(thread, e);
+        });
         // CatVod 运行时需要 Context（Path/Prefers/Asset 等都读 Init.context()）
         com.github.catvod.Init.set(this);
         // 轻量级 KV 持久化
