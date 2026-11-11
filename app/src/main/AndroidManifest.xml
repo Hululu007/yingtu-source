@@ -26,15 +26,6 @@
         android:name="android.software.leanback"
         android:required="false" />
 
-    <!-- 应用页（AppsActivity）列出已装可启动应用：Android 11+ 没有这段声明，
-         queryIntentActivities 只能看到少量应用；只声明启动器 intent，不申请 QUERY_ALL_PACKAGES。 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
-    </queries>
-
     <application
         android:name=".App"
         android:allowBackup="true"
@@ -54,8 +45,7 @@
             android:name=".ui.activity.FirstActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="true"
-            android:screenOrientation="sensorPortrait"
-            android:theme="@style/AppTheme">
+            android:screenOrientation="sensorPortrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -81,35 +71,19 @@
             android:screenOrientation="unspecified" />
 
         <activity
-            android:name=".ui.activity.FolderActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
             android:name=".ui.activity.VideoActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
-            android:screenOrientation="portrait"
-            android:supportsPictureInPicture="true"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/AppTheme.Fullscreen" />
+
+        <activity
+            android:name=".ui.activity.LivePlayActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
+            android:screenOrientation="sensorLandscape"
             android:theme="@style/AppTheme.Fullscreen" />
 
         <activity
             android:name=".ui.activity.WebHomeActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
-            android:hardwareAccelerated="true"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.WebHomeListActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.OnlineSiteListActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.OnlineSiteBrowserActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
             android:hardwareAccelerated="true"
             android:screenOrientation="unspecified" />
@@ -135,32 +109,7 @@
             android:screenOrientation="unspecified" />
 
         <activity
-            android:name=".ui.activity.BuiltinZoneActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.OneKeyPyActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
             android:name=".ui.activity.HistoryActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.FastSearchActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.CollectActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.AppsActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />
 
@@ -170,25 +119,9 @@
             android:screenOrientation="unspecified" />
 
         <activity
-            android:name=".ui.activity.DriveActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.PushActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize"
-            android:screenOrientation="unspecified" />
-
-        <activity
             android:name=".ui.activity.EpgActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:screenOrientation="unspecified" />
-
-        <activity
-            android:name=".ui.activity.DramaPlayerActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout"
-            android:screenOrientation="unspecified"
-            android:theme="@style/AppTheme.Fullscreen" />
 
         <activity
             android:name=".ui.activity.WallpaperActivity"

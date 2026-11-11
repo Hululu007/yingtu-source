@@ -49,8 +49,7 @@ import java.util.List;
  * flags/ads/doh 用 Hawk API_CONFIG_CACHE 的原文 JSON（ApiConfig 没解析
  * 它们；缓存与 ApiConfig 解析用的正文是同一份，每次 parseConfig 后调用方
  * 都 Hawk.put 过：SourceActivity.switchToSource/loadConfig、
- * SettingActivity 本地 JSON 导入）。内置午夜配置 builtin_midnight.json
- * 只有 spider/sites 两段，不贡献五段。
+ * SettingActivity 本地 JSON 导入）。
  *
  * 空段策略：配置里没有某段即无，传空表清空旧值（订阅切换后旧解析器/
  * 旧 flag 不应残留；与 VodConfig.load 的 JSON 路径一致，缺段即空表）。

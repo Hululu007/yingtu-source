@@ -14,13 +14,11 @@ import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.player.Source;
 import com.yingtu.plus.setting.PlayerSetting;
-import com.yingtu.plus.util.VodResultCache;
 import com.yingtu.plus.utils.ResUtil;
 import com.yingtu.plus.utils.Sniffer;
 import com.yingtu.plus.web.WebHomeInlineVodStore;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderDebug;
-import com.github.catvod.crawler.SpiderNull;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Prefers;
 import com.github.catvod.utils.Util;
@@ -58,23 +56,8 @@ public class SiteApi {
 
     @NonNull
     public static Result homeContent(@NonNull Site site) throws Exception {
-        String cacheKey = VodResultCache.homeKey(site.getKey());
-        Result cached = VodResultCache.get(VodResultCache.Kind.HOME, cacheKey);
-        if (cached != null) return cached;
-        Result result = homeContentDirect(site);
-        VodResultCache.put(VodResultCache.Kind.HOME, cacheKey, result, site.getKey(), null, null, null, null);
-        return result;
-    }
-
-    @NonNull
-    public static Result homeContentDirect(@NonNull Site site) throws Exception {
         if (isSpider(site)) {
             Spider spider = site.recent().spider();
-            // dm16：蜘蛛实例化失败回 SpiderNull 时直接抛错，让界面显示“蜘蛛加载失败”，
-            // 不要再静默回空列表（SpiderNull.homeContent() 默认返回 ""）。
-            if (spider == null || spider instanceof SpiderNull) {
-                throw new IllegalStateException("蜘蛛加载失败");
-            }
             boolean crash = Prefers.getBoolean("crash");
             String home = crash ? "" : spider.homeContent(true);
             String video = crash ? "" : spider.homeVideoContent();
@@ -108,25 +91,10 @@ public class SiteApi {
 
     @NonNull
     public static Result categoryContent(@NonNull String key, @NonNull String tid, @NonNull String page, boolean filter, @NonNull HashMap<String, String> extend) throws Exception {
-        String cacheKey = VodResultCache.cateKey(key, tid, page, extend);
-        Result cached = VodResultCache.get(VodResultCache.Kind.CATE, cacheKey);
-        if (cached != null) return cached;
-        Result result = categoryContentDirect(key, tid, page, filter, extend);
-        VodResultCache.put(VodResultCache.Kind.CATE, cacheKey, result, key, tid, page, new HashMap<>(extend), null);
-        return result;
-    }
-
-    @NonNull
-    public static Result categoryContentDirect(@NonNull String key, @NonNull String tid, @NonNull String page, boolean filter, @NonNull HashMap<String, String> extend) throws Exception {
         SpiderDebug.log("category", "key=%s,tid=%s,page=%s,filter=%s,extend=%s", key, tid, page, filter, extend);
         Site site = VodConfig.get().getSite(key);
         if (isSpider(site)) {
-            Spider spider = site.recent().spider();
-            // dm16：同上，SpiderNull 直接抛错，不静默回空列表。
-            if (spider == null || spider instanceof SpiderNull) {
-                throw new IllegalStateException("蜘蛛加载失败");
-            }
-            String categoryContent = spider.categoryContent(tid, page, filter, extend);
+            String categoryContent = site.recent().spider().categoryContent(tid, page, filter, extend);
             SpiderDebug.log("category", categoryContent);
             return Result.fromJson(categoryContent);
         } else {
@@ -144,18 +112,6 @@ public class SiteApi {
 
     @NonNull
     public static Result detailContent(@NonNull String key, @NonNull String id) throws Exception {
-        // 内联片库与推送片是动态内容，不进缓存
-        if (WebHomeInlineVodStore.KEY.equals(key) || PUSH.equals(key)) return detailContentDirect(key, id);
-        String cacheKey = VodResultCache.detailKey(key, id);
-        Result cached = VodResultCache.get(VodResultCache.Kind.DETAIL, cacheKey);
-        if (cached != null) return cached;
-        Result result = detailContentDirect(key, id);
-        VodResultCache.put(VodResultCache.Kind.DETAIL, cacheKey, result, key, null, null, null, id);
-        return result;
-    }
-
-    @NonNull
-    public static Result detailContentDirect(@NonNull String key, @NonNull String id) throws Exception {
         SpiderDebug.log("detail", "key=%s,id=%s", key, id);
         if (WebHomeInlineVodStore.KEY.equals(key)) return WebHomeInlineVodStore.detail(id);
         Site site = VodConfig.get().getSite(key);

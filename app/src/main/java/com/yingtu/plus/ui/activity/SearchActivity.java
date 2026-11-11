@@ -32,9 +32,6 @@ public class SearchActivity extends BaseActivity {
 
     private EditText etKeyword;
     private ChipGroup chipHistory;
-    private ChipGroup chipHot;
-    private TextView tvHistoryTitle;
-    private TextView tvHotTitle;
     private View emptyView;
     private GridMovieAdapter adapter;
     private SourceViewModel viewModel;
@@ -48,9 +45,6 @@ public class SearchActivity extends BaseActivity {
     protected void init() {
         etKeyword = find(R.id.etKeyword);
         chipHistory = find(R.id.chipHistory);
-        chipHot = find(R.id.chipHot);
-        tvHistoryTitle = find(R.id.tvHistoryTitle);
-        tvHotTitle = find(R.id.tvHotTitle);
         emptyView = find(R.id.tvEmpty);
 
         find(R.id.ivBack).setOnClickListener(v -> finish());
@@ -65,9 +59,8 @@ public class SearchActivity extends BaseActivity {
         });
 
         RecyclerView rv = find(R.id.recyclerView);
+        rv.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new GridMovieAdapter();
-        // 搜索展示（设置 → 首页和搜索）：前半段决定搜索页形态，后半段决定聚搜页形态
-        com.yingtu.plus.util.SearchDisplay.applySearch(rv, adapter);
         adapter.setOnItemClick(movie -> {
             Intent i = new Intent(this, DetailActivity.class);
             i.putExtra(DetailActivity.KEY_SOURCE, movie.sourceKey);
@@ -84,7 +77,6 @@ public class SearchActivity extends BaseActivity {
         });
 
         renderHistory();
-        renderHot();
 
         // 支持从 WebHome / 快捷入口带入关键词直接搜索
         String preset = getIntent().getStringExtra("keyword");
@@ -105,10 +97,8 @@ public class SearchActivity extends BaseActivity {
     }
 
     private void renderHistory() {
-        List<String> history = getHistory();
-        tvHistoryTitle.setVisibility(history.isEmpty() ? View.GONE : View.VISIBLE);
         chipHistory.removeAllViews();
-        for (String h : history) {
+        for (String h : getHistory()) {
             Chip chip = new Chip(this);
             chip.setText(h);
             chip.setCheckable(false);
@@ -121,15 +111,6 @@ public class SearchActivity extends BaseActivity {
         }
     }
 
-    /**
-     * 热门搜索：树里目前没有热门词数据源（无上游接口、无内置榜单），不编假词，
-     * 该区保持隐藏；等热门词来源落地后，在这里填充 chipHot 并显示 tvHotTitle/chipHot。
-     */
-    private void renderHot() {
-        tvHotTitle.setVisibility(View.GONE);
-        chipHot.setVisibility(View.GONE);
-    }
-
     private List<String> getHistory() {
         return Hawk.get(HawkConfig.SEARCH_HISTORY, new ArrayList<>());
     }
@@ -139,8 +120,7 @@ public class SearchActivity extends BaseActivity {
         set.add(keyword);
         set.addAll(getHistory());
         List<String> list = new ArrayList<>(set);
-        int max = com.yingtu.plus.util.HistoryHelper.getSearchLimit();
-        if (list.size() > max) list = list.subList(0, max);
+        if (list.size() > 12) list = list.subList(0, 12);
         Hawk.put(HawkConfig.SEARCH_HISTORY, list);
     }
 }

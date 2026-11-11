@@ -30,7 +30,6 @@ import com.yingtu.plus.setting.BackgroundPlaybackPolicy;
 import com.yingtu.plus.setting.PlayerSetting;
 import com.yingtu.plus.bean.ParseBean;
 import com.yingtu.plus.bean.SourceBean;
-import com.yingtu.plus.player.exo.MediaSourceFactory;
 import com.yingtu.plus.util.CacheCleaner;
 import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.util.LanSyncHelper;
@@ -38,7 +37,6 @@ import com.yingtu.plus.util.SecureDns;
 import com.yingtu.plus.util.SiteFilter;
 import com.yingtu.plus.util.WallpaperFx;
 import com.yingtu.plus.util.WallpaperHelper;
-import com.yingtu.plus.util.ZoneSites;
 import com.orhanobut.hawk.Hawk;
 
 import java.io.ByteArrayOutputStream;
@@ -61,7 +59,7 @@ import java.util.Set;
 public class SettingActivity extends BaseActivity {
 
     private TextView tvApiUrl, tvParseName, tvHomeRec, tvGridColumns,
-            tvOrientation, tvStartSource, tvCacheHint, tvImportLocalJson, tvBuiltinZone,
+            tvOrientation, tvStartSource, tvCacheHint, tvImportLocalJson,
             tvApiCache, tvSearchShow, tvProgressTag, tvRender, tvScale,
             tvHomeSourceCols, tvSearchSite, tvBufferTimeout, tvIjkBuffer, tvIjkDecode,
             tvStartPage, tvSecureDns, tvWallpaperFx, tvCateViewType, tvCateViewCols,
@@ -108,12 +106,6 @@ public class SettingActivity extends BaseActivity {
         find(R.id.rowApiDownload).setOnClickListener(v -> downloadCurrentConfig());
         find(R.id.rowInjectDownload).setOnClickListener(v -> downloadInject());
         find(R.id.rowSyncData).setOnClickListener(v -> showSyncDialog());
-        tvBuiltinZone = find(R.id.tvBuiltinZone);
-        refreshBuiltinZoneLabel();
-        find(R.id.rowBuiltinZone).setOnClickListener(v ->
-                startActivity(new Intent(this, BuiltinZoneActivity.class)));
-        find(R.id.rowOneKeyPy).setOnClickListener(v ->
-                startActivity(new Intent(this, OneKeyPyActivity.class)));
         tvImportLocalJson = find(R.id.tvImportLocalJson);
         refreshImportLabel();
         find(R.id.rowImportLocalJson).setOnClickListener(v -> pickJsonLauncher.launch("*/*"));
@@ -217,17 +209,6 @@ public class SettingActivity extends BaseActivity {
     private void refreshApiUrl() {
         String url = Hawk.get(HawkConfig.API_URL, "");
         tvApiUrl.setText(url.isEmpty() ? getString(R.string.val_not_set) : shorten(url));
-    }
-
-    /** 内置站点行：总数从现有数据里读（午夜 + 短剧 + 直播，删掉的不算）。 */
-    private void refreshBuiltinZoneLabel() {
-        if (tvBuiltinZone == null) return;
-        com.yingtu.plus.api.BuiltinConfigs.ensureLoaded(this);
-        com.yingtu.plus.drama.BuiltinDramaConfigs.ensureLoaded(this);
-        int total = com.yingtu.plus.api.BuiltinConfigs.getMidnightSitesAll().size()
-                + com.yingtu.plus.drama.BuiltinDramaConfigs.getDramaSitesAll().size()
-                + com.yingtu.plus.api.BuiltinLiveSources.getAllBuiltinSources().size();
-        tvBuiltinZone.setText(total + " 个站");
     }
 
     // ===== 首页和搜索 =====
@@ -389,7 +370,7 @@ public class SettingActivity extends BaseActivity {
                 .show();
     }
 
-    /** 当前配置的用户站 + 内置站（去重，供置顶/禁用/搜索名单多选共用）。 */
+    /** 当前配置的用户站（去重，供置顶/禁用/搜索名单多选共用）。 */
     private List<SourceBean> allUserSites() {
         List<SourceBean> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();
@@ -444,10 +425,10 @@ public class SettingActivity extends BaseActivity {
         dialog.show();
     }
 
-    // ===== 站源禁用：8 项（SITES文件=导入的 SITES 文件站，网址站源=自定/网址添加的站）=====
+    // ===== 站源禁用：7 项（SITES文件=导入的 SITES 文件站，网址站源=自定/网址添加的站；不含内置站）=====
     private void showSourceDisableDialog() {
-        String[] names = {"网络接口", "直播接口", "内部配置", "JS文件", "DRPY文件", "JSON文件", "SITES文件", "网址站源"};
-        int[] bits = {HawkConfig.DISABLE_NET, HawkConfig.DISABLE_LIVE, HawkConfig.DISABLE_BUILTIN,
+        String[] names = {"网络接口", "直播接口", "JS文件", "DRPY文件", "JSON文件", "SITES文件", "网址站源"};
+        int[] bits = {HawkConfig.DISABLE_NET, HawkConfig.DISABLE_LIVE,
                 HawkConfig.DISABLE_JS, HawkConfig.DISABLE_DRPY, HawkConfig.DISABLE_JSON,
                 HawkConfig.DISABLE_SITES_FILE, HawkConfig.DISABLE_URL_SITE};
         boolean[] checked = new boolean[names.length];
@@ -466,14 +447,11 @@ public class SettingActivity extends BaseActivity {
                 .show();
     }
 
-    // ===== 站点来源：只读，当前站源的来源构成 =====
+    // ===== 站点来源：只读，当前站源的来源构成（只计远程订阅站 + 本地导入配置组，不含内置站） =====
     private void showSiteSourceDialog() {
-        int remote = 0, builtin = 0, local = 0;
+        int remote = 0, local = 0;
         try {
-            for (SourceBean s : ApiConfig.get().getSourceBeanList()) {
-                if (ApiConfig.get().isBuiltinSite(s.getKey())) builtin++;
-                else remote++;
-            }
+            remote = ApiConfig.get().getSourceBeanList().size();
         } catch (Throwable ignored) {
         }
         try {
@@ -482,65 +460,37 @@ public class SettingActivity extends BaseActivity {
             }
         } catch (Throwable ignored) {
         }
-        int live = 0;
-        try {
-            live = com.yingtu.plus.api.BuiltinLiveSources.getAllBuiltinSources().size();
-        } catch (Throwable ignored) {
-        }
         new AlertDialog.Builder(this)
                 .setTitle("站点来源")
-                .setMessage("远程接口站源：" + remote + " 个\n内置站源：" + builtin + " 个\n"
-                        + "本地导入配置组：" + local + " 个\n内置直播源：" + live + " 个")
+                .setMessage("远程接口站源：" + remote + " 个\n"
+                        + "本地导入配置组：" + local + " 个")
                 .setPositiveButton("知道了", null)
                 .show();
     }
 
-    /** 启动站源行的值：已设几个区（0 个显示“未设置”）。 */
+    /** 启动站源行的值：影视区启动站名，未设显示“未设置”。 */
     private void refreshStartSource() {
         if (tvStartSource == null) return;
-        int count = 0;
-        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_MOVIE).isEmpty()) count++;
-        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_DRAMA).isEmpty()) count++;
-        if (!ZoneSites.getStartupSiteKey(ZoneSites.ZONE_MIDNIGHT).isEmpty()) count++;
-        tvStartSource.setText(count == 0 ? "未设置" : "已设 " + count + " 个区");
+        String key = Hawk.get(HawkConfig.STARTUP_SITE_MOVIE, "");
+        String name = "未设置";
+        if (key != null && !key.isEmpty()) {
+            try {
+                SourceBean s = ApiConfig.get().getSource(key);
+                if (s != null && s.getName() != null) name = s.getName();
+            } catch (Throwable ignored) {
+            }
+        }
+        tvStartSource.setText(name);
     }
 
-    /** 启动站源（三区独立）：点开一个三行弹窗，每行显示该区当前设的启动站；点一行选该区的站。 */
+    /** 启动站源（仅影视区）：单选当前站表，首项“不设置”用于清除。 */
     private void showStartupSitesDialog() {
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_startup_sites, null);
-        TextView tvMovie = view.findViewById(R.id.tvStartupMovie);
-        TextView tvDrama = view.findViewById(R.id.tvStartupDrama);
-        TextView tvMidnight = view.findViewById(R.id.tvStartupMidnight);
-        Runnable refreshRows = () -> {
-            tvMovie.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_MOVIE));
-            tvDrama.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_DRAMA));
-            tvMidnight.setText(ZoneSites.getStartupSiteName(ZoneSites.ZONE_MIDNIGHT));
-        };
-        refreshRows.run();
-        view.findViewById(R.id.rowStartupMovie).setOnClickListener(v ->
-                pickStartupSite(ZoneSites.ZONE_MOVIE, "影视", refreshRows));
-        view.findViewById(R.id.rowStartupDrama).setOnClickListener(v ->
-                pickStartupSite(ZoneSites.ZONE_DRAMA, "短剧", refreshRows));
-        view.findViewById(R.id.rowStartupMidnight).setOnClickListener(v ->
-                pickStartupSite(ZoneSites.ZONE_MIDNIGHT, "午夜", refreshRows));
-        androidx.appcompat.app.AlertDialog dialog =
-                new androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle("启动站源")
-                        .setView(view)
-                        .setPositiveButton("完成", null)
-                        .create();
-        dialog.setOnDismissListener(d -> refreshStartSource());
-        dialog.show();
-    }
-
-    /** 选某区的启动站：单选列表，首项“不设置”用于清除；三个区各存各的键。 */
-    private void pickStartupSite(String zone, String zoneName, Runnable refreshRows) {
-        List<SourceBean> sites = ZoneSites.getZoneSites(zone);
-        if (sites == null || sites.isEmpty()) {
-            Toast.makeText(this, zoneName + "区暂无可选站点", Toast.LENGTH_SHORT).show();
+        List<SourceBean> sites = allUserSites();
+        if (sites.isEmpty()) {
+            Toast.makeText(this, "当前没有可选站源", Toast.LENGTH_SHORT).show();
             return;
         }
-        String current = ZoneSites.getStartupSiteKey(zone);
+        String current = Hawk.get(HawkConfig.STARTUP_SITE_MOVIE, "");
         String[] names = new String[sites.size() + 1];
         names[0] = "不设置";
         int checked = 0;
@@ -549,11 +499,10 @@ public class SettingActivity extends BaseActivity {
             if (sites.get(i).getKey().equals(current)) checked = i + 1;
         }
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(zoneName + "区启动站")
+                .setTitle("影视区启动站")
                 .setSingleChoiceItems(names, checked, (d, which) -> {
-                    ZoneSites.setStartupSiteKey(zone, which == 0 ? "" : sites.get(which - 1).getKey());
+                    Hawk.put(HawkConfig.STARTUP_SITE_MOVIE, which == 0 ? "" : sites.get(which - 1).getKey());
                     d.dismiss();
-                    if (refreshRows != null) refreshRows.run();
                     refreshStartSource();
                 })
                 .setNegativeButton("取消", null)
@@ -746,7 +695,8 @@ public class SettingActivity extends BaseActivity {
     }
 
     /** 播放缓存位置：默认=内置存储（Path.exoCache），外部存储=外置缓存目录下的 exo；
-     * 切换后释放旧 Exo 缓存、下次在新目录重建；Glide 图片缓存目录随初始化固定，重启应用后跟随。 */
+     * 目录由播放器建缓存时按 Hawk 值解析（MediaSourceFactory.resolveCacheDir），
+     * 切换后下次播放起用新目录；Glide 图片缓存目录随初始化固定，重启应用后跟随。 */
     private void pickCacheLocation() {
         java.io.File internalDir = com.github.catvod.utils.Path.exoCache();
         java.io.File externalDir = externalExoCacheDir();
@@ -764,10 +714,9 @@ public class SettingActivity extends BaseActivity {
                         return;
                     }
                     Hawk.put(HawkConfig.CACHE_LOCATION, which);
-                    MediaSourceFactory.resetCacheForLocation();
                     refreshCacheLocation();
                     d.dismiss();
-                    toast("已切换到" + (which == 1 ? "外部存储" : "默认") + "，图片缓存重启应用后跟随");
+                    toast("已切换到" + (which == 1 ? "外部存储" : "默认") + "，下次播放起用新目录");
                 })
                 .setNegativeButton("取消", null)
                 .show();
@@ -998,14 +947,6 @@ public class SettingActivity extends BaseActivity {
             CacheCleaner.clearPlayCache(SettingActivity.this);
             ((TextView) find(R.id.tvCacheHint)).setText(R.string.val_on);
             toast("已清理播放缓存");
-        });
-
-        // 短剧预加载开关：播当前集时提前解析后面 5 集的流地址（只解析地址，不下载视频字节），默认开。
-        SwitchCompat swDramaPreload = find(R.id.swDramaPreload);
-        swDramaPreload.setChecked(Hawk.get(HawkConfig.DRAMA_PRELOAD, true));
-        swDramaPreload.setOnCheckedChangeListener((CompoundButton b, boolean checked) -> {
-            Hawk.put(HawkConfig.DRAMA_PRELOAD, checked);
-            toast(checked ? "短剧预加载已开启" : "短剧预加载已关闭");
         });
 
         // 后台播放开关：开着时切后台音频继续播（前台服务保活 + 通知栏控制），默认关。
@@ -1417,7 +1358,6 @@ public class SettingActivity extends BaseActivity {
         refreshApiUrl();
         refreshParseName();
         refreshImportLabel();
-        refreshBuiltinZoneLabel();
         refreshStartSource();
         refreshApiCache();
         refreshSearchShow();

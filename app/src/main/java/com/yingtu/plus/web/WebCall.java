@@ -2,99 +2,106 @@ package com.yingtu.plus.web;
 
 import android.text.TextUtils;
 
+import com.yingtu.plus.App;
+import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttp;
-import com.github.catvod.net.RetryInterceptor;
-import com.yingtu.plus.util.OkGo;
+import com.github.catvod.utils.Json;
+import com.github.catvod.utils.Util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-import okhttp3.ConnectionPool;
-import okhttp3.Dispatcher;
 import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
-/**
- * WebHome 的 Native 网络请求实现（对应 fm.req / fongmi.net.request）。
- *
- * 用 OkHttp 直接发起请求，绕过浏览器 CORS，支持自定义 header、
- * 自动 gzip/deflate 解码、responseType=text/json/base64。
- */
 public class WebCall {
 
-    // Was a bare builder (10s OkHttp defaults, no pool, no DNS, no retry):
-    // every WebHome request re-handshaked and died on the first slow stall.
-    // Per-request timeouts from the payload still override via client(timeout);
-    // derived clients share this pool/dispatcher/DNS/retry via newBuilder().
-    private static final ConnectionPool POOL = new ConnectionPool(4, 5, TimeUnit.MINUTES);
-    private static final Dispatcher DISPATCHER = newDispatcher();
-
-    private static Dispatcher newDispatcher() {
-        Dispatcher dispatcher = new Dispatcher();
-        dispatcher.setMaxRequests(16);
-        dispatcher.setMaxRequestsPerHost(4);
-        return dispatcher;
-    }
-
-    private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
-            .followRedirects(true).followSslRedirects(true)
-            .connectionPool(POOL)
-            .dispatcher(DISPATCHER)
-            .protocols(Arrays.asList(Protocol.HTTP_2, Protocol.HTTP_1_1))
-            .dns(OkHttp.dns())
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .addInterceptor(new RetryInterceptor())
-            .build();
+    private static final OkHttpClient CLIENT = new OkHttpClient.Builder().followRedirects(true).followSslRedirects(true).dns(OkHttp.dns()).proxySelector(OkHttp.selector()).proxyAuthenticator(OkHttp.authenticator()).build();
 
     public static String request(JsonObject payload) {
+        return request(payload, null);
+    }
+
+    public static String request(JsonObject payload, HomeWebController controller) {
         Response response = null;
-        String url = safe(payload, "url");
-        String method = getMethod(safe(payload, "method"));
+        Request request = null;
+        String url = Json.safeString(payload, "url");
+        String method = Json.safeString(payload, "method");
+        long start = 0;
         try {
-            String body = safe(payload, "body");
-            String responseType = safe(payload, "responseType");
+            String body = Json.safeString(payload, "body");
+            String responseType = Json.safeString(payload, "responseType");
+            boolean include = "include".equals(Json.safeString(payload, "credentials"));
             int timeout = getTimeout(payload);
-
-            Request.Builder builder = new Request.Builder().url(url);
-            boolean hasEncoding = false;
-            if (payload.has("headers") && payload.get("headers").isJsonObject()) {
-                JsonObject headers = payload.getAsJsonObject("headers");
-                for (String k : headers.keySet()) {
-                    if (headers.get(k).isJsonNull()) continue;
-                    builder.header(k, headers.get(k).getAsString());
-                    if ("Accept-Encoding".equalsIgnoreCase(k)) hasEncoding = true;
-                }
-            }
-            if (!hasEncoding) builder.header("Accept-Encoding", "gzip");
-
-            builder.method(method, getBody(method, body, builder.build().headers()));
-            Request request = builder.build();
+            Map<String, String> headers = HeaderPolicy.withDefaultUa(HeaderPolicy.parse(payload.get("headers")));
+            setDefaultEncoding(headers);
+            Request.Builder builder = new Request.Builder().url(url).headers(HeaderPolicy.of(headers));
+            CookieBridge.apply(builder.build().url(), builder, include, HeaderPolicy.hasCookie(headers));
+            builder.method(getMethod(method), getBody(getMethod(method), body, builder.build().headers()));
+            request = builder.build();
+            start = System.currentTimeMillis();
+            dispatch(controller, "NATIVE_START", request.method(), request.url().toString(), 0, 0, requestInfo(request));
+            SpiderDebug.log("webhome-net", "%s %s include=%s timeout=%ss headers=%s", request.method(), request.url(), include, timeout, request.headers().names());
             response = client(timeout).newCall(request).execute();
+            SpiderDebug.log("webhome-net", "%s %s -> %s in %sms", request.method(), request.url(), response.code(), System.currentTimeMillis() - start);
+            CookieBridge.set(url, response.headers());
+            dispatch(controller, "NATIVE_DONE", request.method(), response.request().url().toString(), response.code(), System.currentTimeMillis() - start, responseInfo(response));
             return toJson(response, responseType);
         } catch (Throwable e) {
+            SpiderDebug.log("webhome-net", e);
+            dispatch(controller, "NATIVE_ERROR", request == null ? getMethod(method) : request.method(), request == null ? url : request.url().toString(), 0, start <= 0 ? 0 : System.currentTimeMillis() - start, e.getMessage());
             return error(e);
         } finally {
             if (response != null) response.close();
+        }
+    }
+
+    private static void dispatch(HomeWebController controller, String type, String method, String url, int status, long durationMs, String detail) {
+        if (controller != null) controller.dispatchDebugNetwork(type, method, url, status, durationMs, detail);
+    }
+
+    private static String requestInfo(Request request) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Request Headers\n").append(request.headers());
+        RequestBody body = request.body();
+        if (body != null) builder.append("Body\n").append("contentType=").append(body.contentType()).append('\n').append("contentLength=").append(contentLength(body)).append('\n').append(bodyPreview(body));
+        return builder.toString().trim();
+    }
+
+    private static String responseInfo(Response response) {
+        return ("message=" + response.message() + "\nResponse Headers\n" + response.headers()).trim();
+    }
+
+    private static long contentLength(RequestBody body) {
+        try {
+            return body.contentLength();
+        } catch (Throwable e) {
+            return -1;
+        }
+    }
+
+    private static String bodyPreview(RequestBody body) {
+        try {
+            okio.Buffer buffer = new okio.Buffer();
+            body.writeTo(buffer);
+            String text = buffer.readString(StandardCharsets.UTF_8);
+            return "payload:\n" + (text.length() > 2000 ? text.substring(0, 2000) + "\n...truncated" : text);
+        } catch (Throwable e) {
+            return "payloadPreview=" + e.getMessage();
         }
     }
 
@@ -108,14 +115,16 @@ public class WebCall {
 
     private static OkHttpClient client(int timeout) {
         long millis = TimeUnit.SECONDS.toMillis(timeout);
-        return CLIENT.newBuilder()
-                .connectTimeout(millis, TimeUnit.MILLISECONDS)
-                .readTimeout(millis, TimeUnit.MILLISECONDS)
-                .writeTimeout(millis, TimeUnit.MILLISECONDS).build();
+        return CLIENT.newBuilder().connectTimeout(millis, TimeUnit.MILLISECONDS).readTimeout(millis, TimeUnit.MILLISECONDS).writeTimeout(millis, TimeUnit.MILLISECONDS).build();
     }
 
     private static String getMethod(String method) {
         return TextUtils.isEmpty(method) ? "GET" : method.toUpperCase();
+    }
+
+    private static void setDefaultEncoding(Map<String, String> headers) {
+        boolean hasEncoding = headers.keySet().stream().anyMatch("Accept-Encoding"::equalsIgnoreCase);
+        if (!hasEncoding) headers.put("Accept-Encoding", "gzip");
     }
 
     private static RequestBody getBody(String method, String body, Headers headers) {
@@ -133,30 +142,12 @@ public class WebCall {
         object.addProperty("status", response.code());
         object.addProperty("url", response.request().url().toString());
         object.add("headers", headers(response.headers()));
-        object.add("cookies", gsonArray(response.headers().values("Set-Cookie")));
+        object.add("cookies", App.gson().toJsonTree(response.headers().values("Set-Cookie")));
         String body = new String(bytes, StandardCharsets.UTF_8);
-        if ("base64".equals(responseType)) object.addProperty("body", base64(bytes));
-        else if ("json".equals(responseType)) object.add("body", parse(body));
+        if ("base64".equals(responseType)) object.addProperty("body", Util.base64(bytes));
+        else if ("json".equals(responseType)) object.add("body", Json.parse(body));
         else object.addProperty("body", body);
         return object.toString();
-    }
-
-    private static com.google.gson.JsonArray gsonArray(java.util.List<String> values) {
-        com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
-        for (String v : values) arr.add(v);
-        return arr;
-    }
-
-    private static JsonElement parse(String body) {
-        try {
-            return JsonParser.parseString(body);
-        } catch (Throwable e) {
-            return new JsonObject();
-        }
-    }
-
-    private static String base64(byte[] bytes) {
-        return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
     }
 
     private static byte[] decode(String encoding, byte[] bytes) throws Exception {
@@ -192,8 +183,7 @@ public class WebCall {
     }
 
     private static byte[] inflate(byte[] bytes, boolean nowrap) throws Exception {
-        try (InflaterInputStream input = new InflaterInputStream(
-                new ByteArrayInputStream(bytes), new Inflater(nowrap))) {
+        try (InflaterInputStream input = new InflaterInputStream(new ByteArrayInputStream(bytes), new Inflater(nowrap))) {
             return readAll(input);
         }
     }
@@ -212,7 +202,7 @@ public class WebCall {
         JsonObject object = new JsonObject();
         for (String name : headers.names()) {
             if (headers.values(name).size() == 1) object.addProperty(name, headers.get(name));
-            else object.add(name, gsonArray(headers.values(name)));
+            else object.add(name, App.gson().toJsonTree(headers.values(name)));
         }
         return object;
     }
@@ -227,17 +217,8 @@ public class WebCall {
         return object.toString();
     }
 
-    private static String safe(JsonObject obj, String key) {
-        return obj != null && obj.has(key) && !obj.get(key).isJsonNull()
-                ? obj.get(key).getAsString() : "";
-    }
-
     public static JsonObject object(String json) {
-        try {
-            JsonElement element = JsonParser.parseString(json);
-            return element.isJsonObject() ? element.getAsJsonObject() : new JsonObject();
-        } catch (Throwable e) {
-            return new JsonObject();
-        }
+        JsonElement element = Json.parse(json);
+        return element.isJsonObject() ? element.getAsJsonObject() : new JsonObject();
     }
 }

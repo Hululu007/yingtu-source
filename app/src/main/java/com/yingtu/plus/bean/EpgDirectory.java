@@ -1,10 +1,10 @@
 package com.yingtu.plus.bean;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
-import com.yingtu.plus.App;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -12,8 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 节目单频道名录：读包内 assets/epg_data.json（从老包反编译 assets 里原样拷过来，
- * 是数据文件、不是代码）。顶层 {"epgs": [...]}，共 534 条，每条只有
+ * 节目单频道名录：读包内 assets/epg_data.json，是数据文件、不是代码。
+ * 顶层 {"epgs": [...]}，共 534 条，每条只有
  * tvid / epgid / name（逗号分隔的别名）/ status / note / logo，
  * 没有任何一档节目的标题与起止时间。节目时间不走这个文件，走 XMLTV 节目源
  * （LiveEpgSetting 的 live_epg_url，见 EpgActivity），用这里的 epgid 当 tvg-id 去对。
@@ -56,7 +56,7 @@ public class EpgDirectory {
             }
         } catch (Throwable e) {
             lastError = "epg_data.json 读取失败：" + e.getMessage();
-            App.logCaught(e);
+            Log.w("EpgDirectory", "epg_data.json 读取失败", e);
         }
         cached = list;
         return cached;

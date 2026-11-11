@@ -102,26 +102,18 @@ public class JarLoader {
             Class<?> environment = loader.loadClass("com.github.catvod.parser.merge.j0.c");
             environment.getConstructor(okhttp3.OkHttpClient.class).newInstance(client);
             SpiderDebug.log("jar-loader", "network client injected key=%s", key);
-            // YouTube 探活改后台线程：同步探 https://www.youtube.com/iframe_api
-            // 在慢网/无梯子时要等连接超时（数秒），只记日志、结果不用，放主线程
-            // 会拖慢启动与第一次蜘蛛初始化；探活本身不影响取流，只验客户端通不通。
-            final Class<?> probeClz = clz;
-            Thread probe = new Thread(() -> {
-                try {
-                    Class<?> provider = loader.loadClass("com.github.catvod.parser.merge.P1.P");
-                    Object fetcher = provider.getMethod("b").invoke(null);
-                    Object response = probeClz.getMethod("a", String.class).invoke(fetcher, "https://www.youtube.com/iframe_api");
-                    String body = (String) response.getClass().getMethod("a").invoke(response);
-                    SpiderDebug.log("youtube-iframe", "probe success chars=%s", body == null ? -1 : body.length());
-                } catch (Throwable e) {
-                    Throwable cause = e;
-                    while (cause.getCause() != null) cause = cause.getCause();
-                    SpiderDebug.log("youtube-iframe", "probe failed error=%s", cause.getClass().getName() + ":" + cause.getMessage());
-                    SpiderDebug.log("youtube-iframe", cause);
-                }
-            }, "yt-iframe-probe");
-            probe.setDaemon(true);
-            probe.start();
+            try {
+                Class<?> provider = loader.loadClass("com.github.catvod.parser.merge.P1.P");
+                Object fetcher = provider.getMethod("b").invoke(null);
+                Object response = clz.getMethod("a", String.class).invoke(fetcher, "https://www.youtube.com/iframe_api");
+                String body = (String) response.getClass().getMethod("a").invoke(response);
+                SpiderDebug.log("youtube-iframe", "probe success chars=%s", body == null ? -1 : body.length());
+            } catch (Throwable e) {
+                Throwable cause = e;
+                while (cause.getCause() != null) cause = cause.getCause();
+                SpiderDebug.log("youtube-iframe", "probe failed error=%s", cause.getClass().getName() + ":" + cause.getMessage());
+                SpiderDebug.log("youtube-iframe", cause);
+            }
         } catch (ClassNotFoundException | NoSuchMethodException ignored) {
             // Optional compatibility hook used only by jars which expose it.
         } catch (Throwable e) {
@@ -183,11 +175,6 @@ public class JarLoader {
                 load(key, Download.create(jar, Path.jar(jar)).get());
             } else if (jar.startsWith("file")) {
                 load(key, Path.local(jar));
-            } else if (!md5.isEmpty() && Path.exists(Path.jar(jar))) {
-                // dm16：md5 不符但本地有文件时照常加载，旧 jar 总比 SpiderNull 强；
-                // md5 不匹配绝不能静默杀掉全部 jar 站（dm15 换指纹 + 只读缓存就是这么死的）。
-                SpiderDebug.log("jar-loader", "parse md5 mismatch, load anyway key=%s jar=%s", key, jar);
-                load(key, Path.jar(jar));
             }
         }
     }

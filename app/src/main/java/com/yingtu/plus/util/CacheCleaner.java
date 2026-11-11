@@ -32,10 +32,21 @@ public final class CacheCleaner {
             } catch (Throwable ignored) {
             }
             try {
-                deleteDir(com.yingtu.plus.player.exo.MediaSourceFactory.resolveCacheDir());
+                deleteDir(externalExoCacheDir(app));
             } catch (Throwable ignored) {
             }
         }).start();
+    }
+
+    /** 外置缓存目录下的 exo（与“缓存位置=外部存储”同一目录）；播放器侧接线前同样清这里。 */
+    private static File externalExoCacheDir(Context app) {
+        try {
+            File ext = app.getExternalCacheDir();
+            if (ext == null) return null;
+            return new File(ext, "exo");
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     private static void deleteDir(File dir) {

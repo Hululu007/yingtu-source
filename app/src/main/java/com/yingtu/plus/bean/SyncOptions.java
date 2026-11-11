@@ -1,7 +1,5 @@
 package com.yingtu.plus.bean;
 
-import android.text.TextUtils;
-
 import androidx.annotation.NonNull;
 
 import com.yingtu.plus.App;
@@ -31,12 +29,7 @@ public class SyncOptions {
     @SerializedName("mpvConfig")
     private boolean mpvConfig;
     @SerializedName("paths")
-    private String paths = defaultPaths();
-
-    /** Setting 存的是路径列表，SyncOptions 的 paths 是换行拼成的文本（与 SyncFiles.getPaths(String) 的入参格式一致）。 */
-    private static String defaultPaths() {
-        return TextUtils.join("\n", Setting.getSyncPaths());
-    }
+    private String paths = Setting.getSyncPaths();
 
     public static SyncOptions defaults() {
         return new SyncOptions();
@@ -142,7 +135,7 @@ public class SyncOptions {
     }
 
     public String getPaths() {
-        return paths == null ? defaultPaths() : paths;
+        return paths == null ? Setting.getSyncPaths() : paths;
     }
 
     public SyncOptions paths(String paths) {

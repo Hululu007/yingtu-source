@@ -197,12 +197,8 @@ public class VodConfig extends BaseConfig {
         setSites(Json.safeListElement(object, "sites").stream().map(e -> Site.objectFrom(e, spider)).distinct().collect(Collectors.toCollection(ArrayList::new)));
         Map<String, Site> items = Site.findAll().stream().collect(Collectors.toMap(Site::getKey, Function.identity()));
         getSites().forEach(site -> site.sync(items.get(site.getKey())));
-        // 桩的 inject(List<Object>) 才返回 Result，直接传 List<Site> 会落到 inject(Object)
-        // 的 void 重载上；经通配符强转仍是同一个列表对象。桩 Result 没有 home()（webhtv
-        // 的 Result 是 record Result(Site home)），自定义 homeKey 暂无法取用，先按配置
-        // homeKey / 表首位选 home；等 CustomCspSetting 补上 home() 再恢复 custom.home() 分支。
-        CustomCspSetting.inject((List<Object>) (List<?>) getSites());
-        Site home = getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().isEmpty() ? new Site() : getSites().get(0));
+        CustomCspSetting.Result custom = CustomCspSetting.inject(getSites());
+        Site home = !custom.home().isEmpty() ? custom.home() : getSites().stream().filter(item -> item.getKey().equals(config.getHome())).findFirst().orElse(getSites().isEmpty() ? new Site() : getSites().get(0));
         setHome(config, home, false);
     }
 
@@ -306,12 +302,11 @@ public class VodConfig extends BaseConfig {
     }
 
     /**
-     * J 批：把一份现成的站表整体装进 VodConfig（内存同步，不联网）。
+     * 把一份现成的站表整体装进 VodConfig（内存同步，不联网）。
      * 与 VodConfig.load 的 JSON 加载路径等价的收尾：去重、预加载配置级
      * spider jar（JarLoader 缓存命中即直接加载，不下载）、按库里存过的
      * 站设置同步 searchable/changeable、按 homeKey 选 home 站、走
-     * onLoadSuccess（CspWarmup 预热，内部按配置去重）并 postEvent
-     * （ConfigEvent.vod）。整体替换，不叠加；表空直接返回，不清空旧表。
+     * onLoadSuccess 并 postEvent。整体替换，不叠加；表空直接返回，不清空旧表。
      * 不调 clear()：不同步 parses/flags 等字段，也就不清 BaseLoader，
      * 避免异步 clear 与紧接着的 parseJar 互相竞态。
      */
@@ -321,9 +316,7 @@ public class VodConfig extends BaseConfig {
 
     /**
      * preloadJar=false 时跳过配置级 spider jar 的预加载（只同步站表）。
-     * 启动同步用 false：jar 预加载要建 DexClassLoader（新 jar 冷启动还要 dex 优化）
-     * 并做 YouTube 探活联网，放主线程拖慢启动；jar 在第一次用蜘蛛时由
-     * JarLoader.getSpider() 按需加载（走后台线程）。站表里的 jar 字段不受影响。
+     * 切源等其他调用点沿用 replaceSites(sites, spider, homeKey)。
      */
     public void replaceSites(List<Site> sites, String spider, String homeKey, boolean preloadJar) {
         if (sites == null || sites.isEmpty()) return;
@@ -344,16 +337,11 @@ public class VodConfig extends BaseConfig {
     }
 
     /**
-     * N 批：把一份现成的解析器表整体装进 VodConfig（内存同步，不联网）。
-     * 与 initParse 的 JSON 加载路径等价：去重（按名，Parse.equals 只比名）、
-     * 非空表前置 Parse.god()（setParses 原实现不动）、按
-     * preferredName 选当前解析器（无匹配时取表首位即 god，与 initParse 的
-     * orElse(get(0)) 一致）、同步各条目的 selected 状态。不调 clear()。
-     * null 直接返回（不动旧表）；空表整体替换——空表即配置里没有 parses 段，
-     * 旧解析器不应残留，hasParse() 随之变 false，ParseAdapter 随之变空。
-     * 与公开 setParse(Parse) 不打架：当前解析器只在这里选一次，私有重载
-     * save=false 不写库；用户在播放页点的解析器存在 Config.parse 里，
-     * 调用方把该名字当 preferredName 传进来即可保留。
+     * 把一份现成的解析器表整体装进 VodConfig（内存同步，不联网）。
+     * 与 initParse 的 JSON 加载路径等价：去重（按名）、非空表前置 Parse.god()、
+     * 按 preferredName 选当前解析器（无匹配时取表首位即 god）。null 直接返回
+     * （不动旧表）；空表整体替换——空表即配置里没有 parses 段，旧解析器不应残留。
+     * 不调 clear()，不发事件。
      */
     public void replaceParses(List<Parse> parses, String preferredName) {
         if (parses == null) return;
@@ -370,11 +358,7 @@ public class VodConfig extends BaseConfig {
         }
     }
 
-    /**
-     * N 批：flags 段整体替换。null 不动旧值；空表清空（配置里没有该段即无，
-     * 旧 flags 不应残留，否则 Result.shouldUseParse() 会继续命中旧 flag）。
-     * 不调 clear()，不发事件。
-     */
+    /** flags 段整体替换。null 不动旧值；空表清空（配置里没有该段即无）。不调 clear()，不发事件。 */
     public void replaceFlags(List<String> flags) {
         if (flags == null) return;
         try {
@@ -384,11 +368,7 @@ public class VodConfig extends BaseConfig {
         }
     }
 
-    /**
-     * N 批：rules 段整体替换。null 不动旧值；空表清空（配置里没有该段即无）。
-     * 经私有 setRules 走 RuleConfig.invalidate()，嗅探下次取规则时重新合并。
-     * 不调 clear()，不发事件。
-     */
+    /** rules 段整体替换。null 不动旧值；空表清空。经私有 setRules 走 RuleConfig.invalidate()。不调 clear()，不发事件。 */
     public void replaceRules(List<Rule> rules) {
         if (rules == null) return;
         try {
@@ -398,10 +378,7 @@ public class VodConfig extends BaseConfig {
         }
     }
 
-    /**
-     * N 批：ads 段整体替换。null 不动旧值；空表清空（配置里没有该段即无）。
-     * 经私有 setAds 走 RuleConfig.invalidate()。不调 clear()，不发事件。
-     */
+    /** ads 段整体替换。null 不动旧值；空表清空。经私有 setAds 走 RuleConfig.invalidate()。不调 clear()，不发事件。 */
     public void replaceAds(List<String> ads) {
         if (ads == null) return;
         try {
@@ -411,10 +388,7 @@ public class VodConfig extends BaseConfig {
         }
     }
 
-    /**
-     * N 批：doh 段整体替换。null 不动旧值；空表清空（配置里没有该段即无，
-     * getDoh() 随之只回 App 内置的默认 Doh）。不调 clear()，不发事件。
-     */
+    /** doh 段整体替换。null 不动旧值；空表清空。不调 clear()，不发事件。 */
     public void replaceDoh(List<Doh> doh) {
         if (doh == null) return;
         try {

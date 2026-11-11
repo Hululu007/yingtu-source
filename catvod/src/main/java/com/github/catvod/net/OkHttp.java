@@ -15,7 +15,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +25,6 @@ import javax.net.ssl.X509TrustManager;
 
 import okhttp3.Call;
 import okhttp3.Connection;
-import okhttp3.ConnectionPool;
-import okhttp3.Dispatcher;
 import okhttp3.EventListener;
 import okhttp3.FormBody;
 import okhttp3.Headers;
@@ -42,23 +39,6 @@ import okhttp3.logging.HttpLoggingInterceptor;
 public class OkHttp {
 
     private static final long TIMEOUT = TimeUnit.SECONDS.toMillis(30);
-    // Slow network: read timeout is idle time between bytes, not total time,
-    // so a slow trickle still passes; 45s tolerates VPN stalls without hanging forever.
-    private static final long READ_TIMEOUT = TimeUnit.SECONDS.toMillis(45);
-    // One shared pool + dispatcher for client() and player(): connections opened
-    // by spider calls, Glide covers and lyrics share keep-alive instead of
-    // each client holding its own idle pool. Defaults were 5 idle / 5 min and
-    // dispatcher 64 total / 5 per host; explicit values below cap bursts on
-    // slow links (per-host 4 keeps one slow host from eating all slots).
-    private static final ConnectionPool POOL = new ConnectionPool(8, 5, TimeUnit.MINUTES);
-    private static final Dispatcher DISPATCHER = newDispatcher();
-
-    private static Dispatcher newDispatcher() {
-        Dispatcher dispatcher = new Dispatcher();
-        dispatcher.setMaxRequests(32);
-        dispatcher.setMaxRequestsPerHost(4);
-        return dispatcher;
-    }
 
     private ResponseInterceptor responseInterceptor;
     private RequestInterceptor requestInterceptor;
@@ -119,10 +99,7 @@ public class OkHttp {
 
     public static synchronized OkHttpClient client() {
         if (get().client != null) return get().client;
-        // RetryInterceptor only on the API/spider client. player() is left
-        // without it on purpose: re-issuing media segment requests would
-        // restart stalled playback reads instead of letting the player handle them.
-        return get().client = getBuilder().addInterceptor(new RetryInterceptor()).build();
+        return get().client = getBuilder().build();
     }
 
     public static synchronized OkHttpClient player() {
@@ -259,10 +236,7 @@ public class OkHttp {
     }
 
     private static OkHttpClient.Builder getBuilder() {
-        // Protocols explicit: HTTP/2 first (multiplexed, one handshake per host),
-        // HTTP/1.1 fallback. This matches OkHttp's default but is now pinned
-        // so a future default change cannot silently drop multiplexing.
-        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(requestInterceptor()).addInterceptor(authInterceptor()).addNetworkInterceptor(responseInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(READ_TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).connectionPool(POOL).dispatcher(DISPATCHER).protocols(Arrays.asList(Protocol.HTTP_2, Protocol.HTTP_1_1)).retryOnConnectionFailure(true).dns(dns()).hostnameVerifier((hostname, session) -> true).sslSocketFactory(getSSLContext().getSocketFactory(), trustAllCertificates());
+        OkHttpClient.Builder builder = new OkHttpClient.Builder().addInterceptor(requestInterceptor()).addInterceptor(authInterceptor()).addNetworkInterceptor(responseInterceptor()).connectTimeout(TIMEOUT, TimeUnit.MILLISECONDS).readTimeout(TIMEOUT, TimeUnit.MILLISECONDS).writeTimeout(TIMEOUT, TimeUnit.MILLISECONDS).dns(dns()).hostnameVerifier((hostname, session) -> true).sslSocketFactory(getSSLContext().getSocketFactory(), trustAllCertificates());
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY);
         builder.proxyAuthenticator(authenticator());
         //builder.addNetworkInterceptor(logging);

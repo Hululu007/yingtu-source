@@ -2,7 +2,7 @@
 <!-- 详情页（老版影图录像版式，第八版）：最顶上是 16:9 播放器（加载时海报当背景、
      “正在获取播放信息”转圈，右上角显示播放中分辨率），下面依次是标题 + 来源 + 评述
      + 标签 + 简介，再下面是操作钮
-     （全屏/推送/快搜/收藏/简介/菜单），再下面是清晰度行（线路 chip + 当前集/总集数），
+     （全屏/快搜/收藏/简介/菜单；推送投屏随播放器批接入，本次未搬），再下面是清晰度行（线路 chip + 当前集/总集数），
      再下面是五列选集网格（当前集标绿）、本片剧照、相关推荐。播放器与信息块固定在顶部，
      只有选集以下在 ScrollView 里滚动。
      毛玻璃背景仍用本片海报模糊后做底。 -->
@@ -199,8 +199,7 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
 
-            <!-- 操作钮：全屏 / 推送 / 快搜 / 收藏 / 简介 / 菜单（六个都是真能力，
-                 推送要先播出流才有地址可推，快搜按片名跨站搜，菜单里是分享与复制片名） -->
+            <!-- 操作钮：全屏 / 快搜 / 收藏 / 简介 / 菜单（五个都是真能力，快搜按片名跨站搜，菜单里是分享与复制片名；推送投屏随播放器批接入） -->
             <LinearLayout
                 android:id="@+id/actionRow"
                 android:layout_width="match_parent"
@@ -221,19 +220,6 @@
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/btnCast"
-                    android:layout_width="0dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="3dp"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_action_button"
-                    android:gravity="center"
-                    android:text="推送"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/btnQuickSearch"

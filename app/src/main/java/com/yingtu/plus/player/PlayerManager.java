@@ -334,8 +334,7 @@ public class PlayerManager implements ParseCallback {
             }
         };
         this.playerType = PlayerSetting.getPlayer();
-        this.engine = buildEngine(playerType,
-                playerType == PlayerSetting.IJK ? PlayerSetting.getIjkDecode() : PlayerEngine.HARD);
+        this.engine = buildEngine(playerType, PlayerEngine.HARD);
         this.player = engine.getPlayer();
     }
 
@@ -392,7 +391,7 @@ public class PlayerManager implements ParseCallback {
     }
 
     private boolean experimentAllowed(PlaybackExperimentPolicy.Action action) {
-        return PlaybackExperimentSetting.isAllowed(action == null ? "" : action.id());
+        return PlaybackExperimentSetting.isAllowed(action);
     }
 
     private void onPlaybackExperimentPolicyChanged(
@@ -402,11 +401,7 @@ public class PlayerManager implements ParseCallback {
                 PlaybackProfileAbCoordinator.InvalidationReason
                         .GENERATION_CHANGED);
         PlaybackExperimentPolicy.State policy =
-                PlaybackExperimentSetting.getState()
-                        ? new PlaybackExperimentPolicy.State(
-                                PlaybackExperimentPolicy.CURRENT_SCHEMA_VERSION,
-                                PlaybackExperimentSetting.isEnabled(), true, true, true)
-                        : PlaybackExperimentPolicy.State.stable();
+                PlaybackExperimentSetting.getState();
         PlaybackTrace.log(
                 "playback-experiment",
                 playbackTrace.current(),
@@ -925,7 +920,7 @@ public class PlayerManager implements ParseCallback {
     private void configureDanmakuController(DanmakuController controller) {
         if (controller == null) return;
         controller.setOkHttpClient(OkHttp.player());
-        controller.setConfig((DanmakuConfig) DanmakuSetting.getConfig());
+        controller.setConfig(DanmakuSetting.getConfig());
         controller.setEnabled(DanmakuSetting.isShow());
         controller.setListener(new DanmakuController.Listener() {
             @Override

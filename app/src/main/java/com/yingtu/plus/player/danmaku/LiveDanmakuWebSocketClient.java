@@ -16,7 +16,7 @@ import okhttp3.WebSocketListener;
 
 public final class LiveDanmakuWebSocketClient {
 
-    private static final long CONNECT_TIMEOUT_SECONDS = 15L;
+    private static final long CONNECT_TIMEOUT_SECONDS = 10L;
     private static final long HANDSHAKE_TIMEOUT_SECONDS = 20L;
 
     private final ExecutorService executor;
@@ -38,7 +38,6 @@ public final class LiveDanmakuWebSocketClient {
         client = new OkHttpClient.Builder()
                 .dispatcher(dispatcher)
                 .connectionPool(connectionPool)
-                .dns(OkHttp.dns())
                 .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .readTimeout(HANDSHAKE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                 .writeTimeout(HANDSHAKE_TIMEOUT_SECONDS, TimeUnit.SECONDS)

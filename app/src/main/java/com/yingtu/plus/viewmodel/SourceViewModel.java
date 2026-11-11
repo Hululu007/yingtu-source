@@ -3,7 +3,7 @@ package com.yingtu.plus.viewmodel;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.yingtu.plus.App;
+import com.github.catvod.crawler.SpiderDebug;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.api.config.VodConfig;
@@ -20,8 +20,6 @@ import com.yingtu.plus.bean.SourceBean;
 import com.yingtu.plus.bean.Vod;
 import com.yingtu.plus.bean.VodInfo;
 import com.yingtu.plus.util.OkGo;
-import com.yingtu.plus.util.VodResultCache;
-import com.yingtu.plus.web.WebHomeInlineVodStore;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,8 +29,10 @@ import java.util.List;
  * 站点数据 ViewModel：首页分类/列表、详情、搜索。
  *
  * 取数走 SiteApi（TVBox 蜘蛛协议），后台线程跑、LiveData.postValue 回主线。
- * sourceKey 为 WebHomeInlineVodStore.KEY 时，详情走内联片库（fm.vodInline
- * 存进来的多集内容），不走站点。
+ * 由 dm17 移植：去掉了 dm17 的混合首页（getSortMixed，无调用方）、
+ * WebHome 内联片库分支（WebHomeInlineVodStore 属网页区/注入批）、
+ * 结果缓存清理（VodResultCache 上游没有，无缓存可清）、
+ * 豆瓣角标（上游 Vod 无 douban 字段）。
  */
 public class SourceViewModel extends ViewModel {
 
@@ -57,9 +57,6 @@ public class SourceViewModel extends ViewModel {
                     return;
                 }
                 String newHomeKey = source.getKey();
-                // dm16：切站时清掉新站的旧缓存条目（含此前瞬时失败钉住的空结果），强制现取；
-                // 同站重进 homeKey 不变，不清，缓存照常用。
-                if (!newHomeKey.equals(homeKey)) VodResultCache.clearSite(newHomeKey);
                 homeKey = newHomeKey;
                 Site site = VodConfig.get().getSite(homeKey);
                 if (site == null) {
@@ -90,42 +87,7 @@ public class SourceViewModel extends ViewModel {
                 // 死站蜘蛛可能抛 Error（如栈溢出、类找不到）：只接 Exception 会漏网，
                 // 未捕获的 Error 会杀掉后台线程直至进程闪退。这里接 Throwable，
                 // 退化成“加载失败：原因”，不杀进程。
-                App.logCaught(e);
-                sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
-                sortResult.postValue(null);
-                listResult.postValue(null);
-            }
-        });
-    }
-
-    /** 混合首页：激活的混合规则逐站取首页推荐并去重合并；分类 Tab 不出（各站分类 id 会撞）。 */
-    public void getSortMixed(List<SourceBean> members) {
-        OkGo.io(() -> {
-            sortError.postValue(null);
-            try {
-                List<Movie> merged = new ArrayList<>();
-                java.util.Set<String> seen = new java.util.HashSet<>();
-                String firstKey = null;
-                for (SourceBean bean : members) {
-                    if (bean == null) continue;
-                    try {
-                        Site site = VodConfig.get().getSite(bean.getKey());
-                        if (site == null) continue;
-                        if (firstKey == null) firstKey = bean.getKey();
-                        Result result = SiteApi.homeContent(site);
-                        if (result == null || result.getList() == null) continue;
-                        for (Movie m : toMovies(bean.getKey(), result.getList())) {
-                            String dedup = m.sourceKey + "|" + m.vodId;
-                            if (seen.add(dedup)) merged.add(m);
-                        }
-                    } catch (Throwable ignored) {
-                    }
-                }
-                homeKey = firstKey;
-                sortResult.postValue(new ArrayList<>());
-                listResult.postValue(merged);
-            } catch (Throwable e) {
-                App.logCaught(e);
+                SpiderDebug.log("sort", "getSort failed key=%s err=%s", homeKey, e.getMessage());
                 sortError.postValue(e.getMessage() == null ? e.toString() : e.getMessage());
                 sortResult.postValue(null);
                 listResult.postValue(null);
@@ -145,16 +107,11 @@ public class SourceViewModel extends ViewModel {
         });
     }
 
-    /** 详情。WebHome 内联片走 WebHomeInlineVodStore，其余走站点。 */
+    /** 详情。 */
     public void getDetail(String sourceKey, String vodId) {
         OkGo.io(() -> {
             try {
-                Vod vod;
-                if (WebHomeInlineVodStore.KEY.equals(sourceKey)) {
-                    vod = WebHomeInlineVodStore.detail(vodId).getVod();
-                } else {
-                    vod = SiteApi.detailContent(sourceKey, vodId).getVod();
-                }
+                Vod vod = SiteApi.detailContent(sourceKey, vodId).getVod();
                 detailResult.postValue(vod == null ? null : toVodInfo(sourceKey, vod));
             } catch (Throwable e) {
                 detailResult.postValue(null);
@@ -196,7 +153,6 @@ public class SourceViewModel extends ViewModel {
             movie.actor = vod.getActor();
             movie.director = vod.getDirector();
             movie.content = vod.getContent();
-            movie.douban = vod.isDouban();
             list.add(movie);
         }
         return list;

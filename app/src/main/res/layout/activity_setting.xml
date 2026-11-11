@@ -105,22 +105,6 @@
                 <TextView android:id="@+id/tvSyncData" style="@style/SettingValue" android:text="影图间同步数据" />
                 <ImageView style="@style/SettingArrow" />
             </LinearLayout>
-
-            <View style="@style/SettingSep" />
-
-            <LinearLayout android:id="@+id/rowBuiltinZone" style="@style/SettingRow">
-                <TextView style="@style/SettingLabel" android:text="内置站点" />
-                <TextView android:id="@+id/tvBuiltinZone" style="@style/SettingValue" android:text="213 个站" />
-                <ImageView style="@style/SettingArrow" />
-            </LinearLayout>
-
-            <View style="@style/SettingSep" />
-
-            <LinearLayout android:id="@+id/rowOneKeyPy" style="@style/SettingRow">
-                <TextView style="@style/SettingLabel" android:text="一键写PY" />
-                <TextView style="@style/SettingValue" android:text="输网址自动生成 py 并导入站源管理" />
-                <ImageView style="@style/SettingArrow" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- ========== 首页和搜索 ========== -->
@@ -366,16 +350,6 @@
                 <TextView style="@style/SettingLabel" android:text="清除缓存" />
                 <TextView android:id="@+id/tvCacheHint" style="@style/SettingValue" android:text="@string/val_on" />
                 <ImageView style="@style/SettingArrow" />
-            </LinearLayout>
-
-            <View style="@style/SettingSep" />
-
-            <LinearLayout android:id="@+id/rowDramaPreload" style="@style/SettingRow">
-                <TextView style="@style/SettingLabel" android:text="短剧预加载" />
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/swDramaPreload"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
             </LinearLayout>
 
             <View style="@style/SettingSep" />

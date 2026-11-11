@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- hero 轮播圆点：非当前页（源码白 22% 透明小圆点，宽高由 View 定） -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#38FFFFFF" />
-    <corners android:radius="2dp" />
-</shape>

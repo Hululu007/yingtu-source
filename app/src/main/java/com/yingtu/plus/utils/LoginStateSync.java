@@ -91,12 +91,12 @@ public class LoginStateSync {
             String json = App.gson().toJson(snapshot);
             boolean cached = writeLearningCache(SNAPSHOT_CACHE_FILE, json);
             if (cached) {
-                if (!TextUtils.isEmpty(toText(Setting.getLoginStateSnapshot()))) Setting.putLoginStateSnapshot("");
+                if (!TextUtils.isEmpty(Setting.getLoginStateSnapshot())) Setting.putLoginStateSnapshot("");
             } else {
                 Setting.putLoginStateSnapshot(json);
             }
             clearLearningCache(FINDINGS_CACHE_FILE);
-            if (!TextUtils.isEmpty(toText(Setting.getLoginStateFindings()))) Setting.putLoginStateFindings("");
+            if (!TextUtils.isEmpty(Setting.getLoginStateFindings())) Setting.putLoginStateFindings("");
         }
         SpiderDebug.log("sync", "login state learning started files=%d elapsedMs=%d", snapshot.entries.size(), SystemClock.elapsedRealtime() - startedAt);
     }
@@ -106,7 +106,7 @@ public class LoginStateSync {
         String snapshotJson;
         synchronized (LEARNING_LOCK) {
             snapshotJson = readLearningCache(SNAPSHOT_CACHE_FILE);
-            if (TextUtils.isEmpty(snapshotJson)) snapshotJson = toText(Setting.getLoginStateSnapshot());
+            if (TextUtils.isEmpty(snapshotJson)) snapshotJson = Setting.getLoginStateSnapshot();
         }
         Snapshot before = snapshotFromJson(snapshotJson);
         if (before.entries.isEmpty()) {
@@ -132,18 +132,18 @@ public class LoginStateSync {
             String json = App.gson().toJson(candidates);
             boolean cached = writeLearningCache(FINDINGS_CACHE_FILE, json);
             if (cached) {
-                if (!TextUtils.isEmpty(toText(Setting.getLoginStateFindings()))) Setting.putLoginStateFindings("");
+                if (!TextUtils.isEmpty(Setting.getLoginStateFindings())) Setting.putLoginStateFindings("");
             } else {
                 Setting.putLoginStateFindings(json);
             }
-            if (!TextUtils.isEmpty(toText(Setting.getLoginStateSnapshot()))) Setting.putLoginStateSnapshot("");
+            if (!TextUtils.isEmpty(Setting.getLoginStateSnapshot())) Setting.putLoginStateSnapshot("");
         }
         SpiderDebug.log("sync", "login state learning finished changed=%d selected=%d pending=%d contentBytes=%d skippedContent=%d scanMs=%d scoreMs=%d totalMs=%d", candidates.size(), selected.size(), pending.size(), budget.consumed(), budget.skipped(), scanFinishedAt - startedAt, scoreFinishedAt - scanFinishedAt, SystemClock.elapsedRealtime() - startedAt);
         return new LearnResult(selected, pending, true);
     }
 
     public static boolean hasLearningSnapshot() {
-        return hasLearningCache(SNAPSHOT_CACHE_FILE) || !TextUtils.isEmpty(toText(Setting.getLoginStateSnapshot()));
+        return hasLearningCache(SNAPSHOT_CACHE_FILE) || !TextUtils.isEmpty(Setting.getLoginStateSnapshot());
     }
 
     public static int learnedCount() {
@@ -151,11 +151,11 @@ public class LoginStateSync {
     }
 
     public static List<String> learnedPaths() {
-        return normalizeLines(toText(Setting.getLoginStatePaths()));
+        return normalizeLines(Setting.getLoginStatePaths());
     }
 
     public static List<String> pendingPaths() {
-        List<String> result = prunePending(learnedPaths(), normalizeLines(toText(Setting.getLoginStatePendingPaths())));
+        List<String> result = prunePending(learnedPaths(), normalizeLines(Setting.getLoginStatePendingPaths()));
         return result.size() <= MAX_PENDING_PATHS ? result : new ArrayList<>(result.subList(0, MAX_PENDING_PATHS));
     }
 
@@ -164,7 +164,7 @@ public class LoginStateSync {
             String json;
             synchronized (LEARNING_LOCK) {
                 json = readLearningCache(FINDINGS_CACHE_FILE);
-                if (TextUtils.isEmpty(json)) json = toText(Setting.getLoginStateFindings());
+                if (TextUtils.isEmpty(json)) json = Setting.getLoginStateFindings();
             }
             Candidate[] array = App.gson().fromJson(json, Candidate[].class);
             if (array == null) return Collections.emptyList();
@@ -185,7 +185,7 @@ public class LoginStateSync {
     public static void resetLearningResults() {
         clearLearningCache(FINDINGS_CACHE_FILE);
         Setting.putLoginStatePendingPaths("");
-        if (!TextUtils.isEmpty(toText(Setting.getLoginStateFindings()))) Setting.putLoginStateFindings("");
+        if (!TextUtils.isEmpty(Setting.getLoginStateFindings())) Setting.putLoginStateFindings("");
     }
 
     public static List<String> confirmPending() {
@@ -582,24 +582,6 @@ public class LoginStateSync {
         parent = normalize(parent);
         child = normalize(child);
         return !parent.isEmpty() && (parent.equals(child) || child.startsWith(parent + "/"));
-    }
-
-    // Setting 桩的取值返回 Object / List<Object>，而非 webhtv 的 String：
-    // 这里统一转成文本再用。null 转 ""（不用 String.valueOf(null) 的 "null"），
-    // 列表按行拼接后由 normalizeLines 按行拆回，与原来传 String 的语义一致。
-    private static String toText(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static String toText(List<?> values) {
-        if (values == null || values.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        for (Object value : values) {
-            if (value == null) continue;
-            if (sb.length() > 0) sb.append('\n');
-            sb.append(value);
-        }
-        return sb.toString();
     }
 
     private static List<String> normalizeLines(String text) {

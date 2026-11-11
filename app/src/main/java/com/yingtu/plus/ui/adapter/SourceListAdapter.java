@@ -1,38 +1,25 @@
 package com.yingtu.plus.ui.adapter;
 
-import android.graphics.drawable.Drawable;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.DataSource;
-import com.bumptech.glide.load.engine.GlideException;
-import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.Target;
-import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.R;
-import com.yingtu.plus.api.SiteHealthResults;
 import com.yingtu.plus.bean.SourceBean;
-import com.yingtu.plus.util.HawkConfig;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 视频源列表适配器：按接口配置分组，组头可点折叠/展开。
  * 收起后组头只显示组名 + 站数；展开后组内各站以三列网格显示，当前选中源高亮。
- * 组头视图用代码创建，不新增布局文件；站点格子复用弹窗的 item_source_grid。
+ * 组头视图用代码创建，不新增布局文件；站点格子复用 item_source_grid。
  */
 public class SourceListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -59,17 +46,10 @@ public class SourceListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
     private final List<Group> groups = new ArrayList<>();
     private String currentKey = "";
     private OnSourceClick listener;
-    /** 站点 key → 上次检测结果；有结果的格子下方显示状态徽标。 */
-    private Map<String, SiteHealthResults.Result> health = new HashMap<>();
 
     /** 组头行占满 3 列、站点格子占 1 列（SourceActivity 的 SpanSizeLookup 用）。 */
     public boolean isGroupPosition(int position) {
         return getItemViewType(position) == TYPE_GROUP;
-    }
-
-    public void setHealth(Map<String, SiteHealthResults.Result> health) {
-        this.health = health == null ? new HashMap<>() : health;
-        notifyDataSetChanged();
     }
 
     public void setOnSourceClick(OnSourceClick l) {
@@ -152,29 +132,9 @@ public class SourceListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
             SourceVH h = (SourceVH) holder;
             SourceBean s = row.source;
             h.tvName.setText(s.getName());
-            bindLogo(h.logoFrame, h.tvLogoLetter, h.ivLogo, s);
             boolean selected = currentKey.equals(s.getKey());
             h.tvName.setSelected(selected);
             h.itemView.setSelected(selected);
-            SiteHealthResults.Result r = health.get(s.getKey());
-            if (r != null) {
-                h.tvStatus.setVisibility(View.VISIBLE);
-                h.tvStatus.setText(SiteHealthResults.label(r.status));
-                int color;
-                switch (r.status) {
-                    case SiteHealthResults.OK: color = android.graphics.Color
-                            .parseColor("#2E7D32"); break;
-                    case SiteHealthResults.EMPTY: color = android.graphics.Color
-                            .parseColor("#E65100"); break;
-                    case SiteHealthResults.TIMEOUT:
-                    case SiteHealthResults.ERROR: color = android.graphics.Color
-                            .parseColor("#C62828"); break;
-                    default: color = android.graphics.Color.parseColor("#757575");
-                }
-                h.tvStatus.setTextColor(color);
-            } else {
-                h.tvStatus.setVisibility(View.GONE);
-            }
             h.itemView.setOnClickListener(v -> {
                 if (listener != null) listener.onClick(s);
             });
@@ -222,67 +182,11 @@ public class SourceListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHol
         }
     }
 
-    /** 站源 LOGO 视图：开关关时整个图标区隐藏；开时显示首字母，api 是 http(s) 时再试加载域名 favicon，失败留首字母。 */
-    private static void bindLogo(View logoFrame, TextView tvLetter, ImageView ivLogo, SourceBean s) {
-        if (logoFrame == null) return;
-        boolean show = false;
-        try { show = Hawk.get(HawkConfig.SOURCE_LOGO_VIEW, true); } catch (Exception ignored) {}
-        if (!show) {
-            logoFrame.setVisibility(View.GONE);
-            return;
-        }
-        logoFrame.setVisibility(View.VISIBLE);
-        String name = s.getName() == null ? "" : s.getName();
-        tvLetter.setText(name.isEmpty() ? "?" : name.substring(0, 1));
-        String key = s.getKey() == null ? "" : s.getKey();
-        ivLogo.setTag(key);
-        Glide.with(ivLogo.getContext()).clear(ivLogo);
-        ivLogo.setVisibility(View.GONE);
-        String favicon = faviconUrl(s.getApi());
-        if (favicon == null) return;
-        Glide.with(ivLogo.getContext())
-                .load(favicon)
-                .centerCrop()
-                .listener(new RequestListener<Drawable>() {
-                    @Override
-                    public boolean onLoadFailed(@Nullable GlideException e, Object model, @NonNull Target<Drawable> target, boolean isFirstResource) {
-                        return false;
-                    }
-
-                    @Override
-                    public boolean onResourceReady(@NonNull Drawable resource, @NonNull Object model, @NonNull Target<Drawable> target, @NonNull DataSource dataSource, boolean isFirstResource) {
-                        if (key.equals(ivLogo.getTag())) ivLogo.setVisibility(View.VISIBLE);
-                        return false;
-                    }
-                })
-                .into(ivLogo);
-    }
-
-    /** 只认 http(s) 接口地址，取 host 拼 favicon 地址；csp_/本地等非网址接口返回 null。 */
-    private static String faviconUrl(String api) {
-        if (api == null) return null;
-        try {
-            java.net.URI uri = new java.net.URI(api.trim());
-            String host = uri.getHost();
-            if (host == null || host.isEmpty()) return null;
-            return "https://" + host + "/favicon.ico";
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     static class SourceVH extends RecyclerView.ViewHolder {
-        TextView tvName, tvStatus;
-        View logoFrame;
-        TextView tvLogoLetter;
-        ImageView ivLogo;
+        TextView tvName;
         SourceVH(@NonNull View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tvName);
-            tvStatus = itemView.findViewById(R.id.tvStatus);
-            logoFrame = itemView.findViewById(R.id.logoFrame);
-            tvLogoLetter = itemView.findViewById(R.id.tvLogoLetter);
-            ivLogo = itemView.findViewById(R.id.ivLogo);
         }
     }
 }

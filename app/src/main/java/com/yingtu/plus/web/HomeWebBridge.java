@@ -1,93 +1,79 @@
 package com.yingtu.plus.web;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.text.TextUtils;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 
+import com.yingtu.plus.App;
+import com.yingtu.plus.setting.Setting;
+import com.yingtu.plus.api.SiteApi;
+import com.yingtu.plus.api.config.VodConfig;
 import com.yingtu.plus.bean.History;
-import com.yingtu.plus.ui.activity.DetailActivity;
+import com.yingtu.plus.bean.Site;
+
 import com.yingtu.plus.ui.activity.HomeActivity;
-import com.yingtu.plus.ui.activity.VideoActivity;
 import com.yingtu.plus.ui.activity.SearchActivity;
 import com.yingtu.plus.util.HistoryHelper;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
+
+
+
+
+
+import com.yingtu.plus.ui.activity.VideoActivity;
+import com.yingtu.plus.utils.ImgUtil;
+import com.yingtu.plus.utils.Notify;
+import com.yingtu.plus.utils.Task;
+import com.yingtu.plus.web.ext.WebHomeExtensionRegistry;
+import com.github.catvod.crawler.SpiderDebug;
+import com.github.catvod.utils.Json;
+import com.github.catvod.utils.Prefers;
 import com.google.gson.JsonObject;
 
 import java.net.URLEncoder;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * WebHome 的 Native 桥接对象（@JavascriptInterface），对应 webhtv 的 HomeWebBridge。
- *
- * JS 侧通过 {@code fongmiBridge.invoke(id, method, payloadJson)} 调用，
- * 这里在后台线程处理后用 {@code window.fongmiNative.resolve/reject} 回调。
- *
- * 相比 webhtv 原版做了裁剪以匹配「影图+」现有能力：
- *   - player.playUrl / pan.play  → VideoActivity.start 播直链
- *   - player.playVod             → DetailActivity 进入站源详情
- *   - player.playVodInline       → 存入 WebHomeInlineVodStore，进 DetailActivity
- *   - app.search                 → SearchActivity
- *   - app.history                → 本地观看历史
- *   - cache.*                    → Hawk 持久化
- *   - net.request / net.resourceUrl → OkHttp 代理（绕过 CORS）
- */
 public class HomeWebBridge {
 
     private static final int INLINE_LIMIT = 12000;
     private static final int CHUNK_SIZE = 60000;
 
-    public interface UiCallback {
-        void setToolbar(boolean visible);
-        void setChrome(JsonObject payload);
-        void restoreChrome();
-        String getViewportJson();
-        void back();
-        void reload();
-        void openVod();
-        void openSetting();
-    }
-
+    private final HomeWebController controller;
     private final Activity activity;
     private final WebView webView;
-    private final UiCallback ui;
-    private final Gson gson = new Gson();
-    private final Map<String, String> results = new ConcurrentHashMap<>();
+    private final Map<String, String> results;
 
-    public HomeWebBridge(Activity activity, WebView webView, UiCallback ui) {
+    public HomeWebBridge(HomeWebController controller, Activity activity, WebView webView) {
+        this.controller = controller;
         this.activity = activity;
         this.webView = webView;
-        this.ui = ui;
+        this.results = new ConcurrentHashMap<>();
     }
 
     @JavascriptInterface
     public void invoke(String requestId, String method, String payload) {
-        OkGoExec(() -> handle(requestId, method, WebCall.object(payload)));
+        Task.execute(() -> handle(requestId, method, WebCall.object(payload)));
     }
 
     @JavascriptInterface
     public void console(String level, String message) {
-        android.util.Log.d("webview", (level == null ? "log" : level) + " " + message);
+        controller.dispatchDebugConsole(level, message);
     }
 
     @JavascriptInterface
     public void network(String type, String method, String url, int status, long durationMs, String detail) {
-        android.util.Log.d("webview-net", type + " " + method + " " + url + " " + status);
+        controller.dispatchDebugNetwork(type, method, url, status, durationMs, detail);
     }
 
     @JavascriptInterface
     public String resourceUrl(String url, String options) {
         JsonObject object = WebCall.object(options);
-        StringBuilder builder = new StringBuilder(
-                WebServer.get().getAddress("/webResource?url=")).append(encode(url));
-        if (object.has("headers"))
-            builder.append("&headers=").append(encode(object.get("headers").toString()));
-        if ("include".equals(safe(object, "credentials")))
-            builder.append("&credentials=include");
+        StringBuilder builder = new StringBuilder(WebServer.get().getAddress("/webResource?url=")).append(encode(url));
+        if (object.has("headers")) builder.append("&headers=").append(encode(object.get("headers").toString()));
+        if ("include".equals(Json.safeString(object, "credentials"))) builder.append("&credentials=include");
         return builder.toString();
     }
 
@@ -111,183 +97,228 @@ public class HomeWebBridge {
 
     private void handle(String requestId, String method, JsonObject payload) {
         try {
-            String result;
-            switch (method) {
-                case "net.request": result = WebCall.request(payload); break;
-                case "net.resourceUrl": result = quote(resourceUrl(safe(payload, "url"), payload.toString())); break;
-                case "player.playUrl": result = playUrl(payload); break;
-                case "player.playVod": result = playVod(payload); break;
-                case "player.playVodInline": result = playVodInline(payload); break;
-                case "player.preloadArtwork": result = "{}"; break;
-                case "player.control": result = "{}"; break;
-                case "player.status": result = "{}"; break;
-                case "app.search": result = search(payload); break;
-                case "app.openVod": result = openVod(); break;
-                case "app.openLive": result = openLive(); break;
-                case "app.openKeep": result = openKeep(); break;
-                case "app.openSetting": result = openSetting(); break;
-                case "app.history": result = history(); break;
-                case "pan.check": result = "[]"; break;
-                case "pan.play": result = playPan(payload); break;
-                case "cache.get": result = quote(com.orhanobut.hawk.Hawk.get(cacheKey(payload), "")); break;
-                case "cache.set": result = cacheSet(payload); break;
-                case "cache.del": result = cacheDel(payload); break;
-                case "device.info": result = device(); break;
-                case "site.info": result = site(); break;
-                case "config.info": result = config(); break;
-                case "ext.info": result = extInfo(); break;
-                case "ext.log": result = "{}"; break;
-                case "ext.toast": result = toast(payload); break;
-                case "ui.setToolbar": result = setToolbar(payload); break;
-                case "ui.setChrome": result = setChrome(payload); break;
-                case "ui.restoreChrome": post(ui::restoreChrome); result = "{}"; break;
-                case "ui.getViewport": result = ui.getViewportJson(); break;
-                case "navigation.back": post(ui::back); result = "{}"; break;
-                case "navigation.reload": post(ui::reload); result = "{}"; break;
-                default: throw new IllegalArgumentException("Unknown method: " + method);
-            }
+            SpiderDebug.log("webhome", "invoke method=%s payload=%s", method, payload);
+            String result = switch (method) {
+                case "net.request" -> WebCall.request(payload, controller);
+                case "net.resourceUrl" -> quote(resourceUrl(Json.safeString(payload, "url"), payload.toString()));
+                case "player.playUrl" -> playUrl(payload);
+                case "player.playVod" -> playVod(payload);
+                case "player.playVodInline" -> playVodInline(payload);
+                case "player.preloadArtwork" -> preloadArtwork(payload);
+                case "player.control" -> control(payload);
+                case "player.status" -> WebCall.request(statusPayload());
+                case "app.search" -> search(payload);
+                case "app.openVod" -> openVod();
+                case "app.openLive" -> openLive();
+                case "app.openKeep" -> openKeep();
+                case "app.openSetting" -> openSetting();
+                case "app.history" -> history();
+                case "pan.check" -> checkLinks(payload);
+                case "pan.play" -> playPan(payload);
+                case "cache.get" -> quote(Prefers.getString(cacheKey(payload)));
+                case "cache.set" -> cacheSet(payload);
+                case "cache.del" -> cacheDel(payload);
+                case "device.info" -> device();
+                case "site.info" -> site();
+                case "config.info" -> config();
+                case "ext.info" -> extInfo();
+                case "ext.log" -> extLog(payload);
+                case "ext.toast" -> extToast(payload);
+                case "ui.setToolbar" -> setToolbar(payload);
+                case "ui.setChrome" -> setChrome(payload);
+                case "ui.restoreChrome" -> restoreChrome();
+                case "ui.getViewport" -> controller.getViewportJson();
+                case "navigation.back" -> back();
+                case "navigation.reload" -> reload();
+                default -> throw new IllegalArgumentException("Unknown method: " + method);
+            };
             resolve(requestId, result);
         } catch (Throwable e) {
             reject(requestId, e.getMessage());
         }
     }
 
-    // ===== player =====
-
     private String playUrl(JsonObject payload) {
-        String url = safe(payload, "url");
-        String title = safe(payload, "title");
-        String pic = safe(payload, "pic");
-        if (payload.has("headers") || "include".equals(safe(payload, "credentials")))
-            url = resourceUrl(url, payload.toString());
+        String url = Json.safeString(payload, "url");
+        String title = Json.safeString(payload, "title");
+        String pic = Json.safeString(payload, "pic");
+        String wall = wallPic(payload);
+        String content = content(payload);
+        if (payload.has("headers") || "include".equals(Json.safeString(payload, "credentials"))) url = resourceUrl(url, payload.toString());
         final String playUrl = url;
-        if (!TextUtils.isEmpty(playUrl)) {
-            post(() -> VideoActivity.start(activity, playUrl));
-        }
+        final String playTitle = TextUtils.isEmpty(title) ? playUrl : title;
+        final String playPic = pic;
+        final String playWall = wall;
+        final String playContent = content;
+        SpiderDebug.log("webhome", "player.playUrl title=%s url=%s", playTitle, playUrl);
+        App.post(() -> VideoActivity.start(activity, SiteApi.PUSH, playUrl, playTitle, playPic, null, playWall, playContent));
         return "{}";
     }
 
     private String playVod(JsonObject payload) {
-        String siteKey = safe(payload, "siteKey");
-        String vodId = safe(payload, "vodId");
-        post(() -> {
-            Intent i = new Intent(activity, DetailActivity.class);
-            i.putExtra(DetailActivity.KEY_SOURCE, siteKey);
-            i.putExtra(DetailActivity.KEY_VOD_ID, vodId);
-            activity.startActivity(i);
-        });
+        String siteKey = Json.safeString(payload, "siteKey");
+        String vodId = Json.safeString(payload, "vodId");
+        String title = Json.safeString(payload, "title");
+        String pic = Json.safeString(payload, "pic");
+        String wall = wallPic(payload);
+        String content = content(payload);
+        App.post(() -> VideoActivity.start(activity, siteKey, vodId, title, pic, null, wall, content));
         return "{}";
     }
 
     private String playVodInline(JsonObject payload) {
-        // 先存入内联片库，再进详情页：详情与取流走 SiteApi（KEY=webhome_inline），
-        // 由 WebHomeInlineVodStore.detail/player 提供，不直接播单集。
-        String id = WebHomeInlineVodStore.put(payload);
-        post(() -> {
-            Intent i = new Intent(activity, DetailActivity.class);
-            i.putExtra(DetailActivity.KEY_SOURCE, WebHomeInlineVodStore.KEY);
-            i.putExtra(DetailActivity.KEY_VOD_ID, id);
-            activity.startActivity(i);
-        });
+        String vodId = WebHomeInlineVodStore.put(payload);
+        String title = Json.safeString(payload, "title");
+        if (TextUtils.isEmpty(title)) title = Json.safeString(payload, "vod_name");
+        String pic = Json.safeString(payload, "pic");
+        if (TextUtils.isEmpty(pic)) pic = Json.safeString(payload, "vod_pic");
+        String mark = Json.safeString(payload, "mark");
+        String wall = wallPic(payload);
+        String content = content(payload);
+        final String playTitle = TextUtils.isEmpty(title) ? vodId : title;
+        final String playPic = pic;
+        final String playMark = mark;
+        final String playWall = wall;
+        final String playContent = content;
+        SpiderDebug.log("webhome", "player.playVodInline title=%s id=%s mark=%s", playTitle, vodId, playMark);
+        App.post(() -> VideoActivity.start(activity, WebHomeInlineVodStore.KEY, vodId, playTitle, playPic, playMark, playWall, playContent));
         JsonObject result = new JsonObject();
-        result.addProperty("vodId", id);
+        result.addProperty("siteKey", WebHomeInlineVodStore.KEY);
+        result.addProperty("vodId", vodId);
         return result.toString();
     }
 
-    private String playPan(JsonObject payload) {
-        String url = safe(payload, "url");
-        if (url.regionMatches(true, 0, "push://", 0, 7)) url = url.substring(7);
-        String title = safe(payload, "title");
-        if (TextUtils.isEmpty(url)) throw new IllegalArgumentException("url不能为空");
-        final String playUrl = url;
-        post(() -> VideoActivity.start(activity, playUrl));
-        return "{}";
-    }
-
-    // ===== app =====
-
-    private String search(JsonObject payload) {
-        String keyword = safe(payload, "keyword");
-        post(() -> {
-            Intent i = new Intent(activity, SearchActivity.class);
-            i.putExtra("keyword", keyword);
-            activity.startActivity(i);
+    private String preloadArtwork(JsonObject payload) {
+        String pic = Json.safeString(payload, "pic");
+        String wall = wallPic(payload);
+        App.post(() -> {
+            ImgUtil.preload(activity, pic);
+            if (!TextUtils.isEmpty(wall) && !TextUtils.equals(wall, pic)) ImgUtil.preload(activity, wall);
         });
         return "{}";
     }
 
-    private String openVod() {
-        post(ui::openVod);
+    private String wallPic(JsonObject payload) {
+        return Json.safeString(payload, "wallPic");
+    }
+
+    private String content(JsonObject payload) {
+        String content = Json.safeString(payload, "content");
+        if (TextUtils.isEmpty(content)) content = Json.safeString(payload, "vod_content");
+        if (TextUtils.isEmpty(content)) content = Json.safeString(payload, "desc");
+        if (TextUtils.isEmpty(content)) content = Json.safeString(payload, "description");
+        return content;
+    }
+
+    private String control(JsonObject payload) {
+        // No playback service in this tree: control is a no-op, page keeps working.
+        return "{}";
+    }
+
+    private JsonObject statusPayload() {
+        return new JsonObject();
+    }
+
+    private String search(JsonObject payload) {
+        String keyword = Json.safeString(payload, "keyword");
+        String pic = Json.safeString(payload, "pic");
+        String wall = wallPic(payload);
+        boolean direct = payload.has("direct") && payload.get("direct").getAsBoolean();
+        App.post(() -> {
+            android.content.Intent intent = new android.content.Intent(activity, SearchActivity.class);
+            intent.putExtra("keyword", keyword);
+            activity.startActivity(intent);
+        });
         return "{}";
     }
 
     private String openLive() {
-        // main 里没有 LiveActivity.java，暂回主页；直播页属另缺的类，不在本批 14 个内。
-        post(() -> {
-            Intent i = new Intent(activity, HomeActivity.class);
-            i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            activity.startActivity(i);
-        });
+        App.post(() -> Notify.show("暂无直播页"));
+        return "{}";
+    }
+
+    private String openVod() {
+        App.post(controller::openVod);
         return "{}";
     }
 
     private String openKeep() {
-        post(() -> {
-            Intent i = new Intent(activity, HomeActivity.class);
-            i.putExtra(HomeActivity.KEY_TAB, 4); // 分享收藏 Tab
-            i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            activity.startActivity(i);
+        App.post(() -> {
+            android.content.Intent intent = new android.content.Intent(activity, HomeActivity.class);
+            intent.putExtra(HomeActivity.KEY_TAB, 4);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            activity.startActivity(intent);
         });
         return "{}";
     }
 
     private String openSetting() {
-        post(ui::openSetting);
+        App.post(controller::openSetting);
         return "{}";
     }
 
     private String history() {
-        List<History> list = HistoryHelper.getAll();
-        JsonArray arr = new JsonArray();
-        for (History h : list) {
-            JsonObject o = new JsonObject();
-            o.addProperty("key", h.key);
-            o.addProperty("vodPic", h.vodPic);
-            o.addProperty("vodName", h.vodName);
-            o.addProperty("vodFlag", String.valueOf(h.playFlag));
-            o.addProperty("vodRemarks", h.episodeName);
-            o.addProperty("position", h.position);
-            o.addProperty("duration", h.duration);
-            o.addProperty("createTime", h.updateTime);
-            arr.add(o);
+        com.google.gson.JsonArray array = new com.google.gson.JsonArray();
+        for (History item : HistoryHelper.getAll()) {
+            JsonObject object = new JsonObject();
+            object.addProperty("key", item.key);
+            object.addProperty("vodPic", item.vodPic);
+            object.addProperty("vodName", item.vodName);
+            object.addProperty("vodFlag", String.valueOf(item.playFlag));
+            object.addProperty("vodRemarks", item.episodeName);
+            object.addProperty("position", item.position);
+            object.addProperty("duration", item.duration);
+            object.addProperty("createTime", item.updateTime);
+            array.add(object);
         }
-        return arr.toString();
+        return array.toString();
     }
 
-    // ===== cache =====
+    private String checkLinks(JsonObject payload) {
+        return "[]";
+    }
+
+    private String playPan(JsonObject payload) {
+        String url = Json.safeString(payload, "url");
+        String title = Json.safeString(payload, "title");
+        String type = Json.safeString(payload, "type");
+        String pic = Json.safeString(payload, "pic");
+        String wall = wallPic(payload);
+        String content = content(payload);
+        if (TextUtils.isEmpty(url)) throw new IllegalArgumentException("url不能为空");
+        final String playUrl = stripPush(url.trim());
+        final String playTitle = TextUtils.isEmpty(title) ? playUrl : title;
+        final String playPic = pic;
+        final String playWall = wall;
+        final String playContent = content;
+        SpiderDebug.log("webhome", "pan.play route=%s type=%s title=%s url=%s", SiteApi.PUSH, type, playTitle, playUrl);
+        App.post(() -> VideoActivity.start(activity, SiteApi.PUSH, playUrl, playTitle, playPic, null, playWall, playContent));
+        return "{}";
+    }
+
+    private String stripPush(String url) {
+        return url.regionMatches(true, 0, "push://", 0, 7) ? url.substring(7) : url;
+    }
 
     private String cacheSet(JsonObject payload) {
-        com.orhanobut.hawk.Hawk.put(cacheKey(payload), safe(payload, "value"));
+        Prefers.put(cacheKey(payload), Json.safeString(payload, "value"));
         return "{}";
     }
 
     private String cacheDel(JsonObject payload) {
-        com.orhanobut.hawk.Hawk.delete(cacheKey(payload));
+        Prefers.remove(cacheKey(payload));
         return "{}";
     }
 
     private String cacheKey(JsonObject payload) {
-        String rule = safe(payload, "rule");
-        String key = safe(payload, "key");
+        String rule = Json.safeString(payload, "rule");
+        String key = Json.safeString(payload, "key");
         return "cache_" + (TextUtils.isEmpty(rule) ? "" : rule + "_") + key;
     }
 
-    // ===== info =====
-
     private String device() {
         JsonObject object = new JsonObject();
-        object.addProperty("uuid", android.provider.Settings.Secure.getString(
-                activity.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID));
+        object.addProperty("uuid", android.provider.Settings.Secure.getString(activity.getContentResolver(), android.provider.Settings.Secure.ANDROID_ID));
         object.addProperty("name", android.os.Build.MODEL);
         object.addProperty("ip", WebServer.get().getAddress(""));
         object.addProperty("type", 1);
@@ -296,53 +327,77 @@ public class HomeWebBridge {
     }
 
     private String site() {
-        com.yingtu.plus.bean.SourceBean s = com.yingtu.plus.api.ApiConfig.get().getHomeSource();
+        Site site = VodConfig.get().getHome();
         JsonObject object = new JsonObject();
-        object.addProperty("key", s != null ? s.getKey() : "");
-        object.addProperty("name", s != null ? s.getName() : "");
-        object.addProperty("type", s != null ? s.getType() : 1);
+        object.addProperty("key", site.getKey());
+        object.addProperty("name", site.getName());
+        object.addProperty("homePage", site.getHomePage());
+        object.addProperty("chromeMode", site.getChromeMode());
+        object.add("webHomeChrome", site.getWebHomeChrome());
+        object.addProperty("type", site.getType());
+        object.add("header", App.gson().toJsonTree(site.getHeader()));
         return object.toString();
     }
 
     private String config() {
         JsonObject object = new JsonObject();
-        object.addProperty("id", 0);
-        object.addProperty("url", com.orhanobut.hawk.Hawk.get(
-                com.yingtu.plus.util.HawkConfig.API_URL, ""));
-        object.addProperty("desc", "影图+");
+        object.addProperty("id", VodConfig.getCid());
+        object.addProperty("url", VodConfig.getUrl());
+        object.addProperty("desc", VodConfig.getDesc());
         object.addProperty("driveCheck", false);
         return object.toString();
     }
 
     private String extInfo() {
         JsonObject object = new JsonObject();
-        object.addProperty("enabled", false);
-        object.addProperty("matched", 0);
-        object.addProperty("ready", 0);
+        Site site = VodConfig.get().getHome();
+        object.addProperty("siteKey", site.getKey());
+        object.addProperty("siteName", site.getName());
+        object.addProperty("homePage", site.getHomePage());
+        WebHomeExtensionRegistry.Snapshot snapshot = WebHomeExtensionRegistry.get().snapshot();
+        object.addProperty("enabled", snapshot.enabled);
+        object.addProperty("matched", snapshot.matchedCount);
+        object.addProperty("ready", snapshot.readyCount);
         return object.toString();
     }
 
-    private String toast(JsonObject payload) {
-        String message = safe(payload, "message");
-        if (!TextUtils.isEmpty(message)) post(() ->
-                android.widget.Toast.makeText(activity, message, android.widget.Toast.LENGTH_SHORT).show());
+    private String extLog(JsonObject payload) {
+        WebHomeExtensionRegistry.get().recordScriptLog(payload);
+        SpiderDebug.log("webhome-ext", "script message=%s data=%s", Json.safeString(payload, "message"), payload.has("data") ? payload.get("data") : "");
         return "{}";
     }
 
-    // ===== ui =====
+    private String extToast(JsonObject payload) {
+        String message = Json.safeString(payload, "message");
+        if (!TextUtils.isEmpty(message)) App.post(() -> Notify.show(message));
+        return "{}";
+    }
 
     private String setToolbar(JsonObject payload) {
         boolean visible = !payload.has("visible") || payload.get("visible").getAsBoolean();
-        post(() -> ui.setToolbar(visible));
+        App.post(() -> controller.setToolbar(visible));
         return "{}";
     }
 
     private String setChrome(JsonObject payload) {
-        post(() -> ui.setChrome(payload));
+        App.post(() -> controller.setChrome(payload));
         return "{}";
     }
 
-    // ===== resolve / reject =====
+    private String restoreChrome() {
+        App.post(controller::restoreChrome);
+        return "{}";
+    }
+
+    private String back() {
+        App.post(controller::handleBack);
+        return "{}";
+    }
+
+    private String reload() {
+        App.post(controller::reload);
+        return "{}";
+    }
 
     private void resolve(String requestId, String data) {
         String payload = TextUtils.isEmpty(data) ? "null" : data;
@@ -359,31 +414,14 @@ public class HomeWebBridge {
     }
 
     private void eval(String script) {
-        post(() -> webView.evaluateJavascript(script, null));
-    }
-
-    private void post(Runnable r) {
-        activity.runOnUiThread(r);
-    }
-
-    private static void OkGoExec(Runnable r) {
-        com.yingtu.plus.util.OkGo.io(r);
+        App.post(() -> webView.evaluateJavascript(script, null));
     }
 
     private static String encode(String value) {
-        try {
-            return URLEncoder.encode(value == null ? "" : value, "UTF-8");
-        } catch (Exception e) {
-            return value == null ? "" : value;
-        }
+        return URLEncoder.encode(value == null ? "" : value, StandardCharsets.UTF_8);
     }
 
-    private static String safe(JsonObject obj, String key) {
-        return obj != null && obj.has(key) && !obj.get(key).isJsonNull()
-                ? obj.get(key).getAsString() : "";
-    }
-
-    private String quote(String text) {
-        return gson.toJson(text == null ? "" : text);
+    private static String quote(String text) {
+        return App.gson().toJson(text == null ? "" : text);
     }
 }

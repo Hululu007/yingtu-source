@@ -11,10 +11,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.yingtu.plus.R;
-import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.base.BaseLazyFragment;
 import com.yingtu.plus.bean.DirectLink;
-import com.yingtu.plus.ui.activity.VideoActivity;
+import com.yingtu.plus.ui.activity.LivePlayActivity;
 import com.yingtu.plus.ui.adapter.DirectLinkAdapter;
 import com.yingtu.plus.util.FavHelper;
 
@@ -22,8 +21,6 @@ import java.util.List;
 
 /**
  * 「直链收藏」Tab：手动添加可直接播放的地址并保存；点击播放、长按删除、可分享。
- *
- * 由 v1.9.22 恢复并适配 main：播放改走 VideoActivity（main 里没有 LivePlayActivity）。
  */
 public class DirectLinkFragment extends BaseLazyFragment {
 
@@ -85,7 +82,10 @@ public class DirectLinkFragment extends BaseLazyFragment {
     }
 
     private void play(DirectLink link) {
-        VideoActivity.start(getActivity(), SiteApi.PUSH, link.url, link.name);
+        Intent i = new Intent(getActivity(), LivePlayActivity.class);
+        i.putExtra(LivePlayActivity.KEY_NAME, link.name);
+        i.putExtra(LivePlayActivity.KEY_URL, link.url);
+        startActivity(i);
     }
 
     private void confirmDelete(DirectLink link) {

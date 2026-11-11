@@ -11,9 +11,6 @@ import java.util.List;
  * WebHome 网页主页条目存取（Hawk 本地持久化）。
  *
  * 首次使用时自动植入两个内置示例主页（assets/webhome 下）。
- * MissAV 网页版已撤（用户不要 web 套壳）：MISSAV 常量、ensureBuiltinEntries
- * 里的 MissAV 常驻逻辑、seed 里的 missav 条目一并删掉，MissAV 改走
- * missavt 蜘蛛站（首页/频道默认站）。missav.html 资源文件也已删。
  */
 public class WebHomeHelper {
 

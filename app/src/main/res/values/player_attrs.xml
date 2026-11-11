@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 播放器移植新增 styleable（2026-11-11，照 dm17 attrs.xml 原样拷过来）：
+     FongMi 自定义 View（CustomNestedScrollView / CustomRecyclerView）在布局里写了
+     app:maxHeight 等属性，树里没有这两个 styleable 时 aapt 链接不过。
+     maxHeight 的 format 只在 CustomRecyclerView 里定义一次，另一个只引用，
+     否则 aapt 报 Found item Attr/maxHeight more than one time。
+     新属性一律放这个专用文件，不动共享 attrs.xml。 -->
+<resources>
+    <declare-styleable name="CustomRecyclerView">
+        <attr name="android:minWidth" />
+        <attr name="android:minHeight" />
+        <attr name="maxWidth" format="dimension" />
+        <attr name="maxHeight" format="dimension" />
+    </declare-styleable>
+
+    <declare-styleable name="CustomNestedScrollView">
+        <attr name="android:minHeight" />
+        <attr name="maxHeight" />
+    </declare-styleable>
+</resources>

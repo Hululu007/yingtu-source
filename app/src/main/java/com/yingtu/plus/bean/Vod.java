@@ -68,9 +68,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
     private String vodPlayUrl;
     @SerializedName("vod_tag")
     private String vodTag;
-    /** 豆瓣热播角标：站源首页 JSON 里带 douban=true 时置位（Movie.douban 的来源）。 */
-    @SerializedName("douban")
-    private boolean douban;
     @SerializedName("stills")
     private List<String> vodStills;
     @SerializedName("action")
@@ -107,7 +104,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         this.vodPlayFrom = in.readString();
         this.vodPlayUrl = in.readString();
         this.vodTag = in.readString();
-        this.douban = in.readByte() != 0;
         this.vodStills = in.createStringArrayList();
         this.action = in.readString();
         this.land = (Integer) in.readValue(Integer.class.getClassLoader());
@@ -210,18 +206,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         return TextUtils.isEmpty(vodTag) ? "" : vodTag;
     }
 
-    public boolean isDouban() {
-        return douban;
-    }
-
-    public void setDouban(boolean douban) {
-        this.douban = douban;
-    }
-
-    public List<String> getStills() {
-        return vodStills == null ? new ArrayList<>() : vodStills;
-    }
-
     public String getAction() {
         return TextUtils.isEmpty(action) ? "" : action;
     }
@@ -248,6 +232,10 @@ public class Vod implements Parcelable, Diffable<Vod> {
 
     public List<Flag> getFlags() {
         return vodFlags = vodFlags == null ? new ArrayList<>() : vodFlags;
+    }
+
+    public List<String> getStills() {
+        return vodStills == null ? new ArrayList<>() : vodStills;
     }
 
     public void setFlags(List<Flag> vodFlags) {
@@ -368,7 +356,6 @@ public class Vod implements Parcelable, Diffable<Vod> {
         dest.writeString(this.vodPlayFrom);
         dest.writeString(this.vodPlayUrl);
         dest.writeString(this.vodTag);
-        dest.writeByte((byte) (this.douban ? 1 : 0));
         dest.writeStringList(this.vodStills);
         dest.writeString(this.action);
         dest.writeValue(this.land);

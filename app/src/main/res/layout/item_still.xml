@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_marginEnd="8dp">
 
-    <androidx.cardview.widget.CardView
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="160dp"
         android:layout_height="90dp"
         app:cardBackgroundColor="#22000000"
@@ -19,6 +19,6 @@
             android:scaleType="centerCrop"
             android:src="@drawable/bg_poster_placeholder" />
 
-    </androidx.cardview.widget.CardView>
+    </com.google.android.material.card.MaterialCardView>
 
 </FrameLayout>

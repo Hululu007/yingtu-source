@@ -1,9 +1,9 @@
 package com.yingtu.plus.ui.fragment;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
 
@@ -14,10 +14,9 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.yingtu.plus.R;
-import com.yingtu.plus.api.SiteApi;
 import com.yingtu.plus.base.BaseLazyFragment;
 import com.yingtu.plus.bean.LocalVideo;
-import com.yingtu.plus.ui.activity.VideoActivity;
+import com.yingtu.plus.ui.activity.LivePlayActivity;
 import com.yingtu.plus.ui.adapter.LocalVideoAdapter;
 import com.yingtu.plus.util.MediaScanner;
 import com.yingtu.plus.util.OkGo;
@@ -26,10 +25,6 @@ import java.util.List;
 
 /**
  * 「本地文件」Tab：扫描设备视频并列表展示，点击用内置播放器播放。
- *
- * 由 v1.9.22 恢复并适配 main：播放改走 VideoActivity（main 里没有
- * LivePlayActivity）；有绝对路径时走 VideoActivity.file()，只有
- * content:// uri 时走 VideoActivity.start() 直推。
  */
 public class LocalFileFragment extends BaseLazyFragment {
 
@@ -105,11 +100,10 @@ public class LocalFileFragment extends BaseLazyFragment {
     }
 
     private void playLocal(LocalVideo v) {
-        if (!TextUtils.isEmpty(v.path)) {
-            VideoActivity.file(requireActivity(), v.path);
-        } else if (!TextUtils.isEmpty(v.uri)) {
-            VideoActivity.start(requireActivity(), SiteApi.PUSH, v.uri, v.name);
-        }
+        Intent i = new Intent(getActivity(), LivePlayActivity.class);
+        i.putExtra(LivePlayActivity.KEY_NAME, v.name);
+        i.putExtra(LivePlayActivity.KEY_URL, v.uri != null ? v.uri : v.path);
+        startActivity(i);
     }
 
     private void showEmpty(String msg) {

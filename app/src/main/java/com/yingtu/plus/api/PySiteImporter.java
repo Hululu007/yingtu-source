@@ -3,6 +3,7 @@ package com.yingtu.plus.api;
 import android.content.Context;
 
 import com.yingtu.plus.api.config.VodConfig;
+import com.yingtu.plus.api.loader.BaseLoader;
 import com.yingtu.plus.bean.Site;
 import com.yingtu.plus.ui.activity.SourceActivity;
 
@@ -46,6 +47,13 @@ import java.util.regex.Pattern;
  * 分享进来的 Uri；批量只扫用户选中的那一个文件夹的顶层，不递归、不扫整机）；
  * 导入的 py 只做源注册，不执行 import 之外的动作；源文件另存一份到应用
  * 私有目录 files/py_sites/<key>.py 备查（原文件不动）。
+ *
+ * 缓存清理（上游移植时补，dm17 里还挂着）：PyLoader 按 key 缓存蜘蛛
+ * （computeIfAbsent），重导/更新同名 py 后旧蜘蛛仍在缓存里、新源码不生效，
+ * 此前建失败时缓存的 SpiderNull 同理。所以 importFiles 成功登记后与
+ * updatePyImportByName 成功后都调 BaseLoader.get().clear()，清掉三路
+ * loader 的蜘蛛缓存，下次点播重新按新 api 建蜘蛛。clear() 是异步的
+ * （Task.execute），紧接着点播理论上有竞态，见 SourceActivity 的说明。
  */
 public class PySiteImporter {
 
@@ -207,6 +215,9 @@ public class PySiteImporter {
                 SourceActivity.recordConfigGroup(GROUP_NAME, root.toString());
             } catch (Exception ignored) {
             }
+            // 移植补：清蜘蛛缓存，否则同名 key 的旧蜘蛛（或失败缓存的 SpiderNull）
+            // 仍在 PyLoader 里，新源码不生效。
+            BaseLoader.get().clear();
         }
         return results;
     }
@@ -256,6 +267,8 @@ public class PySiteImporter {
             }
         } catch (Exception ignored) {
         }
+        // 移植补：清蜘蛛缓存，否则 PyLoader 里仍是旧源码建出的蜘蛛，新源码不生效。
+        BaseLoader.get().clear();
         return targetKey;
     }
 

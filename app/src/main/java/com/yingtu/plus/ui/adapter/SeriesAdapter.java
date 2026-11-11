@@ -40,11 +40,8 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
     public void setPlaying(int index) {
         int old = playing;
         playing = index;
-        // 位置 -1 是“无当前集”（如切线路后复位）：notifyItemChanged(-1) 会越界，
-        // 只通知有效位置；-1 时整表刷新一次即可。
-        if (old >= 0) notifyItemChanged(old);
-        if (index >= 0) notifyItemChanged(index);
-        if (old < 0 && index < 0) notifyDataSetChanged();
+        notifyItemChanged(old);
+        notifyItemChanged(index);
     }
 
     @NonNull
@@ -59,9 +56,7 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
     public void onBindViewHolder(@NonNull VH h, int position) {
         VodInfo.VodSeries s = data.get(position);
         h.tv.setText(s.name);
-        boolean isPlaying = position == playing;
-        h.tv.setSelected(isPlaying);
-        h.tv.setTextColor(isPlaying ? 0xFF22C55E : h.defaultTextColor);
+        h.tv.setSelected(position == playing);
         h.itemView.setOnClickListener(v -> {
             setPlaying(h.getAdapterPosition());
             if (listener != null) listener.onClick(h.getAdapterPosition());
@@ -75,11 +70,9 @@ public class SeriesAdapter extends RecyclerView.Adapter<SeriesAdapter.VH> {
 
     static class VH extends RecyclerView.ViewHolder {
         TextView tv;
-        int defaultTextColor;
         VH(@NonNull View itemView) {
             super(itemView);
             tv = itemView.findViewById(R.id.tvSeries);
-            defaultTextColor = tv.getTextColors().getDefaultColor();
         }
     }
 }

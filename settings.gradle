@@ -8,8 +8,8 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
-        // FongMi media3 分叉产物 1.11.0-alpha01-fongmi（2026-11-08 用户拍板选 A）：
-        // 无公开远程仓库，AAR 随仓放在 third_party/maven（从 webhtv 同款本地仓拷来，17 个模块 md5 全对）。
+        // FongMi media3 分叉产物 1.11.0-alpha01-fongmi：
+        // 无公开远程仓库，AAR 随仓放在 third_party/maven（从 dm17 同款本地仓拷来，17 个模块 md5 全对）。
         // 放第一位，androidx.media3 优先从这里解析，拿不到的再走下面远程仓。
         maven { url = uri("third_party/maven") }
         google()

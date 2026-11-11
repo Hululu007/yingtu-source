@@ -205,16 +205,8 @@ public class SiteViewModel extends ViewModel {
                     if (taskId.get() != currentId) return;
                     if (error instanceof CancellationException) return;
                     if (onError != null) onError.accept(error);
-                    // C：非 ExtractException 原来一律发 Result.empty()，真实原因丢了，
-                    // 播放页只能等引擎报错或 15 秒超时。改成 Result.error(msg) 把原因
-                    // 带过去（setPlayer / setDetail 直接报出来）。超时异常常没 message，
-                    // 没 message 就用异常类名，绝不发空。
                     if (error instanceof ExtractException) liveData.postValue(Result.error(error.getMessage()));
-                    else {
-                        String msg = error.getMessage();
-                        if (msg == null || msg.isEmpty()) msg = error.getClass().getSimpleName();
-                        liveData.postValue(Result.error(msg));
-                    }
+                    else liveData.postValue(Result.empty());
                     error.printStackTrace();
                 }
         ), MoreExecutors.directExecutor());

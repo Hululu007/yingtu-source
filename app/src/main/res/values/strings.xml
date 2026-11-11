@@ -15,15 +15,11 @@
 
     <string name="title_source">视频源</string>
     <string name="title_search">搜索</string>
-    <string name="title_fast_search">快搜</string>
-    <string name="title_collect">收藏</string>
-    <string name="title_apps">应用</string>
     <string name="title_history">观看历史</string>
     <string name="title_setting">设置</string>
 
     <string name="hint_source_url">输入 TVBox 订阅地址 (json)</string>
     <string name="hint_search">搜索影片</string>
-    <string name="hint_fast_search">输入片名，同时搜全部站源</string>
     <string name="action_search">搜索</string>
     <string name="action_load">加载</string>
 
@@ -34,8 +30,6 @@
 
     <string name="empty_default">暂无内容，请在「我的」中配置视频源</string>
     <string name="empty_search">暂无搜索结果</string>
-    <string name="empty_collect">还没有收藏的影片\n在详情页点收藏即可加入这里</string>
-    <string name="empty_apps">没有找到可打开的应用</string>
     <string name="empty_history">还没有观看记录</string>
     <string name="empty_links">还没有收藏的直链\n点击右下角 + 添加可直接播放的地址</string>
     <string name="empty_fav_vod">还没有收藏的影片\n在详情页点收藏即可加入这里</string>
@@ -53,6 +47,7 @@
     <string name="quick_push">推送</string>
     <string name="quick_cast">放映</string>
     <string name="quick_setting">设置</string>
+    <string name="quick_import_py">导入 py</string>
 
     <!-- 设置分区标题 -->
     <string name="sec_data">数据接口</string>
@@ -88,7 +83,7 @@
     <!-- 系统设置 -->
     <string name="row_orientation">屏幕方向</string>
     <string name="row_start_page">默认启动</string>
-    <string name="row_grid_columns">首页网格列数</string>
+    <string name="row_grid_columns">分类视图列数</string>
     <string name="row_auto_clear">自清播放缓存</string>
 
     <!-- 底部按钮 -->
@@ -272,7 +267,7 @@
     <string name="setting_custom_csp_ua">CSP 配置 - setting_custom_csp_ua</string>
     <string name="setting_custom_csp_unset">CSP 配置 - setting_custom_csp_unset</string>
     <string name="setting_custom_csp_up">CSP 配置 - setting_custom_csp_up</string>
-    <string name="setting_custom_csp_webhome">CSP 配置 - setting_custom_csp_webhome</string>
+    <string name="setting_custom_csp_webhome">网页首页</string>
     <string name="setting_delete">设置 - setting_delete</string>
     <string name="setting_disable">设置 - setting_disable</string>
     <string name="setting_enable">设置 - setting_enable</string>
@@ -308,7 +303,7 @@
     <string name="sync_item_search">sync_item_search</string>
     <string name="sync_item_settings">设置 - sync_item_settings</string>
     <string name="sync_item_spider">sync_item_spider</string>
-    <string name="sync_item_webhome">sync_item_webhome</string>
+    <string name="sync_item_webhome">网页首页</string>
     <string name="sync_local_device">sync_local_device</string>
     <string name="sync_mode_to_remote">sync_mode_to_remote</string>
     <string name="sync_paths_edit">sync_paths_edit</string>
@@ -330,34 +325,38 @@
     <string name="update_settings_save">设置 - update_settings_save</string>
     <string name="update_settings_source">设置 - update_settings_source</string>
     <string name="update_settings_title">设置 - update_settings_title</string>
-    <string name="web_home_extension_add_source">web_home_extension_add_source</string>
-    <string name="web_home_extension_clear_panel">web_home_extension_clear_panel</string>
-    <string name="web_home_extension_code_hint">web_home_extension_code_hint</string>
-    <string name="web_home_extension_debug">web_home_extension_debug</string>
-    <string name="web_home_extension_debug_title">web_home_extension_debug_title</string>
-    <string name="web_home_extension_empty">web_home_extension_empty</string>
-    <string name="web_home_extension_form_mode">web_home_extension_form_mode</string>
-    <string name="web_home_extension_inspect_element">web_home_extension_inspect_element</string>
-    <string name="web_home_extension_json_hint">web_home_extension_json_hint</string>
-    <string name="web_home_extension_network_all">web_home_extension_network_all</string>
-    <string name="web_home_extension_network_detail">web_home_extension_network_detail</string>
-    <string name="web_home_extension_network_detail_bigger">web_home_extension_network_detail_bigger</string>
-    <string name="web_home_extension_network_detail_smaller">web_home_extension_network_detail_smaller</string>
-    <string name="web_home_extension_network_error">web_home_extension_network_error</string>
-    <string name="web_home_extension_network_filter">web_home_extension_network_filter</string>
-    <string name="web_home_extension_network_script">web_home_extension_network_script</string>
-    <string name="web_home_extension_network_web">web_home_extension_network_web</string>
-    <string name="web_home_extension_refresh">web_home_extension_refresh</string>
-    <string name="web_home_extension_save_preview">web_home_extension_save_preview</string>
-    <string name="web_home_extension_select_script">web_home_extension_select_script</string>
-    <string name="web_home_extension_tab_code">web_home_extension_tab_code</string>
-    <string name="web_home_extension_tab_console">web_home_extension_tab_console</string>
-    <string name="web_home_extension_tab_elements">web_home_extension_tab_elements</string>
-    <string name="web_home_extension_tab_network">web_home_extension_tab_network</string>
-    <string name="web_home_extension_tab_web">web_home_extension_tab_web</string>
-    <string name="web_home_extension_text_mode">web_home_extension_text_mode</string>
-
-    <!-- 2026-11-08 M1 补缺：以下 205 条为清点出的缺失引用，按使用处逐条核对后补写 -->
+    <string name="web_home_extension_add_source">添加来源</string>
+    <string name="web_home_extension_clear_panel">清空面板</string>
+    <string name="web_home_extension_code_hint">输入扩展代码</string>
+    <string name="web_home_extension_debug">调试</string>
+    <string name="web_home_extension_debug_title">扩展调试</string>
+    <string name="web_home_extension_empty">暂无扩展</string>
+    <string name="web_home_extension_form_mode">表单</string>
+    <string name="web_home_extension_inspect_element">检查元素</string>
+    <string name="web_home_extension_json_hint">输入扩展 JSON</string>
+    <string name="web_home_extension_network_all">全部</string>
+    <string name="web_home_extension_network_detail">详情</string>
+    <string name="web_home_extension_network_detail_bigger">放大详情</string>
+    <string name="web_home_extension_network_detail_smaller">缩小详情</string>
+    <string name="web_home_extension_network_error">错误</string>
+    <string name="web_home_extension_network_filter">过滤网络请求</string>
+    <string name="web_home_extension_network_script">脚本</string>
+    <string name="web_home_extension_network_web">网页</string>
+    <string name="web_home_extension_refresh">刷新</string>
+    <string name="web_home_extension_save_preview">保存预览</string>
+    <string name="web_home_extension_select_script">选择脚本</string>
+    <string name="web_home_extension_tab_code">代码</string>
+    <string name="web_home_extension_tab_console">控制台</string>
+    <string name="web_home_extension_tab_elements">元素</string>
+    <string name="web_home_extension_tab_network">网络</string>
+    <string name="web_home_extension_tab_web">网页</string>
+    <string name="web_home_extension_text_mode">文本</string>
+    <string name="title_fast_search">快搜</string>
+    <string name="title_collect">收藏</string>
+    <string name="title_apps">应用</string>
+    <string name="hint_fast_search">输入片名，同时搜全部站源</string>
+    <string name="empty_collect">还没有收藏的影片\n在详情页点收藏即可加入这里</string>
+    <string name="empty_apps">没有找到可打开的应用</string>
     <string name="all">全部</string>
     <string name="cast_not_ready">投屏尚未就绪</string>
     <string name="cast_searching">正在搜索 DLNA 设备…</string>

@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.yingtu.plus.R;
 import com.yingtu.plus.bean.History;
-import com.yingtu.plus.utils.ImgUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,16 +59,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {
     @Override
     public void onBindViewHolder(@NonNull VH h, int position) {
         History item = data.get(position);
-        // 进度标识：名称=片名，唯一ID=vod_id（设置里选，默认名称）。
-        boolean byId = false;
-        try {
-            byId = com.orhanobut.hawk.Hawk.get(com.yingtu.plus.util.HawkConfig.PROGRESS_TAG, 0) == 1;
-        } catch (Throwable ignored) {
-        }
-        String title = byId
-                ? (item.vodId == null || item.vodId.isEmpty() ? item.vodName : item.vodId)
-                : item.vodName;
-        h.tvName.setText(title == null ? "" : title);
+        h.tvName.setText(item.vodName == null ? "" : item.vodName);
 
         StringBuilder sub = new StringBuilder();
         if (item.episodeName != null && !item.episodeName.isEmpty()) {
@@ -83,7 +73,7 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.VH> {
         h.tvSub.setText(sub.toString());
 
         Glide.with(h.itemView.getContext())
-                .load(ImgUtil.getUrl(item.vodPic))
+                .load(item.vodPic)
                 .placeholder(R.drawable.bg_poster_placeholder)
                 .error(R.drawable.bg_poster_placeholder)
                 .centerCrop()

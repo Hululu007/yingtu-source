@@ -27,7 +27,11 @@ import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.extractor.ExtractorsFactory;
 import androidx.media3.extractor.ts.TsExtractor;
 
+import com.orhanobut.hawk.Hawk;
 import com.yingtu.plus.App;
+import com.yingtu.plus.util.HawkConfig;
+
+import okhttp3.OkHttpClient;
 import com.yingtu.plus.player.exo.ass.AssFontSet;
 import com.yingtu.plus.player.exo.ass.ExoAssSession;
 import com.yingtu.plus.player.cache.DiskCacheCapacityPolicy;
@@ -39,17 +43,13 @@ import com.yingtu.plus.utils.UrlUtil;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttp;
 import com.github.catvod.utils.Path;
-import com.orhanobut.hawk.Hawk;
-import com.yingtu.plus.util.HawkConfig;
-
-import okhttp3.OkHttpClient;
 
 import java.io.File;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class MediaSourceFactory implements MediaSource.Factory {
 
@@ -109,18 +109,6 @@ public class MediaSourceFactory implements MediaSource.Factory {
         return created;
     }
 
-    public static synchronized void acquireCacheSession() {
-        DiskCacheCapacityPolicy.Decision decision = refreshPendingCacheCapacity();
-        if (isReliable(decision) && CACHE_CAPACITY_STATE.canReleasePending()) rebuildCacheLocked("next-player-session");
-        CACHE_CAPACITY_STATE.acquireSession();
-    }
-
-    public static synchronized void releaseCacheSession() {
-        CACHE_CAPACITY_STATE.releaseSession();
-        DiskCacheCapacityPolicy.Decision decision = refreshPendingCacheCapacity();
-        if (isReliable(decision) && CACHE_CAPACITY_STATE.canReleasePending()) rebuildCacheLocked("last-player-release");
-    }
-
     /** 播放缓存目录：默认内置存储（Path.exoCache()），选“外部存储”时用外置缓存目录下的 exo。 */
     public static File resolveCacheDir() {
         try {
@@ -136,6 +124,18 @@ public class MediaSourceFactory implements MediaSource.Factory {
     /** 缓存位置切换后调用：释放旧目录缓存，下次取缓存时在新目录重建（旧目录文件保留）。 */
     public static synchronized void resetCacheForLocation() {
         releaseCacheLocked("cache-location-changed");
+    }
+
+    public static synchronized void acquireCacheSession() {
+        DiskCacheCapacityPolicy.Decision decision = refreshPendingCacheCapacity();
+        if (isReliable(decision) && CACHE_CAPACITY_STATE.canReleasePending()) rebuildCacheLocked("next-player-session");
+        CACHE_CAPACITY_STATE.acquireSession();
+    }
+
+    public static synchronized void releaseCacheSession() {
+        CACHE_CAPACITY_STATE.releaseSession();
+        DiskCacheCapacityPolicy.Decision decision = refreshPendingCacheCapacity();
+        if (isReliable(decision) && CACHE_CAPACITY_STATE.canReleasePending()) rebuildCacheLocked("last-player-release");
     }
 
     private static StandaloneDatabaseProvider getDatabaseProvider() {
@@ -242,8 +242,8 @@ public class MediaSourceFactory implements MediaSource.Factory {
             // Bind the collection to this source's extractors. Old loaders cannot populate a new video.
             // Container ASS needs its attachments even when no external subtitle was configured.
             return new DefaultMediaSourceFactory(getDataSourceFactory(), Media3DiagnosticBridge.extractors(buildExtractorsFactory(fonts), mediaItem))
-                    .setLoadErrorHandlingPolicy(ExoHttpPolicy.newRetryPolicy())
                     .setLoadOnlySelectedTracks(PlaybackPerformanceSetting.isLoadOnlySelectedTracksEnabled())
+                    .setLoadErrorHandlingPolicy(ExoHttpPolicy.newRetryPolicy())
                     .createMediaSource(mediaItem);
         }
         else return defaultMediaSourceFactory.createMediaSource(mediaItem);

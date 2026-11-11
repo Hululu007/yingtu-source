@@ -39,10 +39,7 @@ public class PyLoader {
                 spider.init(App.get(), normalizeExt(ext));
                 return spider;
             } catch (Throwable e) {
-                // 之前这里静默返回 SpiderNull：导入的 py 一个都取不到数据，还零报错。
-                // 现在把堆栈记进 crash.log，失败原因能在手机上查到。
                 e.printStackTrace();
-                App.logCaught(e);
                 return new SpiderNull();
             }
         });

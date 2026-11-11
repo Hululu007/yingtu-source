@@ -4,6 +4,8 @@ package com.yingtu.plus.ui.activity;
 // 另带 py 导入模式：带 EXTRA_PY_IMPORT 启动，或被外部以 ACTION_VIEW / ACTION_SEND
 // 分享 .py 文件进来时，显示「导入 py 文件 / 批量扫描文件夹」入口，走 PySiteImporter
 // 同一条导入注册链路。默认（无 extra、非分享启动）仍是原来的文件选择器行为。
+// 移植说明：dm17 里两个「一键写PY」入口已去掉——OneKeyPyActivity / OneKeyPyService
+// 不在本批移植范围；PySiteImporter.updatePyImportByName 已随导入器搬过来，供以后接线。
 
 import android.content.Intent;
 import android.database.Cursor;
@@ -102,11 +104,6 @@ public class FileActivity extends BaseActivity {
         importPyBtn.setOnClickListener(v -> startActivity(
                 new Intent(this, FileActivity.class).putExtra(EXTRA_PY_IMPORT, true)));
         topRow.addView(importPyBtn);
-        Button oneKeyBtn = new Button(this);
-        oneKeyBtn.setText("一键写PY");
-        oneKeyBtn.setOnClickListener(v -> startActivity(
-                new Intent(this, OneKeyPyActivity.class)));
-        topRow.addView(oneKeyBtn);
         root.addView(topRow);
 
         if (selectDir) {
@@ -168,12 +165,6 @@ public class FileActivity extends BaseActivity {
             FileChooser.from(pickLauncher).showDirectory();
         });
         root.addView(scanDir);
-
-        Button oneKeyPy = new Button(this);
-        oneKeyPy.setText("一键写PY（输网址生成）");
-        oneKeyPy.setOnClickListener(v -> startActivity(
-                new Intent(this, OneKeyPyActivity.class)));
-        root.addView(oneKeyPy);
 
         TextView hint = new TextView(this);
         hint.setText("只读你选中的文件/文件夹，不扫描整机。导入的站记进视频源分组「本地 py 导入」，去视频源页点站即可看内容。");

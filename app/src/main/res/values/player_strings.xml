@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 播放器移植新增字符串（2026-11-11，dm17 参照）：
+     mpv_config_* 供 com.fongmi.android.tv.player.mpv.MpvConfigStore 用，
+     bg_* 供 plus.service.PlaybackService / PlaybackBootReceiver（后台播放通知）用。
+     值照 dm17 strings.xml 原样拷过来；新串一律放这个专用文件，不动共享 strings.xml。 -->
+<resources></resources>

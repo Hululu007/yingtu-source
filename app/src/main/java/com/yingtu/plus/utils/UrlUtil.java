@@ -3,7 +3,6 @@ package com.yingtu.plus.utils;
 import android.net.Uri;
 
 import com.yingtu.plus.server.Server;
-import com.yingtu.plus.web.WebServer;
 import com.github.catvod.utils.UriUtil;
 import com.google.common.net.HttpHeaders;
 
@@ -46,15 +45,10 @@ public class UrlUtil {
 
     public static String convert(String url) {
         String scheme = scheme(url);
-        if ("proxy".equals(scheme)) {
-            // proxy:// 必须经本地代理解：真正的 /proxy 路由在 WebServer（调蜘蛛 localProxy），
-            // Server 是只回 404 的桩，拼它的地址图永远黑。WebServer 未启动时原样返回。
-            String base = WebServer.get().getAddress("/proxy?");
-            return base.isEmpty() ? url : url.replace(scheme + "://", base);
-        }
         String path = null;
         if ("assets".equals(scheme)) path = "/";
         else if ("file".equals(scheme)) path = "/file/";
+        else if ("proxy".equals(scheme)) path = "/proxy?";
         return path != null ? url.replace(scheme + "://", Server.get().getAddress(path)) : url;
     }
 

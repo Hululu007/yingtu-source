@@ -1,82 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 片单页：收藏 Tab（嵌 FavVodFragment）/ 历史 Tab（3 列网格）。
-     底部 gone 容器保留 recyclerView / progress / tvEmpty 三个旧 id：
-     fragment_list.xml 原先是 LocalFileFragment 的布局，该片段仍在树里
-     （当前无任何引用），删 id 会让它编译失败；日后 LocalFileFragment
-     重新接线时需另给布局。 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp">
-
-        <TextView
-            android:id="@+id/tvTabFav"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingEnd="24dp"
-            android:text="收藏"
-            android:textColor="@color/neon_pink"
-            android:textSize="16sp" />
-
-        <TextView
-            android:id="@+id/tvTabHistory"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="历史"
-            android:textColor="@color/text_muted"
-            android:textSize="16sp" />
-    </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/listContainer"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+    android:layout_height="match_parent">
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvHistory"
+        android:id="@+id/recyclerView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
+        android:layout_height="match_parent"
         android:clipToPadding="false"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
         android:paddingTop="4dp"
         android:paddingBottom="12dp"
-        android:scrollbars="none"
+        android:scrollbars="none" />
+
+    <ProgressBar
+        android:id="@+id/progress"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="center"
+        android:indeterminateTint="@color/text_primary"
         android:visibility="gone" />
 
-    <FrameLayout
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone">
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <ProgressBar
-            android:id="@+id/progress"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_gravity="center"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/tvEmpty"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:visibility="gone" />
-    </FrameLayout>
-</LinearLayout>
+        android:layout_gravity="center"
+        android:layout_margin="32dp"
+        android:gravity="center"
+        android:lineSpacingExtra="6dp"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+</FrameLayout>

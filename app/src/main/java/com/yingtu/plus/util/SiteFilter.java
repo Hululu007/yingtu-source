@@ -75,18 +75,13 @@ public final class SiteFilter {
         return (getDisabledMask() & bit) != 0;
     }
 
-    /** 该站是否被禁用规则拦住（只看来源类型，不拦当前正在播的站，调用方自行决定）。 */
+    /** 该站是否被禁用规则拦住（只看来源类型，不拦当前正在播的站，调用方自行决定）。
+     * 本树无内置站：DISABLE_BUILTIN 位已随内置站一并剥离，“网络接口”即拦全部订阅站。 */
     public static boolean isSiteDisabled(SourceBean s) {
         if (s == null) return false;
         int mask = getDisabledMask();
         if (mask == 0) return false;
-        boolean builtin = false;
-        try {
-            builtin = ApiConfig.get().isBuiltinSite(s.getKey());
-        } catch (Throwable ignored) {
-        }
-        if ((mask & HawkConfig.DISABLE_BUILTIN) != 0 && builtin) return true;
-        if ((mask & HawkConfig.DISABLE_NET) != 0 && !builtin) return true;
+        if ((mask & HawkConfig.DISABLE_NET) != 0) return true;
         if ((mask & HawkConfig.DISABLE_JS) != 0 && s.getType() == 3) return true;
         if ((mask & HawkConfig.DISABLE_DRPY) != 0 && s.getType() == 3) return true;
         if ((mask & HawkConfig.DISABLE_JSON) != 0 && s.getType() == 1) return true;
@@ -101,10 +96,8 @@ public final class SiteFilter {
         try {
             SourceBean s = ApiConfig.get().getSource(key);
             if (s != null) return isSiteDisabled(s);
-            boolean builtin = ApiConfig.get().isBuiltinSite(key);
             int mask = getDisabledMask();
-            if ((mask & HawkConfig.DISABLE_BUILTIN) != 0 && builtin) return true;
-            if ((mask & HawkConfig.DISABLE_NET) != 0 && !builtin) return true;
+            if ((mask & HawkConfig.DISABLE_NET) != 0) return true;
             if ((mask & HawkConfig.DISABLE_SITES_FILE) != 0 && CustomSites.isSitesFileKey(key)) return true;
             if ((mask & HawkConfig.DISABLE_URL_SITE) != 0 && CustomSites.isCustomKey(key)) return true;
         } catch (Throwable ignored) {

@@ -3,33 +3,29 @@ apply plugin: 'com.chaquo.python'
 
 android {
     namespace 'com.yingtu.plus'
-    // 分叉 media3 AAR 的 minCompileSdk=36（2026-11-08 实测），34 编不过，故升到 36。
+    // 分叉 media3 AAR 的 minCompileSdk=36，34 编不过，故升到 36。
     // targetSdk 保持 34 不动；AGP 同步升到 8.10.1（见根 build.gradle），Gradle 升到 8.13。
     compileSdk 36
 
-    // 2026-11-08 云构建第一轮失败修法：AGP 8.x 下 buildConfig 默认关闭、viewBinding 默认关闭，
-    // 上游代码却在用 BuildConfig.* 与 databinding（上游 build.gradle 从没声明过，编不过）。
+    // 上游代码在用 BuildConfig.* 与 databinding（上游 build.gradle 从没声明过，编不过），
+    // AGP 8.x 下 buildConfig 与 viewBinding 默认关闭，须显式打开。
     buildFeatures {
         buildConfig = true
         viewBinding = true
     }
 
     defaultConfig {
-        // 包名改成 com.tuyin（用户 2026-11-08 07:40 令，须赶在第一版包发出前改，否则改包名要卸载重装）；
-        // namespace 与源码包 com.yingtu.plus 不动。
-        applicationId "com.tuyin"
+        applicationId "com.yingtu.plus"
         minSdk 24
         targetSdk 34
-        // 版本号按今天日期（用户 2026-11-08 08:39 令，跟学堂 3.26.1104 一个路子：原版 + 今天月日）
-        versionCode 20261108
-        versionName "2.0.0.1108"
-        // BuildConfig 自定义字段（2026-11-08 云构建第一轮失败修法）：
-        // 上游代码在用这 4 个字段，但上游 build.gradle 从没声明过；APPLICATION_ID / DEBUG /
-        // VERSION_CODE / VERSION_NAME 是 buildConfig=true 后自动生成的标准字段，不用声明。
+        versionCode 1
+        versionName "2.0.0"
+        // BuildConfig 自定义字段：代码在用这 4 个字段，但上游 build.gradle 从没声明过；
+        // APPLICATION_ID / DEBUG / VERSION_CODE / VERSION_NAME 是 buildConfig=true 后自动生成的标准字段，不用声明。
         // FLAVOR_mode：Util.isLeanback()/isMobile() 判 "leanback"/"mobile"，本包是手机版故填 mobile。
         buildConfigField "String", "FLAVOR_mode", "\"mobile\""
-        buildConfigField "String", "BUILD_TAG", "\"2.0.0.1108\""
-        buildConfigField "String", "BUILD_TIME", "\"2026-11-08\""
+        buildConfigField "String", "BUILD_TAG", "\"2.0.0\""
+        buildConfigField "String", "BUILD_TIME", "\"2026-11-11\""
         buildConfigField "String", "MEDIA3_VERSION", "\"1.11.0-alpha01-fongmi\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // 只出 arm64-v8a 单架构（用户长期令）
@@ -41,26 +37,7 @@ android {
         }
     }
     
-    // 固定签名（2026-11-09）：云构建每跑一次就换一把临时 debug 证书，手机不让新版覆盖
-    // 旧版装，第六版就是这么没装上去的。改成固定证书：工作流把机密里的证书解出来，
-    // 存在就用它签 debug 包；本地没配机密时走默认 debug 签名，不影响本地开发。
-    def yingtuKsFile = System.getenv("YINGTU_KEYSTORE_FILE")
-    if (yingtuKsFile != null) {
-        signingConfigs {
-            fixed {
-                storeFile file(yingtuKsFile)
-                storePassword System.getenv("YINGTU_KEYSTORE_PASSWORD")
-                keyAlias System.getenv("YINGTU_KEY_ALIAS")
-                keyPassword System.getenv("YINGTU_KEY_PASSWORD")
-                storeType "pkcs12"
-            }
-        }
-    }
-
     buildTypes {
-        debug {
-            if (yingtuKsFile != null) signingConfig signingConfigs.fixed
-        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -72,8 +49,8 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // 2026-11-08 云构建第八轮失败修法：bcprov-jdk18on 与 jspecify 都带
-    // META-INF/versions/9/OSGI-INF/MANIFEST.MF，mergeDebugJavaResource 报重复文件。
+    // bcprov-jdk18on 与 jspecify 都带 META-INF/versions/9/OSGI-INF/MANIFEST.MF，
+    // mergeDebugJavaResource 报重复文件，排除之。
     packaging {
         resources {
             excludes += 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
@@ -87,12 +64,12 @@ tasks.matching { it.name == 'checkDebugAarMetadata' || it.name == 'checkReleaseA
     onlyIf { false }
 }
 
-// 全部 androidx.media3 依赖强制解析到 FongMi 分叉版（webhtv 同款做法）：
+// 全部 androidx.media3 依赖强制解析到 FongMi 分叉版：
 // nextlib-media3ext AAR 是 1.10.0-0.12.1-fongmi-softload-av3a-avs3-ffmpeg901-r5 版（FFmpeg 9.0.1，带 AVS3 解码），传递依赖会把 media3 拉回 1.10.0，不强制就混版。
 configurations.all {
-    // 2026-11-08 云构建第八轮失败修法：某传递依赖带了 com.android.support:support-compat:24.2.1，
+    // 某传递依赖带了 com.android.support:support-compat:24.2.1，
     // 它与 androidx.core:1.18.0 都含有 android.support.v4.app.INotificationSideChannel 等
-    // AIDL 类（core 为 Binder 兼容保留了旧包名），checkDebugDuplicateClasses 报重复类。
+    // AIDL 类，checkDebugDuplicateClasses 报重复类。
     // 全树 Java 代码零 android.support 引用（已 grep 核实），整个 com.android.support 组都可排除。
     exclude group: 'com.android.support'
     resolutionStrategy.eachDependency { details ->
@@ -113,24 +90,15 @@ dependencies {
     annotationProcessor 'androidx.room:room-compiler:2.6.1'
     implementation 'org.greenrobot:eventbus:3.3.1'
     implementation files('libs/nextlib-media3ext-ffmpeg901-r5.aar')
-    // TVCore 选 A（2026-11-08 用户拍板）：渔老 webhtv 的 tvbus + hook 两个 AAR 拷进 app/libs。
-    // tvbus-release.aar 提供 com.tvbus.engine.TVCore/Listener（TVBus.java 用）；hook-release.aar
-    // 提供 com.fongmi.hook.Hook（Core.getHook() 构造，App.setHook 接收）。树里原先的手写 Hook 桩
-    // 已删（与 AAR 里的真 Hook 同名同包，并存会重复类编不过）；真 Hook 是完整 PackageManager 子类，
-    // 构造器 (String, String) 与调用点一致。两个 AAR 的 minCompileSdk 均为 1，无元数据冲突。
-    implementation files('libs/tvbus-release.aar')
-    implementation files('libs/hook-release.aar')
-    // P2P/迅雷三件（2026-11-08 核对：与 TVCore 同款做法，webhtv app/libs 里现成的 AAR 拷来）：
-    // forcetech-release.aar 提供 com.forcetech.Util（Force.java 用）；jianpian-release.aar 提供
-    // com.p2p.P2PClass（JianPian.java 用）；thunder-release.aar 提供 com.xunlei.downloadlib.*（Thunder.java 用）。
-    // 三个 AAR 的类表已逐个验过，确有上述类。
     implementation files('libs/forcetech-release.aar')
+    implementation files('libs/hook-release.aar')
     implementation files('libs/jianpian-release.aar')
     implementation files('libs/thunder-release.aar')
-    // Media3 用 FongMi 分叉 1.11.0-alpha01-fongmi（2026-11-08 用户拍板选 A）：
+    implementation files('libs/tvbus-release.aar')
+    // Media3 用 FongMi 分叉 1.11.0-alpha01-fongmi：
     // 官方 1.10.0 没有分叉专属 API（MediaEdition、TextRenderer.Observer、弹幕、PlaybackDiagnostics）。
     // 产物无公开远程仓库，走 settings.gradle 里 third_party/maven 本地仓；nextlib 那个 AAR 是按 1.10.0
-    // 编的，它的传递依赖也强制拉到分叉版（下面 configurations.all），与 webhtv 同款组合。
+    // 编的，它的传递依赖也强制拉到分叉版（上面 configurations.all），与 dm17 同款组合。
     implementation 'androidx.media3:media3-common:1.11.0-alpha01-fongmi'
     implementation 'androidx.media3:media3-exoplayer:1.11.0-alpha01-fongmi'
     implementation 'androidx.media3:media3-exoplayer-hls:1.11.0-alpha01-fongmi'
@@ -143,46 +111,37 @@ dependencies {
     implementation 'androidx.media3:media3-decoder:1.11.0-alpha01-fongmi'
     implementation 'androidx.media3:media3-database:1.11.0-alpha01-fongmi'
     implementation 'androidx.media3:media3-effect:1.11.0-alpha01-fongmi'
-    // v1.9.22 原有依赖（K 批核实恢复）：DKPlayer 打包的 ijk 内核 + Findroid 预编译 libmpv
+    // DKPlayer 打包的 ijk 内核 + Findroid 预编译 libmpv
     implementation 'xyz.doikki.android.dkplayer:player-ijk:3.3.7'
     implementation 'dev.jdtech.mpv:libmpv:0.3.1'
-    // MpvHlsProxy 用 NanoHTTPD 起本地 HLS 代理（webhtv 同款坐标 org.nanohttpd:nanohttpd:2.3.1）
+    // MpvHlsProxy 用 NanoHTTPD 起本地 HLS 代理
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
     // OkGlideModule 用 com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
-    // （2026-11-08 云构建第一轮失败修法：原来只声明了 glide 本体，没声明 okhttp3 集成包）
     implementation 'com.github.bumptech.glide:okhttp3-integration:4.16.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'org.simpleframework:simple-xml:2.7.1'
     implementation 'com.orhanobut:hawk:2.0.1'
     implementation 'com.google.guava:guava:33.3.1-android'
-    // jupnp 三件套（2026-11-09 第九批构建失败修法：2.6.1 的 core 包里没有 org.jupnp.android 与
-    // org.jupnp.support，android 构件从 3.0.0 才有，support 须单独声明；三件统一升到 3.0.3）
+    // jupnp 三件套：2.6.1 的 core 包里没有 org.jupnp.android 与 org.jupnp.support，
+    // android 构件从 3.0.0 才有，support 须单独声明；三件统一升到 3.0.3
     implementation 'org.jupnp:org.jupnp:3.0.3'
     implementation 'org.jupnp:org.jupnp.support:3.0.3'
     implementation 'org.jupnp:org.jupnp.android:3.0.3'
-    // 以下为 2026-11-08 全树清点出的其他缺失依赖（原 build.gradle 未声明，见 L 批回报）
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    // 以下为全树清点出的其他缺失依赖（代码在用，原 build.gradle 未声明）：
+    // swiperefreshlayout 与 juniversalchardet 没接——树里 0 处引用，用不上。
     implementation 'androidx.palette:palette:1.0.0'
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
     implementation 'com.google.zxing:core:3.5.4'
-    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
     implementation 'org.tensorflow:tensorflow-lite:2.17.0'
     implementation 'com.github.TeamNewPipe:NewPipeExtractor:v0.26.3'
     implementation 'com.guolindev.permissionx:permissionx:1.8.1'
     implementation 'com.suyashbelekar:exoplayerhdrutils:0.4.0'
     implementation 'com.github.bassaer:materialdesigncolors:1.0.0'
-    // 仍未补（分叉 AAR 里也没有，见 2026-11-08 核查）：
-    // androidx.media3.mpvplayer.*（MpvPlayer/MpvPlayerConfig/MpvHlsProxy/MpvHlsCacheCoordinator）——
-    // 不在任何 media3 AAR 里，是 FongMi/TV 的应用源码（webhtv 里在 app/src/main/java/androidx/media3/mpvplayer/，
-    // 42 个文件约 1.4 万行），树里 7 个文件在调它（MpvPlayerEngine 等）；拷源码等于改选 B（移植源码），
-    // 用户只批了 A（接分叉包），此处停下等用户再定，绝不擅自拷。另：com.xunlei.downloadlib.*、
-    // com.forcetech.Util、com.p2p.P2PClass 仍缺（原 L 批清单），待云构建报错再定去留。
-    // 已解决的不再列：MediaEdition、TextRenderer.Observer、PlaybackDiagnostics、
-    // androidx.media3.ui.danmaku.*、com.fongmi.hook.Hook（hook AAR）、com.tvbus.engine.*（tvbus AAR）、
-    // is.xyz.mpv.MPVLib（树里自带）。
+    // 注入的 document-start 要它才真生效（DocumentStartScripts 是反射版，包不存在时返回 null）
+    implementation 'androidx.webkit:webkit:1.16.0'
     implementation project(':catvod')
     implementation project(':quickjs')
 }

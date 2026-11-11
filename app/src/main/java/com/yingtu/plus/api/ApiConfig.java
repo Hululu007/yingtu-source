@@ -16,10 +16,8 @@ import com.google.gson.JsonParser;
 import com.orhanobut.hawk.Hawk;
 
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 视频源配置管理器（单例）。
@@ -36,7 +34,7 @@ public class ApiConfig {
     private final List<SnifferRule> snifferRules = new ArrayList<>();
     private final List<String> liveUrls = new ArrayList<>();
 
-    /** 订阅配置 lives 里的一条（带真名与类型，供直播区“内置 + 远程合并”用）。 */
+    /** 订阅配置 lives 里的一条（带真名与类型，供直播区用）。 */
     public static class LiveEntry {
         public final String name;
         public final int type;
@@ -58,8 +56,6 @@ public class ApiConfig {
     private ParseBean mDefaultParse;
     private SourceBean mHomeSource;
     private String spider = "";
-    /** 内置配置站的 key 集合（午夜区 / 短剧区内置站）。合并加载时登记，供影视区过滤用。 */
-    private final Set<String> builtinSiteKeys = new LinkedHashSet<>();
 
     private ApiConfig() {}
 
@@ -74,13 +70,6 @@ public class ApiConfig {
 
     public void init(Context context) {
         appContext = context.getApplicationContext();
-        // 接口缓存关时启动不读本地已缓存的订阅配置（每次现取，用户去站源管理页加载）。
-        boolean cacheEnabled = true;
-        try {
-            cacheEnabled = Hawk.get(HawkConfig.API_CACHE_ENABLED, true);
-        } catch (Throwable ignored) {
-        }
-        if (!cacheEnabled) return;
         // 启动时若本地已缓存订阅内容则直接解析
         String cached = Hawk.get(HawkConfig.API_CONFIG_CACHE, "");
         if (!TextUtils.isEmpty(cached)) {
@@ -168,9 +157,9 @@ public class ApiConfig {
             }
         }
 
-        // 解析 lives（直播源地址）：结构化条目进 liveEntries（供直播区合并用），
+        // 解析 lives（直播源地址）：结构化条目进 liveEntries（供直播区用），
         // 真实地址才进 liveUrls。type=3（蜘蛛型、无 url，只有 api 名）不进 liveUrls，
-        // 避免把 api 名（比如 csp_KafLiveAmns）当成地址。
+        // 避免把 api 名当成地址。
         if (root.has("lives")) {
             try {
                 for (JsonElement e : root.getAsJsonArray("lives")) {
@@ -181,6 +170,11 @@ public class ApiConfig {
                         String url = optString(obj, "url");
                         String api = optString(obj, "api");
                         liveEntries.add(new LiveEntry(name, type, url, api));
+                        // 兼容 url 直接给 / channels 内嵌等，这里取顶层 url
+                        if (TextUtils.isEmpty(url)) {
+                            // group 内嵌 channels：收集每个 channel 的第一条 url 不现实，优先取可直接解析的 url 字段
+                            url = optString(obj, "api");
+                        }
                         if (!TextUtils.isEmpty(url)) liveUrls.add(url);
                     } else if (e.isJsonPrimitive()) {
                         String url = e.getAsString();
@@ -192,12 +186,19 @@ public class ApiConfig {
             }
         }
 
-        // 还原上次选中的源，否则取第一个
-        String lastKey = Hawk.get(HawkConfig.HOME_API, "");
-        if (!TextUtils.isEmpty(lastKey) && sourceBeanList.containsKey(lastKey)) {
-            mHomeSource = sourceBeanList.get(lastKey);
-        } else if (!sourceBeanList.isEmpty()) {
-            mHomeSource = sourceBeanList.values().iterator().next();
+        // 还原上次选中的源，否则取第一个；启动站（设置里“影视区启动站”）优先，
+        // 但只认当前站表里真实存在的 key，不存在（如站已删/订阅已换）就当没设过，
+        // 回落到上次选中/第一个，绝不因此空站或闪退。
+        String startupKey = Hawk.get(HawkConfig.STARTUP_SITE_MOVIE, "");
+        if (!TextUtils.isEmpty(startupKey) && sourceBeanList.containsKey(startupKey)) {
+            mHomeSource = sourceBeanList.get(startupKey);
+        } else {
+            String lastKey = Hawk.get(HawkConfig.HOME_API, "");
+            if (!TextUtils.isEmpty(lastKey) && sourceBeanList.containsKey(lastKey)) {
+                mHomeSource = sourceBeanList.get(lastKey);
+            } else if (!sourceBeanList.isEmpty()) {
+                mHomeSource = sourceBeanList.values().iterator().next();
+            }
         }
 
         // 自定站源 + 常驻站源：换订阅配置后仍保留（不存在的 key 才追加，不覆盖订阅自带的同名站）
@@ -220,12 +221,10 @@ public class ApiConfig {
     }
 
     /**
-     * 合并加载内置配置（午夜区用）：不清表，只追加当前表里没有的 key。
+     * 合并加载配置：不清表，只追加当前表里没有的 key（高级配置“存储文件”加载 SITES 文件用）。
      * 已存在的 key 不覆盖（用户自己导入的同名站优先保留）。
      * spider 字段只在当前为空时才补，不覆盖订阅自带的 jar。
-     * 不改动当前选中源（mHomeSource）。
-     * 注意：订阅加载（parseConfig）会清空全表，内置站需由 BuiltinConfigs.ensureLoaded()
-     * 在午夜区可见时重新合并回来。
+     * 不改动当前选中源（mHomeSource）。本树无内置站，不登记内置 key。
      */
     public void parseConfigMerge(String json) {
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
@@ -253,13 +252,7 @@ public class ApiConfig {
             sb.setJar(optString(obj, "jar"));
             sb.setPlayerUrl(optString(obj, "playUrl"));
             sourceBeanList.put(key, sb);
-            builtinSiteKeys.add(key);
         }
-    }
-
-    /** 该 key 是否来自内置配置（午夜区 / 短剧区内置站）。供影视区过滤内置站用。 */
-    public boolean isBuiltinSite(String key) {
-        return key != null && builtinSiteKeys.contains(key);
     }
 
     public List<SourceBean> getSourceBeanList() {
@@ -303,12 +296,11 @@ public class ApiConfig {
         return snifferRules;
     }
 
-    /** 订阅配置 lives 的结构化条目（name + type + url + api），供直播区合并用。 */
+    /** 订阅配置 lives 的结构化条目（name + type + url + api），供直播区用。 */
     public List<LiveEntry> getLiveEntries() {
         return new ArrayList<>(liveEntries);
     }
 
-    /** 用户注入的自定义直播地址（未设置返回空串），供直播区合并用。 */
     public String getInjectLiveUrl() {
         String inject = com.yingtu.plus.util.InjectHelper.getUrl(appContext);
         return inject == null ? "" : inject.trim();

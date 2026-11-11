@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WebHome 扩展注入专用文案（新文件；共享 strings.xml 不动，缺失的条目补在这里）。 -->
+<resources>
+    <string name="dialog_edit">编辑</string>    <string name="playback_webhook_back">返回</string>
+    <string name="playback_webhook_save">保存</string>
+    <string name="setting_order_normal">正序</string>
+    <string name="update_check">正在检查更新…</string>
+    <string name="web_home_extension_add_code">代码</string>
+    <string name="web_home_extension_add_file">文件</string>
+    <string name="web_home_extension_add_link">链接</string>
+    <string name="web_home_extension_choose_sites">选择站点</string>
+    <string name="web_home_extension_clear_done">WebHome 扩展缓存已清除</string>
+    <string name="web_home_extension_delete_source_message">删除 %1$s？</string>
+    <string name="web_home_extension_delete_source_title">删除来源</string>
+    <string name="web_home_extension_depends">依赖：%1$s</string>
+    <string name="web_home_extension_edit_source">编辑来源</string>
+    <string name="web_home_extension_enable_confirm_message">启用后，该扩展可以调用 WebHome SDK。\n\n名称：%1$s\n来源：%2$s\n匹配：%3$s</string>
+    <string name="web_home_extension_enable_confirm_title">启用扩展</string>
+    <string name="web_home_extension_exclude">排除：%1$s</string>
+    <string name="web_home_extension_inline_source">内联配置</string>
+    <string name="web_home_extension_inspect_hint">点网页页里的元素可查看</string>
+    <string name="web_home_extension_last_log">上次日志：%1$s</string>
+    <string name="web_home_extension_link_hint">扩展链接</string>
+    <string name="web_home_extension_local_code_default">本地扩展 %1$d</string>
+    <string name="web_home_extension_match">匹配：%1$s</string>
+    <string name="web_home_extension_match_hint">站点 key 或正则</string>
+    <string name="web_home_extension_match_mode">匹配方式</string>
+    <string name="web_home_extension_match_regex">正则</string>
+    <string name="web_home_extension_match_sites">按站点选</string>
+    <string name="web_home_extension_name_hint">名称</string>
+    <string name="web_home_extension_network_empty">该筛选下没有抓到的请求</string>
+    <string name="web_home_extension_network_select">选一条请求查看详情。</string>
+    <string name="web_home_extension_no_webhome_sites">当前点播配置里没有 WebHome 站点</string>
+    <string name="web_home_extension_run_at_end_short">结束</string>
+    <string name="web_home_extension_run_at_hint">注入时机</string>
+    <string name="web_home_extension_run_at_idle_short">空闲</string>
+    <string name="web_home_extension_run_at_start_short">开始</string>
+    <string name="web_home_extension_source">来源：%1$s</string>
+    <string name="web_home_extension_source_empty">来源或代码不能为空</string>
+    <string name="web_home_extension_source_invalid">来源 JSON 无效</string>
+    <string name="web_home_extension_source_saved">扩展来源已保存</string>
+    <string name="web_home_extension_source_type">来源类型</string>
+    <string name="web_home_extension_status_disabled">已禁用</string>
+    <string name="web_home_extension_status_injected">已注入</string>
+    <string name="web_home_extension_status_matched">已匹配</string>
+    <string name="web_home_extension_status_ready">就绪</string>
+    <string name="web_home_extension_status_skipped">已跳过</string>
+    <string name="web_home_extension_status_unmatched">未匹配</string>
+    <string name="web_home_extension_summary">来源 %1$d · 已安装 %2$d · 已匹配 %3$d · 就绪 %4$d · 站点 %5$s</string>
+    <string name="web_home_extension_unknown_site">未知</string>
+</resources>

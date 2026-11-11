@@ -30,12 +30,14 @@ import java.util.List;
 
 /**
  * 直播节目单：两层。
- * 第一层是频道名录：包内 assets/epg_data.json（老包原样拷过来的数据文件），共 534 条，
+ * 第一层是频道名录：包内 assets/epg_data.json，共 534 条，
  * 每条只有 tvid / epgid / 别名 / note / 台标，没有节目时间——这个文件本身就不是节目表。
  * 第二层是节目时间：点频道后走树里现成的 XMLTV 管线（LiveApi.getEpg + EpgParser，
  * 按 epgid 当 tvg-id 去对节目），节目源地址存在 LiveEpgSetting（live_epg_url，默认空）。
  * 没配地址、地址不对、源挂了，都如实显示，不编假节目单。
  * 点“去直播页播放”带别名跳 LiveActivity，直播页按别名找同名频道播。
+ * 注意：本树不内置任何直播源；名录只是频道名字与台标，播不播取决于直播页里
+ * 用户自己提供的直播源里有没有同名频道。
  */
 public class EpgActivity extends BaseActivity {
 
@@ -140,7 +142,7 @@ public class EpgActivity extends BaseActivity {
             tvEmpty.setVisibility(View.VISIBLE);
             tvEmpty.setText("epg_data.json 没读到频道，节目单是空的。");
         } else {
-            tvInfo.setText("共 " + allChannels.size() + " 个频道 · 名录来自老包 epg_data.json；节目时间要配 XMLTV 节目源地址才能拉到，点频道查看。");
+            tvInfo.setText("共 " + allChannels.size() + " 个频道 · 名录来自包内 epg_data.json；节目时间要配 XMLTV 节目源地址才能拉到，点频道查看。");
             tvEmpty.setVisibility(View.GONE);
         }
         applyFilter(etSearch.getText().toString());

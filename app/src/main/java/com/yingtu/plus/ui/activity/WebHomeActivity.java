@@ -1,86 +1,48 @@
 package com.yingtu.plus.ui.activity;
 
-import android.annotation.SuppressLint;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
-import android.graphics.Color;
-import android.os.Build;
+import android.net.Uri;
 import android.text.TextUtils;
 import android.view.View;
-import android.view.ViewGroup;
-import android.webkit.ConsoleMessage;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.webkit.CookieManager;
-import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-
-import com.yingtu.plus.R;
-import com.yingtu.plus.base.BaseActivity;
-import com.yingtu.plus.utils.Util;
-import com.yingtu.plus.web.HomeWebBridge;
-import com.yingtu.plus.web.WebHomeSdk;
-import com.yingtu.plus.web.WebServer;
 import com.google.gson.JsonObject;
+import com.yingtu.plus.R;
+import com.yingtu.plus.api.config.VodConfig;
+import com.yingtu.plus.base.BaseActivity;
+import com.yingtu.plus.bean.Site;
+import com.yingtu.plus.setting.Setting;
+import com.yingtu.plus.ui.dialog.WebHomeExtensionDialog;
+import com.yingtu.plus.web.HomeWebController;
 
 /**
- * WebHome 承载页：用内置 WebView 加载一个「网页首页」（远程 URL / 本地 HTML / 内置示例），
- * 并注入 App Native SDK（window.fm / window.fongmi），实现 webhtv 的 WebHome 能力。
- *
- * 这是本次按 https://github.com/webhtv/webhtv 补全的核心功能：
- * 让 HTML 文件（含用户自己的本地 .html）成为可调用原生搜索/播放/网络能力的首页应用。
+ * WebHome 承载页：WebView 交给 HomeWebController 持有，控制器负责 WebView 配置、
+ * SDK/视口注入与扩展注入（按站点 prepare/refresh），Activity 只留顶栏与生命周期转发。
+ * 扩展管理入口在顶栏（ivExt 按钮，点开 WebHomeExtensionDialog），不在导入站源屏里。
  */
-public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCallback {
+public class WebHomeActivity extends BaseActivity implements HomeWebController.Listener {
 
     public static final String KEY_URL = "webhome_url";
     public static final String KEY_TITLE = "webhome_title";
+    public static final String KEY_SITE = "webhome_site";
 
     private WebView webView;
     private ProgressBar progress;
     private TextView tvTitle;
     private View bar;
 
-    private String chromeMode = "normal";
-    private boolean sdkReady = false;
-
-    // WebView 内嵌 <video> 全屏：WebChromeClient 回调进来的 custom view
-    private View customView;
-    private WebChromeClient.CustomViewCallback customViewCallback;
-
-    // 缓存视口度量（在 UI 线程更新），供后台 bridge 线程安全读取
-    private volatile int vpWidth = 0;
-    private volatile int vpHeight = 0;
-    private volatile int vpSafeTop = 0;
+    private HomeWebController controller;
+    private Site site;
 
     @Override
     protected int getLayoutId() {
         return R.layout.activity_webhome;
     }
 
-    @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
     protected void init() {
-        // web 测试闪退加固：WebView 初始化（容器 WebView 缺失、find 拿不到 view、
-        // 网关启动、loadUrl）任一步抛错都不许杀进程，提示一句直接退出本页。
-        try {
-            initInner();
-        } catch (Throwable e) {
-            e.printStackTrace();
-            try {
-                Toast.makeText(this, "网页打开失败", Toast.LENGTH_SHORT).show();
-            } catch (Throwable ignored) {}
-            try { finish(); } catch (Throwable ignored) {}
-        }
-    }
-
-    private void initInner() {
         webView = find(R.id.webView);
         progress = find(R.id.progress);
         tvTitle = find(R.id.tvTitle);
@@ -88,190 +50,57 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
 
         String title = getIntent().getStringExtra(KEY_TITLE);
         String url = getIntent().getStringExtra(KEY_URL);
+        String siteKey = getIntent().getStringExtra(KEY_SITE);
         tvTitle.setText(TextUtils.isEmpty(title) ? "网页首页" : title);
 
         find(R.id.ivBack).setOnClickListener(v -> handleBackPressed());
         find(R.id.ivReload).setOnClickListener(v -> reload());
+        find(R.id.ivExt).setOnClickListener(v -> WebHomeExtensionDialog.show(this, null));
 
-        // 确保本地资源网关已启动（fm.res 依赖）
-        WebServer.get().start();
+        controller = new HomeWebController(this, webView, this, Setting.isDebugLog());
 
-        setupWebView();
-
-        if (TextUtils.isEmpty(url)) {
+        site = resolveSite(siteKey, url, title);
+        if (site == null || !controller.load(site)) {
             Toast.makeText(this, "首页地址为空", Toast.LENGTH_SHORT).show();
             finish();
-            return;
         }
-        webView.loadUrl(url);
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private void setupWebView() {
-        WebSettings s = webView.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setDatabaseEnabled(true);
-        s.setAllowFileAccess(true);
-        s.setAllowContentAccess(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    /**
+     * 站点解析：给站 key 就用 VodConfig 里的站（走该站的扩展与首页）；
+     * 只给 URL 时按 host 合成临时站，使 cspKeyRegex 能按 host 匹配、用户自加扩展（空 siteKey 全匹配）也能生效。
+     */
+    private Site resolveSite(String siteKey, String url, String title) {
+        if (!TextUtils.isEmpty(siteKey)) {
+            Site s = VodConfig.get().getSite(siteKey);
+            if (s != null && s.hasHomePage()) return s;
         }
-        s.setMediaPlaybackRequiresUserGesture(false);
-        s.setUseWideViewPort(true);
-        s.setLoadWithOverviewMode(true);
-        s.setSupportZoom(false);
-        s.setBuiltInZoomControls(false);
-        s.setTextZoom(100);
-        s.setJavaScriptCanOpenWindowsAutomatically(true);
-        s.setCacheMode(WebSettings.LOAD_DEFAULT);
-
-        webView.setBackgroundColor(Color.TRANSPARENT);
-        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-        // 第三方 Cookie
-        CookieManager cm = CookieManager.getInstance();
-        cm.setAcceptCookie(true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            cm.setAcceptThirdPartyCookies(webView, true);
-        }
-
-        webView.addJavascriptInterface(
-                new HomeWebBridge(this, webView, this), WebHomeSdk.BRIDGE);
-
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false; // 让 WebView 自己加载
-            }
-
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                try {
-                    injectSdk();
-                } catch (Throwable ignored) {}
-                if (progress != null) progress.setVisibility(View.GONE);
-            }
-        });
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onConsoleMessage(ConsoleMessage msg) {
-                android.util.Log.d("webview", msg.message() + " @" + msg.lineNumber());
-                return true;
-            }
-
-            @Override
-            public void onShowCustomView(View view, CustomViewCallback callback) {
-                // 全屏 custom view：Activity 正在退出时 getWindow() 可能为 null，
-                // bar 也可能没建好，任一步抛错都不许杀进程。
-                try {
-                    if (customView != null) {
-                        callback.onCustomViewHidden();
-                        return;
-                    }
-                    if (view == null || getWindow() == null) {
-                        if (callback != null) callback.onCustomViewHidden();
-                        return;
-                    }
-                    customView = view;
-                    customViewCallback = callback;
-                    ((ViewGroup) getWindow().getDecorView()).addView(customView,
-                            new FrameLayout.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT));
-                    if (bar != null) bar.setVisibility(View.GONE);
-                    Util.hideSystemUI(WebHomeActivity.this);
-                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                    try {
-                        if (callback != null) callback.onCustomViewHidden();
-                    } catch (Throwable ignored) {}
-                    customView = null;
-                    customViewCallback = null;
-                }
-            }
-
-            @Override
-            public void onHideCustomView() {
-                hideCustomView();
-            }
-        });
-    }
-
-    private void injectSdk() {
-        if (webView == null) return;
-        webView.evaluateJavascript(WebHomeSdk.script(isLeanback()), value -> {
-            sdkReady = true;
-            pushViewport();
-        });
-    }
-
-    private void pushViewport() {
-        if (webView == null) return;
-        vpWidth = px2dp(webView.getWidth());
-        vpHeight = px2dp(webView.getHeight());
-        vpSafeTop = px2dp(getStatusBarHeight());
-        String js = WebHomeSdk.viewportVars(vpWidth, vpHeight, vpSafeTop, 0, vpSafeTop, chromeMode);
-        webView.evaluateJavascript(js, null);
-    }
-
-    private void hideCustomView() {
-        if (customView == null) return;
+        if (TextUtils.isEmpty(url)) return null;
+        Site s = new Site();
+        String host = null;
         try {
-            if (getWindow() != null) {
-                ((ViewGroup) getWindow().getDecorView()).removeView(customView);
-            }
-        } catch (Throwable ignored) {}
-        customView = null;
-        boolean edge = "edge".equals(chromeMode) || "immersive".equals(chromeMode)
-                || "tv-full".equals(chromeMode) || "fullscreen".equals(chromeMode);
-        if (bar != null) bar.setVisibility(edge ? View.GONE : View.VISIBLE);
-        try {
-            Util.showSystemUI(this);
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
-        } catch (Throwable ignored) {}
-        if (customViewCallback != null) {
-            try {
-                customViewCallback.onCustomViewHidden();
-            } catch (Throwable ignored) {}
-            customViewCallback = null;
+            host = Uri.parse(url).getHost();
+        } catch (Exception ignored) {
         }
+        s.setKey(TextUtils.isEmpty(host) ? url : host);
+        s.setName(TextUtils.isEmpty(title) ? s.getKey() : title);
+        s.setHomePage(url);
+        return s;
     }
 
-    private int px2dp(int px) {
-        float d = getResources().getDisplayMetrics().density;
-        return d <= 0 ? px : Math.round(px / d);
-    }
-
-    private int getStatusBarHeight() {
-        int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        return id > 0 ? getResources().getDimensionPixelSize(id) : 0;
-    }
-
-    private boolean isLeanback() {
-        return getPackageManager().hasSystemFeature("android.software.leanback");
+    private WebView currentWebView() {
+        // 控制器超时恢复时会重建 WebView（同 id 换进父布局），每次用现找的，避免拿旧引用
+        WebView current = find(R.id.webView);
+        return current != null ? current : webView;
     }
 
     private void handleBackPressed() {
-        if (customView != null) {
-            hideCustomView();
-            return;
-        }
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
+        WebView current = currentWebView();
+        if (current != null && current.canGoBack()) {
+            current.goBack();
         } else {
             finish();
         }
-    }
-
-    @Override
-    public void onConfigurationChanged(@NonNull Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        // 转屏后 WebView 宽高变了，视口变量要重推；post 到布局完成后再量，避免量到旧尺寸
-        if (webView != null) webView.post(() -> pushViewport());
     }
 
     @Override
@@ -279,11 +108,31 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
         handleBackPressed();
     }
 
-    // ===== HomeWebBridge.UiCallback =====
+    // ===== HomeWebController.Listener =====
+
+    @Override
+    public void onWebLoading() {
+        progress.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public void onWebReady() {
+        progress.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void onWebError() {
+        progress.setVisibility(View.GONE);
+    }
 
     @Override
     public void setToolbar(boolean visible) {
-        if (bar != null) bar.setVisibility(visible ? View.VISIBLE : View.GONE);
+        bar.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    @Override
+    public void applyDefaultChrome(Site site) {
+        setChrome(site.getWebHomeChrome());
     }
 
     @Override
@@ -291,46 +140,15 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
         String mode = payload != null && payload.has("mode") && !payload.get("mode").isJsonNull()
                 ? payload.get("mode").getAsString() : "";
         if (!TextUtils.isEmpty(mode)) {
-            chromeMode = mode;
             boolean edge = "edge".equals(mode) || "immersive".equals(mode)
                     || "tv-full".equals(mode) || "fullscreen".equals(mode);
-            if (bar != null) bar.setVisibility(edge ? View.GONE : View.VISIBLE);
+            bar.setVisibility(edge ? View.GONE : View.VISIBLE);
         }
-        pushViewport();
     }
 
     @Override
     public void restoreChrome() {
-        chromeMode = "normal";
-        if (bar != null) bar.setVisibility(View.VISIBLE);
-        pushViewport();
-    }
-
-    @Override
-    public String getViewportJson() {
-        // 该方法可能被 bridge 后台线程调用，读缓存值避免跨线程访问 View
-        JsonObject o = new JsonObject();
-        o.addProperty("webWidth", vpWidth);
-        o.addProperty("webHeight", vpHeight);
-        o.addProperty("safeTop", vpSafeTop);
-        o.addProperty("safeBottom", 0);
-        o.addProperty("statusBarHeight", vpSafeTop);
-        o.addProperty("chromeMode", chromeMode);
-        return o.toString();
-    }
-
-    @Override
-    public void back() {
-        handleBackPressed();
-    }
-
-    @Override
-    public void reload() {
-        if (progress != null) progress.setVisibility(View.VISIBLE);
-        if (webView != null) {
-            webView.clearCache(true);
-            webView.reload();
-        }
+        bar.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -343,43 +161,28 @@ public class WebHomeActivity extends BaseActivity implements HomeWebBridge.UiCal
         startActivity(new android.content.Intent(this, SettingActivity.class));
     }
 
+    public void reload() {
+        progress.setVisibility(View.VISIBLE);
+        if (controller != null) controller.reload();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
-        if (webView != null) {
-            webView.onResume();
-            if (sdkReady) {
-                webView.evaluateJavascript(
-                        WebHomeSdk.dispatchEvent("fmresume", "{\"time\":" + System.currentTimeMillis() + "}"), null);
-            }
-        }
+        if (controller != null) controller.onResume();
     }
 
     @Override
     protected void onPause() {
+        if (controller != null) controller.onPause();
         super.onPause();
-        if (webView != null) {
-            if (sdkReady) {
-                webView.evaluateJavascript(
-                        WebHomeSdk.dispatchEvent("fmpause", "{\"time\":" + System.currentTimeMillis() + "}"), null);
-            }
-            webView.onPause();
-        }
     }
 
     @Override
     protected void onDestroy() {
-        if (webView != null) {
-            try {
-                webView.loadUrl("about:blank");
-            } catch (Throwable ignored) {}
-            try {
-                webView.removeJavascriptInterface(WebHomeSdk.BRIDGE);
-            } catch (Throwable ignored) {}
-            try {
-                webView.destroy();
-            } catch (Throwable ignored) {}
-            webView = null;
+        if (controller != null) {
+            controller.destroy();
+            controller = null;
         }
         super.onDestroy();
     }

@@ -63,55 +63,15 @@
             app:tint="@color/colorPrimary" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/tvHistoryTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="10dp"
-        android:text="搜索记录"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/searchRow" />
-
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/chipHistory"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="10dp"
         android:layout_marginEnd="16dp"
         app:chipSpacingHorizontal="6dp"
-        app:layout_constraintTop_toBottomOf="@id/tvHistoryTitle"
-        app:singleLine="true" />
-
-    <!-- 热门搜索：树里目前没有热门词数据源（无接口、无内置榜单），先建结构、隐藏；
-         等热门词来源落地后由 renderHot() 填充并显示 -->
-    <TextView
-        android:id="@+id/tvHotTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="12dp"
-        android:text="热门搜索"
-        android:textColor="@color/text_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:visibility="gone"
-        app:layout_constraintTop_toBottomOf="@id/chipHistory" />
-
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipHot"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginEnd="16dp"
-        android:visibility="gone"
-        app:chipSpacingHorizontal="6dp"
-        app:layout_constraintTop_toBottomOf="@id/tvHotTitle"
+        app:layout_constraintTop_toBottomOf="@id/searchRow"
         app:singleLine="true" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -122,7 +82,7 @@
         android:padding="12dp"
         android:paddingTop="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/chipHot" />
+        app:layout_constraintTop_toBottomOf="@id/chipHistory" />
 
     <TextView
         android:id="@+id/tvEmpty"

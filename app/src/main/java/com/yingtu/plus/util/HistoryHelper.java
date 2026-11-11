@@ -21,36 +21,6 @@ public class HistoryHelper {
 
     private static final int MAX = 200;
 
-    /** 观看历史记录数档位（设置里选）：0=100|10 1=200|20 2=300|30 3=500|50，取前一个数。 */
-    public static int getPlayLimit() {
-        int idx = 2;
-        try {
-            idx = Hawk.get(HawkConfig.HISTORY_LIMIT, 2);
-        } catch (Throwable ignored) {
-        }
-        switch (idx) {
-            case 0: return 100;
-            case 1: return 200;
-            case 3: return 500;
-            default: return 300;
-        }
-    }
-
-    /** 搜索历史记录数档位：取后一个数（10/20/30/50）。 */
-    public static int getSearchLimit() {
-        int idx = 2;
-        try {
-            idx = Hawk.get(HawkConfig.HISTORY_LIMIT, 2);
-        } catch (Throwable ignored) {
-        }
-        switch (idx) {
-            case 0: return 10;
-            case 1: return 20;
-            case 3: return 50;
-            default: return 30;
-        }
-    }
-
     private HistoryHelper() {}
 
     @SuppressWarnings("unchecked")
@@ -86,8 +56,7 @@ public class HistoryHelper {
             }
         }
         list.add(0, history);
-        int max = getPlayLimit();
-        while (list.size() > max) list.remove(list.size() - 1);
+        while (list.size() > MAX) list.remove(list.size() - 1);
         Hawk.put(HawkConfig.PLAY_HISTORY, list);
     }
 

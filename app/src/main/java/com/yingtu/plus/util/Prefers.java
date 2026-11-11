@@ -52,16 +52,6 @@ public class Prefers {
         try { getPrefers().edit().putInt(key, value).apply(); }
         catch (Exception ignored) {}
     }
-
-    // put(String,int) 的别名：PlayerSetting.putScale() 在调 Prefers.putInt。
-    public static void putInt(String key, int value) { put(key, value); }
-
-    // double 存取与 getDouble() 的读法配对：getDouble 是按 int 读“值×100”再除 100，
-    // 所以 put 时也要先 ×100 取整再按 int 存，否则读回来的值会对不上。
-    // 精度只到小数点后两位（倍速 1.0/1.25/1.5/2.0 都能精确还原）。
-    public static void put(String key, double value) {
-        put(key, (int) Math.round(value * 100));
-    }
     
     public static void put(String key, long value) {
         try { getPrefers().edit().putLong(key, value).apply(); }
@@ -78,6 +68,16 @@ public class Prefers {
         catch (Exception ignored) {}
     }
     
+    // put(String,int) 的别名：PlayerSetting.putScale() 在调 Prefers.putInt。
+    public static void putInt(String key, int value) { put(key, value); }
+
+    // double 存取与 getDouble() 的读法配对：getDouble 是按 int 读“值×100”再除 100，
+    // 所以 put 时也要先 ×100 取整再按 int 存，否则读回来的值会对不上。
+    // 精度只到小数点后两位（倍速 1.0/1.25/1.5/2.0 都能精确还原）。
+    public static void put(String key, double value) {
+        put(key, (int) Math.round(value * 100));
+    }
+
     public static void remove(String key) {
         try { getPrefers().edit().remove(key).apply(); }
         catch (Exception ignored) {}

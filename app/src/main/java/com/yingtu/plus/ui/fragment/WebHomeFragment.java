@@ -31,9 +31,6 @@ import java.util.List;
  * 列出所有网页首页条目：远程 URL / 本地 HTML 文件 / 内置示例。
  * 点击 → 用 {@link WebHomeActivity} 的内置 WebView 打开并注入 Native SDK。
  * 右下角 + 可添加远程网址，或选择设备上的本地 .html 文件（SAF 持久授权）。
- *
- * 由 v1.9.22 恢复，main 里的 WebHomeHelper / WebHomeAdapter /
- * WebHomeActivity 接口与 v1.9.22 一致，仅把 pendingName 字段移到类顶部。
  */
 public class WebHomeFragment extends BaseLazyFragment {
 
@@ -42,7 +39,6 @@ public class WebHomeFragment extends BaseLazyFragment {
     private WebHomeAdapter adapter;
 
     private ActivityResultLauncher<String[]> openDocLauncher;
-    private String pendingName = "";
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -160,6 +156,8 @@ public class WebHomeFragment extends BaseLazyFragment {
 
         dialog.show();
     }
+
+    private String pendingName = "";
 
     private void onLocalHtmlPicked(Uri uri) {
         if (uri == null) return;

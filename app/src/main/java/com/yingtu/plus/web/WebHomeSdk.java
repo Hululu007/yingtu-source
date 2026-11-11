@@ -136,6 +136,96 @@ public final class WebHomeSdk {
             "})();";
     }
 
+
+    /** 带调试钩子的版本：调试对话框用，接管 console/fetch/XHR 上报给 fongmiBridge。 */
+    public static String script(boolean isLeanback, boolean debugTools) {
+        String base = script(isLeanback);
+        if (!debugTools) return base;
+        int tail = base.lastIndexOf("})();");
+        if (tail < 0) return base;
+        return base.substring(0, tail) + DEBUG_HOOK + base.substring(tail);
+    }
+
+    private static final String DEBUG_HOOK = """
+
+                  if(!window.__fmConsoleHook){
+                    window.__fmConsoleHook=true;
+                    ['log','info','warn','error','debug'].forEach(function(level){
+                      const raw=console[level]||console.log;
+                      console[level]=function(){
+                        const args=Array.prototype.slice.call(arguments);
+                        try{fongmiBridge.console(level,args.map(function(v){try{return typeof v==='string'?v:JSON.stringify(v);}catch(e){return String(v);}}).join(' '));}catch(e){}
+                        return raw&&raw.apply(console,args);
+                      };
+                    });
+                  }
+                  if(!window.__fmNetworkHook){
+                    window.__fmNetworkHook=true;
+                    const absolute=function(url){try{return new URL(String(url),location.href).href;}catch(e){return String(url||'');}};
+                    const clip=function(value){value=String(value||'');return value.length>2000?value.slice(0,2000)+'\\n...truncated':value;};
+                    const bodyText=function(body){
+                      if(!body)return '';
+                      if(typeof body==='string')return 'payload:\\n'+clip(body);
+                      if(body instanceof URLSearchParams)return 'payload:\\n'+clip(body.toString());
+                      if(body instanceof FormData){
+                        const out=[];
+                        try{body.forEach(function(v,k){out.push(k+'='+(v&&v.name?'[file '+v.name+']':String(v)));});}catch(e){}
+                        return 'payload:\\n'+clip(out.join('\\n'));
+                      }
+                      return 'payloadType='+Object.prototype.toString.call(body)+'\\npayloadBytes='+String(body).length;
+                    };
+                    const headers=function(headers){
+                      const out=[];
+                      try{
+                        if(headers&&headers.forEach)headers.forEach(function(v,k){out.push(k+': '+v);});
+                        else if(headers)Object.keys(headers).forEach(function(k){out.push(k+': '+headers[k]);});
+                      }catch(e){}
+                      return out.join('\\n');
+                    };
+                    const rawFetch=window.fetch;
+                    if(rawFetch){
+                      window.fetch=function(input,init){
+                        const started=Date.now();
+                        const method=(init&&init.method)||(input&&input.method)||'GET';
+                        const url=absolute(input&&input.url?input.url:input);
+                        const requestHeaders=headers((init&&init.headers)||(input&&input.headers));
+                        const body=bodyText(init&&init.body);
+                        try{fongmiBridge.network('FETCH_START',method,url,0,0,[requestHeaders,body].filter(Boolean).join('\\n'));}catch(e){}
+                        return rawFetch.apply(this,arguments).then(function(resp){
+                          try{fongmiBridge.network('FETCH_DONE',method,url,resp.status||0,Date.now()-started,['type='+(resp.type||''),'headers:',headers(resp.headers)].join('\\n'));}catch(e){}
+                          return resp;
+                        }).catch(function(err){
+                          try{fongmiBridge.network('FETCH_ERROR',method,url,0,Date.now()-started,String(err&&err.message||err));}catch(e){}
+                          throw err;
+                        });
+                      };
+                    }
+                    const RawXHR=window.XMLHttpRequest;
+                    if(RawXHR&&RawXHR.prototype){
+                      const rawOpen=RawXHR.prototype.open;
+                      const rawSend=RawXHR.prototype.send;
+                      RawXHR.prototype.open=function(method,url){
+                        this.__fmMethod=method||'GET';
+                        this.__fmUrl=absolute(url);
+                        return rawOpen.apply(this,arguments);
+                      };
+                      RawXHR.prototype.send=function(){
+                        const xhr=this;
+                        const started=Date.now();
+                        const body=arguments.length?bodyText(arguments[0]):'';
+                        try{fongmiBridge.network('XHR_START',xhr.__fmMethod||'GET',xhr.__fmUrl||'',0,0,body);}catch(e){}
+                        xhr.addEventListener('loadend',function(){
+                          try{fongmiBridge.network('XHR_DONE',xhr.__fmMethod||'GET',xhr.__fmUrl||'',xhr.status||0,Date.now()-started,[xhr.statusText||'',xhr.getAllResponseHeaders&&xhr.getAllResponseHeaders()||''].filter(Boolean).join('\\n'));}catch(e){}
+                        });
+                        xhr.addEventListener('error',function(){
+                          try{fongmiBridge.network('XHR_ERROR',xhr.__fmMethod||'GET',xhr.__fmUrl||'',xhr.status||0,Date.now()-started,'error');}catch(e){}
+                        });
+                        return rawSend.apply(this,arguments);
+                      };
+                    }
+                  }
+                """;
+
     /** 注入根元素 CSS 变量（视口 / 安全区 / chrome 模式）。 */
     public static String viewportVars(int widthPx, int heightPx, int safeTop, int safeBottom,
                                       int statusBarHeight, String chromeMode) {
