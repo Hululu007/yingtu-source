@@ -21,10 +21,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Install Android SDK 36
+        run: |
+          echo y | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" || echo "SDK 36 install step returned non-zero (may already be installed), continuing"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.4'
+          gradle-version: '8.13'
           cache-disabled: true
 
       - name: Build debug APK
