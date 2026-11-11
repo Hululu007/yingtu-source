@@ -6633,7 +6633,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     @Override
-    @Override
     public void onBackPressed() {
         if (hasLutQuick() && mBinding.lutQuick.hideIfVisible()) {
             return;
