@@ -10,11 +10,21 @@ import android.os.Looper;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 
+import com.fongmi.hook.Hook;
 import com.google.gson.Gson;
 import com.yingtu.plus.api.ApiConfig;
 import com.yingtu.plus.util.HawkConfig;
 import com.yingtu.plus.web.WebServer;
 import com.orhanobut.hawk.Hawk;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 
 
@@ -24,8 +34,11 @@ import com.orhanobut.hawk.Hawk;
 public class App extends Application {
 
     private static App instance;
+    public static final String CRASH_LOG_NAME = "crash.log";
+    private static final long CRASH_LOG_MAX_BYTES = 512 * 1024;
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private static final Gson GSON = new Gson();
+    private Hook hook;
 
     /** 前台 Activity 跟踪（生命周期回调）。 */
     private Activity currentActivity;
@@ -98,6 +111,52 @@ public class App extends Application {
     /** 移除主线程 handler 上的回调。 */
     public static void removeCallbacks(Runnable runnable) {
         MAIN_HANDLER.removeCallbacks(runnable);
+    }
+
+    public static void removeCallbacks(Runnable... runnables) {
+        if (runnables == null) return;
+        for (Runnable runnable : runnables) if (runnable != null) MAIN_HANDLER.removeCallbacks(runnable);
+    }
+
+    public static void writeCrashLog(String line) {
+        try {
+            App app = instance;
+            if (app == null) return;
+            File dir = app.getExternalFilesDir(null);
+            if (dir == null) return;
+            if (!dir.exists() && !dir.mkdirs()) return;
+            File file = new File(dir, CRASH_LOG_NAME);
+            if (file.exists() && file.length() > CRASH_LOG_MAX_BYTES && !file.delete()) return;
+            FileOutputStream out = new FileOutputStream(file, true);
+            try {
+                String text = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+                        .format(new Date()) + " " + line + "\n";
+                out.write(text.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+            } finally {
+                out.close();
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public static void crashLogStep(String step) {
+        writeCrashLog("BOOT " + step);
+    }
+
+    public static void logCaught(Throwable e) {
+        if (e == null) return;
+        try {
+            writeCrashLog("CAUGHT " + e);
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            writeCrashLog(sw.toString());
+        } catch (Throwable ignored) {
+        }
+    }
+
+    public void setHook(Hook hook) {
+        this.hook = hook;
     }
 
     /** 全局 Gson 单例。 */

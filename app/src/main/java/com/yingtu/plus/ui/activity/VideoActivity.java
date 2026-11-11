@@ -24,6 +24,7 @@ import android.text.style.ClickableSpan;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.DisplayCutout;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -559,6 +560,14 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         return mBinding.getRoot().getTag().equals("port");
     }
 
+    protected boolean isVisible(View view) {
+        return view != null && view.getVisibility() == View.VISIBLE;
+    }
+
+    protected boolean isGone(View view) {
+        return view == null || view.getVisibility() == View.GONE;
+    }
+
     @Override
     protected ViewBinding getBinding() {
         return mBinding = ActivityVideoBinding.inflate(getLayoutInflater());
@@ -743,7 +752,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private void configureAudioLandscapeActions() {
         if (mBinding == null || !ResUtil.isLand(this)) return;
-        if (mBinding.audioTransport instanceof ViewGroup transport) {
+        ViewGroup transport = mBinding.audioTransport;
+        if (transport != null) {
             for (int i = 0; i < transport.getChildCount(); i++) {
                 View child = transport.getChildAt(i);
                 if (!(child instanceof ViewGroup group)) continue;
@@ -772,7 +782,6 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         view.setPadding(ResUtil.dp2px(8), ResUtil.dp2px(8), ResUtil.dp2px(8), ResUtil.dp2px(8));
     }
 
-    @Override
     @SuppressLint("ClickableViewAccessibility")
     protected void initEvent() {
         mBinding.name.setOnClickListener(view -> onName());
@@ -998,6 +1007,22 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         mBinding.control.parse.setItemAnimator(null);
         mBinding.control.parse.addItemDecoration(new SpaceItemDecoration(8));
         mBinding.control.parse.setAdapter(mParseAdapter = new ParseAdapter(this, ViewType.DARK));
+    }
+
+    private static final class EpisodeGridLayoutPolicy {
+
+        private EpisodeGridLayoutPolicy() {
+        }
+
+        static int getMaxSpan(boolean landscapeLayout, boolean pad) {
+            return landscapeLayout || pad ? 6 : 4;
+        }
+
+        static int getAvailableWidth(int measuredWidth, int screenWidth, int screenHeight, int fallbackInset, boolean landscapeLayout, boolean landscapeConfiguration) {
+            if (measuredWidth > 0 && landscapeLayout == landscapeConfiguration) return measuredWidth;
+            int layoutWidth = landscapeLayout ? Math.max(screenWidth, screenHeight) : Math.min(screenWidth, screenHeight);
+            return Math.max(1, layoutWidth - Math.max(0, fallbackInset));
+        }
     }
 
     private int getEpisodeSpanCount() {
@@ -1467,7 +1492,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         detailHealthRecorded = true;
         boolean success = result != null && !result.getList().isEmpty();
         String error = result == null ? "" : result.hasMsg() ? result.getMsg() : success ? "" : "empty";
-        SiteHealthStore.recordDetail(getKey(), success, cost, error);
+        SiteHealthStore.recordDetail(getKey(), success, result == null ? 0 : result.getList().size(), cost, error);
     }
 
     private void beginPlayHealth() {
@@ -1478,7 +1503,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     private void recordPlayHealth(boolean success, String error) {
         if (playHealthRecorded) return;
         playHealthRecorded = true;
-        SiteHealthStore.recordPlay(TextUtils.isEmpty(playHealthKey) ? getKey() : playHealthKey, success, error);
+        long cost = playerStartTime > 0 ? System.currentTimeMillis() - playerStartTime : 0;
+        SiteHealthStore.recordPlay(TextUtils.isEmpty(playHealthKey) ? getKey() : playHealthKey, success, cost, error);
     }
 
     @Override
@@ -3124,7 +3150,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private View createLyricsOffsetControl() {
         return createLyricsStepControl(getString(R.string.player_lyrics_offset), getLyricsOffsetText(), "-0.5s", "0", "+0.5s",
-                value -> PlayerSetting.putLyricsTimeOffsetMs(value),
+                value -> PlayerSetting.putLyricsTimeOffsetMs((int) value),
                 () -> PlayerSetting.getLyricsTimeOffsetMs(),
                 LYRICS_OFFSET_MIN_MS,
                 LYRICS_OFFSET_MAX_MS,
@@ -3134,7 +3160,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
 
     private View createKaraokeDelayControl() {
         return createLyricsStepControl(getString(R.string.player_karaoke_mic_delay), getKaraokeDelayText(), "-0.1s", "0", "+0.1s",
-                value -> PlayerSetting.putKaraokeMicDelayMs(value),
+                value -> PlayerSetting.putKaraokeMicDelayMs((int) value),
                 () -> PlayerSetting.getKaraokeMicDelayMs(),
                 KARAOKE_DELAY_MIN_MS,
                 KARAOKE_DELAY_MAX_MS,
@@ -6306,6 +6332,18 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         else noPadding(mBinding.control.getRoot());
     }
 
+    private void setPadding(ViewGroup layout) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return;
+        DisplayCutout cutout = ResUtil.getDisplay(this).getCutout();
+        if (cutout == null) return;
+        int padding = cutout.getSafeInsetLeft() | cutout.getSafeInsetRight() | cutout.getSafeInsetTop() | cutout.getSafeInsetBottom();
+        layout.setPadding(padding, 0, padding, 0);
+    }
+
+    private void noPadding(ViewGroup layout) {
+        layout.setPadding(0, 0, 0, 0);
+    }
+
     private void notifyItemChanged(RecyclerView view, RecyclerView.Adapter<?> adapter) {
         view.post(() -> adapter.notifyItemRangeChanged(0, adapter.getItemCount()));
     }
@@ -6595,7 +6633,8 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     }
 
     @Override
-    protected void onBackInvoked() {
+    @Override
+    public void onBackPressed() {
         if (hasLutQuick() && mBinding.lutQuick.hideIfVisible()) {
             return;
         } else if (isVisible(mBinding.control.getRoot())) {
@@ -6614,7 +6653,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
         markPlaybackExiting();
         stopPlayback();
         if (isTaskRoot()) startActivity(new Intent(this, HomeActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-        super.onBackInvoked();
+        super.onBackPressed();
     }
 
     @Override
