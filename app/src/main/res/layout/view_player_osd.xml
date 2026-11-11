@@ -142,7 +142,7 @@
 
     </LinearLayout>
 
-    <com.fongmi.android.tv.ui.custom.MiniProgressView
+    <com.yingtu.plus.ui.custom.MiniProgressView
         android:id="@+id/osdMiniProgress"
         android:layout_width="match_parent"
         android:layout_height="2dp"

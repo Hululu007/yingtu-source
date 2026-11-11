@@ -2,7 +2,6 @@ package com.yingtu.plus.db.dao;
 
 import androidx.room.Dao;
 import androidx.room.Query;
-import androidx.room.RoomWarnings;
 
 import com.yingtu.plus.bean.Config;
 
@@ -17,7 +16,7 @@ public abstract class ConfigDao extends BaseDao<Config> {
     @Query("SELECT * FROM Config WHERE type = :type ORDER BY time DESC")
     public abstract List<Config> findByType(int type);
 
-    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
+    @SuppressWarnings("QUERY_MISMATCH")
     @Query("SELECT id, name, url, type, time FROM Config WHERE type = :type ORDER BY time DESC")
     public abstract List<Config> findUrlByType(int type);
 

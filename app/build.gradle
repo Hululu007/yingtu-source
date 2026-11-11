@@ -132,7 +132,8 @@ dependencies {
     implementation 'org.jupnp:org.jupnp.support:3.0.3'
     implementation 'org.jupnp:org.jupnp.android:3.0.3'
     // 以下为全树清点出的其他缺失依赖（代码在用，原 build.gradle 未声明）：
-    // swiperefreshlayout 与 juniversalchardet 没接——树里 0 处引用，用不上。
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
     implementation 'androidx.palette:palette:1.0.0'
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
     implementation 'com.google.zxing:core:3.5.4'

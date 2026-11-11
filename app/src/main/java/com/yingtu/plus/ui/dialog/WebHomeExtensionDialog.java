@@ -80,7 +80,7 @@ public class WebHomeExtensionDialog extends DialogFragment {
     private MaterialButton debug;
     private MaterialButton clear;
     private MaterialButton reverse;
-    private MaterialButton enabled;
+    private MaterialButton enabledButton;
     private MaterialButtonToggleGroup modeGroup;
     private LinearLayoutCompat list;
     private MaterialTextView summary;
@@ -131,7 +131,7 @@ public class WebHomeExtensionDialog extends DialogFragment {
         debug = view.findViewById(R.id.debug);
         clear = view.findViewById(R.id.clear);
         reverse = view.findViewById(R.id.reverse);
-        enabled = view.findViewById(R.id.enabled);
+        enabledButton = view.findViewById(R.id.enabled);
         modeGroup = view.findViewById(R.id.modeGroup);
         list = view.findViewById(R.id.list);
         summary = view.findViewById(R.id.summary);
@@ -181,7 +181,7 @@ public class WebHomeExtensionDialog extends DialogFragment {
         scrollParams.weight = land ? 1 : 0;
         contentScroll.setLayoutParams(scrollParams);
         contentScroll.setMaxHeight(land ? 0 : (int) (screenHeight * 0.54f));
-        enabled.requestFocus();
+        enabledButton.requestFocus();
     }
 
     @Override
@@ -209,7 +209,7 @@ public class WebHomeExtensionDialog extends DialogFragment {
     }
 
     private void initEvent() {
-        enabled.setOnClickListener(view -> {
+        enabledButton.setOnClickListener(view -> {
             enabled = !enabled;
             updateEnabledText();
             render();
@@ -241,8 +241,8 @@ public class WebHomeExtensionDialog extends DialogFragment {
     }
 
     private void updateEnabledText() {
-        enabled.setText(enabled ? "启用" : "停用");
-        enabled.setAlpha(enabled ? 1.0f : 0.65f);
+        enabledButton.setText(enabled ? "启用" : "停用");
+        enabledButton.setAlpha(enabled ? 1.0f : 0.65f);
     }
 
     private void updateReverseText() {
@@ -292,7 +292,7 @@ public class WebHomeExtensionDialog extends DialogFragment {
         add.setVisibility(textMode || editMode ? View.GONE : View.VISIBLE);
         debug.setVisibility(editMode ? View.GONE : View.VISIBLE);
         clear.setVisibility(editMode ? View.GONE : View.VISIBLE);
-        enabled.setVisibility(editMode ? View.GONE : View.VISIBLE);
+        enabledButton.setVisibility(editMode ? View.GONE : View.VISIBLE);
         reverse.setVisibility(editMode ? View.GONE : View.VISIBLE);
         modeGroup.setVisibility(editMode ? View.GONE : View.VISIBLE);
     }

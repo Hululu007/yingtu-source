@@ -3,6 +3,8 @@ package com.yingtu.plus.bean;
 import androidx.annotation.NonNull;
 
 import com.yingtu.plus.App;
+import android.text.TextUtils;
+
 import com.yingtu.plus.setting.Setting;
 import com.google.gson.annotations.SerializedName;
 
@@ -29,7 +31,11 @@ public class SyncOptions {
     @SerializedName("mpvConfig")
     private boolean mpvConfig;
     @SerializedName("paths")
-    private String paths = Setting.getSyncPaths();
+    private String paths = defaultPaths();
+
+    private static String defaultPaths() {
+        return TextUtils.join("\n", Setting.getSyncPaths());
+    }
 
     public static SyncOptions defaults() {
         return new SyncOptions();
@@ -135,7 +141,7 @@ public class SyncOptions {
     }
 
     public String getPaths() {
-        return paths == null ? Setting.getSyncPaths() : paths;
+        return paths == null ? defaultPaths() : paths;
     }
 
     public SyncOptions paths(String paths) {

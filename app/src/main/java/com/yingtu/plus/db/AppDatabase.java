@@ -48,14 +48,14 @@ public abstract class AppDatabase extends RoomDatabase {
     }
 
     public static void backup() {
-        backup(new com.fongmi.android.tv.impl.Callback());
+        backup(new com.yingtu.plus.impl.Callback());
     }
 
-    public static void backup(com.fongmi.android.tv.impl.Callback callback) {
+    public static void backup(com.yingtu.plus.impl.Callback callback) {
         backup(callback, null);
     }
 
-    public static void backup(com.fongmi.android.tv.impl.Callback callback, AppBackup.Progress progress) {
+    public static void backup(com.yingtu.plus.impl.Callback callback, AppBackup.Progress progress) {
         Task.execute(() -> {
             File file = new File(Path.tv(), AppBackup.fileName());
             try {
@@ -72,11 +72,11 @@ public abstract class AppDatabase extends RoomDatabase {
         });
     }
 
-    public static void restore(File file, com.fongmi.android.tv.impl.Callback callback) {
+    public static void restore(File file, com.yingtu.plus.impl.Callback callback) {
         restore(file, callback, null);
     }
 
-    public static void restore(File file, com.fongmi.android.tv.impl.Callback callback, AppBackup.Progress progress) {
+    public static void restore(File file, com.yingtu.plus.impl.Callback callback, AppBackup.Progress progress) {
         Task.execute(() -> {
             try {
                 AppBackup.RestoreResult result = AppBackup.restore(file, progress);

@@ -208,6 +208,7 @@ public class VideoActivity extends PlaybackActivity implements Clock.Callback, C
     public static final String KEY_FLAG_NAME = "playFlagName";
     public static final String KEY_INDEX = "playIndex";
     public static final String KEY_EPISODE = "episodeName";
+    public static final String KEY_POSITION = "position";
     private static final int LYRICS_TAB_TRACK = 2;
     private static final int AUDIO_QUEUE_TAB_CURRENT = 0;
     private static final int AUDIO_QUEUE_TAB_SEARCH = 1;

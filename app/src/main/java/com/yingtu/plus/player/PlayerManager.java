@@ -334,7 +334,8 @@ public class PlayerManager implements ParseCallback {
             }
         };
         this.playerType = PlayerSetting.getPlayer();
-        this.engine = buildEngine(playerType, PlayerEngine.HARD);
+        this.engine = buildEngine(playerType,
+                playerType == PlayerSetting.IJK ? PlayerSetting.getIjkDecode() : PlayerEngine.HARD);
         this.player = engine.getPlayer();
     }
 
@@ -401,7 +402,11 @@ public class PlayerManager implements ParseCallback {
                 PlaybackProfileAbCoordinator.InvalidationReason
                         .GENERATION_CHANGED);
         PlaybackExperimentPolicy.State policy =
-                PlaybackExperimentSetting.getState();
+                PlaybackExperimentSetting.getState()
+                        ? new PlaybackExperimentPolicy.State(
+                                PlaybackExperimentPolicy.CURRENT_SCHEMA_VERSION,
+                                PlaybackExperimentSetting.isEnabled(), true, true, true)
+                        : PlaybackExperimentPolicy.State.stable();
         PlaybackTrace.log(
                 "playback-experiment",
                 playbackTrace.current(),
@@ -920,7 +925,7 @@ public class PlayerManager implements ParseCallback {
     private void configureDanmakuController(DanmakuController controller) {
         if (controller == null) return;
         controller.setOkHttpClient(OkHttp.player());
-        controller.setConfig(DanmakuSetting.getConfig());
+        controller.setConfig((DanmakuConfig) DanmakuSetting.getConfig());
         controller.setEnabled(DanmakuSetting.isShow());
         controller.setListener(new DanmakuController.Listener() {
             @Override
